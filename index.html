@@ -643,6 +643,62 @@ input[type=date],input[type=month]{-webkit-appearance:none}
 .tx .amt{font-family:var(--f-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
 h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 
+/* --- exclusão e lixeira --- */
+.del-opts{display:flex;flex-direction:column;gap:8px}
+.del-opt{display:flex;flex-direction:column;gap:2px;text-align:left;padding:13px 15px;
+  background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  transition:border-color var(--dur-1),background var(--dur-1)}
+.del-opt:hover{border-color:var(--down);background:var(--down-bg)}
+.del-opt b{font-size:var(--t-sm);font-weight:650}
+.del-opt span{font-size:var(--t-xs);color:var(--ink-3)}
+.del-list{max-height:280px;overflow-y:auto;margin-bottom:14px;
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:4px 12px}
+.check-line.pick{align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.check-line.pick:last-child{border-bottom:none}
+.tx.trashed{opacity:.62}
+.tx.trashed .ttl{text-decoration:line-through;text-decoration-color:var(--ink-4)}
+.tx.trashed .act{display:flex;gap:6px;margin-top:4px}
+.side-nav-item .tcount{margin-left:auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+  font-size:10px;font-weight:700;display:none;place-items:center;background:var(--s-4);color:var(--ink-2)}
+.side-nav-item .tcount.on{display:grid}
+
+/* --- barra de busca da lista --- */
+.srch{display:flex;align-items:center;gap:8px;margin-bottom:10px;
+  background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:0 10px}
+.srch:focus-within{border-color:var(--v-1)}
+.srch .si{display:flex;color:var(--ink-3)}
+.srch .si .icn{width:16px;height:16px}
+.srch input{flex:1;min-width:0;background:none;border:none;padding:11px 0;font-size:var(--t-sm);color:var(--ink)}
+.srch input::placeholder{color:var(--ink-4)}
+.srch .sx,.srch .sadv{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;color:var(--ink-3)}
+.srch .sx .icn,.srch .sadv .icn{width:15px;height:15px}
+.srch .sx:hover,.srch .sadv:hover{background:var(--s-3);color:var(--ink)}
+.srch .sadv{position:relative}
+.srch .sadv.on{color:var(--v-2);background:var(--grad-v-soft)}
+.srch .sadv .n{position:absolute;top:-2px;right:-2px;min-width:14px;height:14px;padding:0 3px;
+  border-radius:7px;background:var(--v-1);color:#fff;font-size:9px;font-weight:700;
+  display:grid;place-items:center;line-height:1}
+
+/* --- seleção de faturas na Carteira --- */
+.ccard{position:relative}
+.cpick{
+  position:absolute;top:12px;right:12px;z-index:3;
+  width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(0,0,0,.32);border:1.5px solid rgba(255,255,255,.45);
+  color:transparent;transition:all var(--dur-1) var(--ease);
+}
+.cpick .icn{width:13px;height:13px;stroke-width:2.6}
+.cpick:hover{border-color:#fff;background:rgba(0,0,0,.5)}
+.ccard.picked{outline:2px solid var(--v-2);outline-offset:2px}
+.ccard.picked .cpick{background:var(--v-1);border-color:var(--v-2);color:#fff}
+.picked-sum .k{display:flex;align-items:center;gap:8px}
+.lnk{font-size:var(--t-xs);color:var(--v-2);font-weight:600;text-decoration:underline}
+.picked-list{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);
+  display:flex;flex-direction:column;gap:5px}
+.picked-list div{display:flex;justify-content:space-between;gap:12px;
+  font-size:var(--t-sm);color:var(--ink-2)}
+.picked-list b{color:var(--ink);font-variant-numeric:tabular-nums}
+
 /* ==========================================================================
    SIDEBAR + LAYOUT DESKTOP
    Tudo abaixo vive dentro de @media (min-width:1024px). Abaixo desse ponto
@@ -781,6 +837,10 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
     </button>
   </nav>
   <div class="side-foot">
+    <button class="side-nav-item" data-action="trash-open">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M3.8 6.4h16.4M8.6 6.4V4.8a1.4 1.4 0 0 1 1.4-1.4h4a1.4 1.4 0 0 1 1.4 1.4v1.6"/><path d="M5.8 6.4l1 13a1.6 1.6 0 0 0 1.6 1.5h7.2a1.6 1.6 0 0 0 1.6-1.5l1-13"/><path d="M10.2 10.6v6M13.8 10.6v6"/></svg>
+      <span>Lixeira</span><span class="tcount" id="trashCount"></span>
+    </button>
     <button class="side-nav-item" data-action="cmd-open">
       <svg class="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
       <span>Buscar</span><kbd>Ctrl K</kbd>
@@ -1019,6 +1079,8 @@ async function load(){
       if(S.appName==="NOVIQ"){ S.appName="WIGO"; save(); }
     } else S=defaultState();
   }catch(e){ console.error(e); toast("Não foi possível carregar seus dados"); }
+  // estica os fixos "sempre" para cobrir os próximos meses
+  if(extendPerpetual()) save();
   updateAppName(); render();
   if(S&&!S.tutorialSeen&&!window.__tutShown){ window.__tutShown=true; setTimeout(openTutorial,400); }
 }
@@ -1049,30 +1111,82 @@ function createTx(o){
   const gid=uid(); const out=[];
   const base=t=>({id:uid(),gid,type:o.type,dest:o.dest||null,desc:o.desc,cat:o.cat,
     method:o.method,cardId:o.cardId||null,ticketId:o.ticketId||null,goalId:o.goalId||null});
-  const compAt=i=>(o.type==="inc"&&o.comp)?addMonthsISO(o.comp+"-01",i).slice(0,7):null;
+  /* competência vale para gasto e receita. Quem não preenche fica com null,
+     que é exatamente o comportamento anterior. */
+  const compAt=i=>o.comp?addMonthsISO(o.comp+"-01",i).slice(0,7):null;
   if(o.kind==="parcelado"){
     const per=Math.floor(o.total/o.n*100)/100;
     for(let i=0;i<o.n;i++){ const amount=i===o.n-1?Math.round((o.total-per*(o.n-1))*100)/100:per;
       const due=addMonthsISO(o.firstDue,i); const paid=i<o.paidCount;
       out.push(Object.assign(base(),{kind:"parcelado",i:i+1,n:o.n,amount,due,comp:compAt(i),paid,payDate:paid?due:null,payAmt:paid?amount:null})); }
   } else if(o.kind==="fixo"){
-    for(let i=0;i<o.months;i++){ const due=addMonthsISO(o.firstDue,i);
-      out.push(Object.assign(base(),{kind:"fixo",i:i+1,n:o.months,amount:o.total,due,comp:compAt(i),paid:false,payDate:null,payAmt:null})); }
+    /* fixo "sempre" não pode gerar infinitos registros: cria meses suficientes
+       para cobrir a janela e vai esticando sozinho (ver extendPerpetual).
+       A conta é feita a partir de HOJE, igual à do esticador — senão um fixo
+       que começa no passado já nasceria com a janela incompleta. */
+    const qtd=o.perp?perpCount(o.firstDue):o.months;
+    for(let i=0;i<qtd;i++){ const due=addMonthsISO(o.firstDue,i);
+      out.push(Object.assign(base(),{kind:"fixo",i:i+1,n:o.perp?0:o.months,amount:o.total,due,
+        comp:compAt(i),paid:false,payDate:null,payAmt:null,perp:o.perp?1:undefined})); }
   } else {
     out.push(Object.assign(base(),{kind:"avista",i:1,n:1,amount:o.total,due:o.firstDue,comp:compAt(0),
       paid:!!o.alreadyPaid,payDate:o.alreadyPaid?(o.payDate||o.firstDue):null,payAmt:o.alreadyPaid?o.total:null})); }
   S.tx.push(...out); return gid;
 }
-function txMonth(mk){ return S.tx.filter(t=>mkey(t.due)===mk); }
+/* ---------- exclusão reversível ----------
+   Excluir marca deleted:true em vez de remover do array. O lançamento some
+   de toda conta e de toda lista, mas continua no histórico e pode voltar.
+
+   aTx() é o único caminho para ler lançamentos em cálculo ou listagem.
+   Usar S.tx direto só é correto para: buscar por id (inclusive excluído),
+   restaurar, e limpar referências (cartão/ticket/meta apagados). */
+function aTx(){ return S.tx.filter(t=>!t.deleted); }
+function delTx(){ return S.tx.filter(t=>t.deleted); }
+
+/* ---------- fixo "sempre" ----------
+   Um recorrente sem fim não pode virar infinitos registros. Mantemos uma
+   janela de PERP_WINDOW meses à frente do mês atual e a esticamos a cada
+   carregamento — na prática o lançamento nunca acaba. */
+const PERP_WINDOW=24;
+const perpLimit=()=>addMonthsISO(todayISO(),PERP_WINDOW).slice(0,7);
+/* quantas ocorrências, a partir de firstDue, cobrem a janela */
+function perpCount(firstDue){
+  const lim=perpLimit(); let n=1;
+  while(mkey(addMonthsISO(firstDue,n-1))<lim&&n<600) n++;
+  return n;
+}
+function extendPerpetual(){
+  const gids=[...new Set(aTx().filter(t=>t.perp).map(t=>t.gid))];
+  const limite=perpLimit();
+  let criados=0;
+  gids.forEach(gid=>{
+    const grupo=aTx().filter(t=>t.gid===gid);
+    if(!grupo.length) return;
+    const molde=grupo[grupo.length-1];
+    let ultimo=grupo.reduce((a,t)=>t.due>a?t.due:a,grupo[0].due);
+    while(mkey(ultimo)<limite){
+      ultimo=addMonthsISO(ultimo,1);
+      S.tx.push({id:uid(),gid,type:molde.type,dest:molde.dest||null,desc:molde.desc,cat:molde.cat,
+        method:molde.method,cardId:molde.cardId||null,ticketId:molde.ticketId||null,goalId:null,
+        kind:"fixo",i:0,n:0,amount:molde.amount,due:ultimo,
+        comp:molde.comp?addMonthsISO(molde.comp+"-01",1).slice(0,7):null,
+        paid:false,payDate:null,payAmt:null,perp:1});
+      criados++;
+    }
+  });
+  return criados;
+}
+
+function txMonth(mk){ return aTx().filter(t=>mkey(t.due)===mk); }
 /* limite usado do cartão: parcelado segura todas as parcelas em aberto;
    fixo mensal só segura até o mês exibido; à vista normal. */
-function cardUsed(c){ return sum(S.tx.filter(t=>t.cardId===c.id&&t.type==="exp"&&!t.paid&&(t.kind!=="fixo"||mkey(t.due)<=viewMonth))); }
+function cardUsed(c){ return sum(aTx().filter(t=>t.cardId===c.id&&t.type==="exp"&&!t.paid&&(t.kind!=="fixo"||mkey(t.due)<=viewMonth))); }
 /* mês em que o lançamento efetivamente pesa no saldo:
    - receita com COMPETÊNCIA definida → mês de competência (a que mês a renda pertence)
    - pago/recebido → mês da DATA DE PAGAMENTO (dinheiro saiu/entrou aqui)
    - em aberto → mês do VENCIMENTO (Opção A: só pesa quando chega o mês) */
-function effMonth(t){ if(t.type==="inc"&&t.comp) return t.comp; return t.paid?mkey(t.payDate||t.due):mkey(t.due); }
-function txEffMonth(mk){ return S.tx.filter(t=>effMonth(t)===mk); }
+function effMonth(t){ if(t.comp) return t.comp; return t.paid?mkey(t.payDate||t.due):mkey(t.due); }
+function txEffMonth(mk){ return aTx().filter(t=>effMonth(t)===mk); }
 function sum(list,f){ return list.reduce((a,t)=>a+(f?f(t):t.amount),0); }
 
 /* quando marca/desmarca pago, sincroniza movimento de poupança */
@@ -1094,12 +1208,18 @@ function goalYield(g){ const bal=goalBalance(g); const rate=(g.cdi||0)/100*(S.cd
 
 /* saldo do ticket no mês: recarga do mês − gastos do mês */
 function ticketRecharge(tk,mk){ if(tk.overrides&&tk.overrides[mk]!=null) return tk.overrides[mk]; return tk.monthly||0; }
-function ticketSpent(tk,mk){ return sum(S.tx.filter(t=>t.ticketId===tk.id&&mkey(t.due)===mk)); }
+function ticketSpent(tk,mk){ return sum(aTx().filter(t=>t.ticketId===tk.id&&mkey(t.due)===mk)); }
 function ticketBalance(tk,mk){ return ticketRecharge(tk,mk)-ticketSpent(tk,mk); }
 
 /* ---------- filtros (lógica preservada) ---------- */
-function resetFilters(){ filters={q:"",type:"all",cat:"all",card:"all",status:"all"}; }
-function filterActive(){ return filters.q||filters.type!=="all"||filters.cat!=="all"||filters.card!=="all"||filters.status!=="all"; }
+function resetFilters(){ filters={q:"",type:"all",cat:"all",card:"all",status:"all",
+  min:"",max:"",from:"",to:"",method:"all",kind:"all",scope:"month"}; }
+function filterActive(){ return filters.q||filters.type!=="all"||filters.cat!=="all"||filters.card!=="all"
+  ||filters.status!=="all"||filters.min||filters.max||filters.from||filters.to
+  ||filters.method!=="all"||filters.kind!=="all"||filters.scope!=="month"; }
+/* quantos filtros avançados estão ativos — usado no selo do botão */
+function advCount(){ return [filters.min,filters.max,filters.from,filters.to,
+  filters.method!=="all"?1:"",filters.kind!=="all"?1:""].filter(Boolean).length; }
 function passFilter(t){
   if(filters.type==="exp"&&!(t.type==="exp"&&t.dest!=="savings")) return false;
   if(filters.type==="inc"&&t.type!=="inc") return false;
@@ -1109,8 +1229,25 @@ function passFilter(t){
   if(filters.card!=="all"&&filters.card!=="none"&&t.cardId!==filters.card) return false;
   if(filters.status==="aberto"){ if(t.paid||statusOf(t)==="atrasado") return false; }
   else if(filters.status!=="all"&&statusOf(t)!==filters.status) return false;
-  if(filters.q){ const hay=(t.desc+" "+t.cat+" "+(METHODS[t.method]||"")).toLowerCase();
-    if(!hay.includes(filters.q.toLowerCase())) return false; }
+  // faixa de valor — compara com o valor efetivo (pago, se houver)
+  const v=val(t);
+  if(filters.min&&v<parseMoney(filters.min)) return false;
+  if(filters.max&&v>parseMoney(filters.max)) return false;
+  // período por vencimento
+  if(filters.from&&t.due<filters.from) return false;
+  if(filters.to&&t.due>filters.to) return false;
+  if(filters.method!=="all"&&t.method!==filters.method) return false;
+  if(filters.kind!=="all"&&t.kind!==filters.kind) return false;
+  if(filters.q){
+    const q=filters.q.toLowerCase().trim();
+    const hay=(t.desc+" "+(t.cat||"")+" "+(METHODS[t.method]||"")+" "+
+      (t.cardId&&cardOf(t.cardId)?cardOf(t.cardId).nick:"")+" "+
+      (t.ticketId&&ticketOf(t.ticketId)?ticketOf(t.ticketId).name:"")).toLowerCase();
+    // texto OU valor: digitar 189 acha 189,90 e 1.189,00
+    const numQ=q.replace(/[^\d,]/g,"").replace(",",".");
+    const casaValor=numQ&&(String(v).includes(numQ)||v.toFixed(2).replace(".",",").includes(q.replace(/[^\d,]/g,"")));
+    if(!hay.includes(q)&&!casaValor) return false;
+  }
   return true;
 }
 function walletLabel(t){ if(t.cardId){const c=cardOf(t.cardId);return c?ic("card")+" "+c.nick:"cartão";}
@@ -1149,6 +1286,8 @@ function render(){
   else if(tab==="report") v.innerHTML=renderReport();
   else if(tab==="settings") v.innerHTML=renderSettings();
   const g=$("#greetEl"); if(g) g.textContent=greetWord();
+  const tc=$("#trashCount"); if(tc){ const n=delTx().length;
+    tc.textContent=n||""; tc.classList.toggle("on",!!n); }
   window.scrollTo(0,0);
   updateSelBar();
 }
@@ -1171,9 +1310,9 @@ function txRow(t){
   const isPop=t.dest==="savings", st=statusOf(t);
   const meta=[fmtDate(t.due)];
   if(t.kind==="parcelado") meta.push(t.i+"/"+t.n);
-  if(t.kind==="fixo") meta.push("fixo "+t.i+"/"+t.n);
+  if(t.kind==="fixo") meta.push(t.perp?"fixo · sempre":"fixo "+t.i+"/"+t.n);
   meta.push(walletLabel(t));
-  if(t.type==="inc"&&t.comp&&t.comp!==mkey(t.due)) meta.push(ic("calendar")+" ref. "+shortMonth(t.comp));
+  if(t.comp&&t.comp!==mkey(t.due)) meta.push(ic("calendar")+" ref. "+shortMonth(t.comp));
   else if(t.paid&&t.payDate&&mkey(t.payDate)!==mkey(t.due)) meta.push(ic("outflow")+" pago em "+shortMonth(mkey(t.payDate)));
   const sign=t.type==="inc"?"+":"−";
   const col=isPop?"info":(t.type==="inc"?"up":"down");
@@ -1202,7 +1341,19 @@ function filterBar(list){
     ["atrasado","Atrasados",list.filter(x=>!x.paid&&statusOf(x)==="atrasado").length],
     ["pago","Pagos",list.filter(x=>x.paid).length]];
   const cats=[...new Set(list.map(x=>x.cat).filter(Boolean))].sort();
-  return '<div class="chips">'+types.map(([v,l,n])=>'<button class="fchip'+(filters.type===v?" on":"")+'" data-action="flt-type" data-v="'+v+'">'+l+
+  const adv=advCount();
+  return '<div class="srch">'+
+      '<span class="si">'+ic("search")+'</span>'+
+      '<input id="fltQ" placeholder="Buscar por descrição, categoria, cartão ou valor…" value="'+esc(filters.q)+'" autocomplete="off">'+
+      (filters.q?'<button class="sx" data-action="flt-q-clear">'+ic("x")+'</button>':"")+
+      '<button class="sadv'+(adv?" on":"")+'" data-action="flt-adv">'+ic("filter")+
+        (adv?'<span class="n">'+adv+'</span>':"")+'</button>'+
+    '</div>'+
+    '<div class="chips">'+
+      '<button class="fchip'+(filters.scope==="month"?" on":"")+'" data-action="flt-scope" data-v="month">'+shortMonth(viewMonth)+'</button>'+
+      '<button class="fchip'+(filters.scope==="all"?" on":"")+'" data-action="flt-scope" data-v="all">Todos os meses<span class="n">'+aTx().length+'</span></button>'+
+    '</div>'+
+    '<div class="chips">'+types.map(([v,l,n])=>'<button class="fchip'+(filters.type===v?" on":"")+'" data-action="flt-type" data-v="'+v+'">'+l+
       (n!=null?'<span class="n">'+n+'</span>':"")+'</button>').join("")+'</div>'+
     '<div class="chips">'+sts.map(([v,l,n])=>'<button class="fchip'+(filters.status===v?" on":"")+'" data-action="flt-status" data-v="'+v+'">'+l+
       (n?'<span class="n">'+n+'</span>':"")+'</button>').join("")+'</div>'+
@@ -1244,7 +1395,7 @@ function buildInsights(){
     b:"Você gastou "+fmt(bigCat.now)+" nesta categoria em "+shortMonth(cur.mk)+"."});
 
   // vencimentos próximos
-  const soon=S.tx.filter(t=>!t.paid&&daysTo(t.due)>=0&&daysTo(t.due)<=5).sort((a,b)=>a.due<b.due?-1:1);
+  const soon=aTx().filter(t=>!t.paid&&daysTo(t.due)>=0&&daysTo(t.due)<=5).sort((a,b)=>a.due<b.due?-1:1);
   if(soon.length){ const f=soon[0]; const d=daysTo(f.due);
     out.push({k:"warn",ic:ic("clock"),t:d===0?"Vence hoje":d===1?"Vence amanhã":"Vence em "+d+" dias",
       b:esc(f.desc)+" · "+fmt(f.amount)+(soon.length>1?" · e mais "+(soon.length-1)+" nos próximos dias.":".")}); }
@@ -1264,7 +1415,7 @@ function buildInsights(){
 
   // fatura de cartão
   S.cards.forEach(c=>{ if(c.noLimit)return; const d=daysTo(mkey(todayISO())+"-"+String(c.dueDay).padStart(2,"0"));
-    const fat=sum(S.tx.filter(t=>t.cardId===c.id&&t.type==="exp"&&mkey(t.due)===mkey(todayISO())&&!t.paid));
+    const fat=sum(aTx().filter(t=>t.cardId===c.id&&t.type==="exp"&&mkey(t.due)===mkey(todayISO())&&!t.paid));
     if(d>=0&&d<=6&&fat>0) out.push({k:"warn",ic:ic("card"),t:"Fatura "+esc(c.nick)+" vence em "+d+" dia"+(d===1?"":"s"),
       b:"Valor em aberto: "+fmt(fat)+"."}); });
 
@@ -1301,8 +1452,8 @@ function renderHome(){
   const incT=incPaid+incOpen, expT=expPaid+expOpen;
   const saldo=incT-expT-sum(popL);
   const disp=incPaid-expPaid-popDone;
-  const late=S.tx.filter(t=>!t.paid&&statusOf(t)==="atrasado");
-  const soon=S.tx.filter(t=>!t.paid&&statusOf(t)==="proximo"&&daysTo(t.due)<=3);
+  const late=aTx().filter(t=>!t.paid&&statusOf(t)==="atrasado");
+  const soon=aTx().filter(t=>!t.paid&&statusOf(t)==="proximo"&&daysTo(t.due)<=3);
   const prev=monthAgg(addMonthsISO(viewMonth+"-01",-1).slice(0,7));
   const patr=S.goals.reduce((a,g)=>a+goalBalance(g),0);
 
@@ -1358,8 +1509,8 @@ function renderHome(){
     const L={atraso:"Em atraso · todos os meses",proximo:"Vencendo em até 3 dias",
       recebido:"Entradas de "+shortMonth(viewMonth),pago:"Saídas de "+shortMonth(viewMonth),
       guardado:"Guardado em "+shortMonth(viewMonth)};
-    if(homeFlt==="atraso") src=S.tx.filter(t=>!t.paid&&statusOf(t)==="atrasado");
-    else if(homeFlt==="proximo") src=S.tx.filter(t=>!t.paid&&statusOf(t)==="proximo"&&daysTo(t.due)<=3);
+    if(homeFlt==="atraso") src=aTx().filter(t=>!t.paid&&statusOf(t)==="atrasado");
+    else if(homeFlt==="proximo") src=aTx().filter(t=>!t.paid&&statusOf(t)==="proximo"&&daysTo(t.due)<=3);
     else if(homeFlt==="recebido") src=m.filter(t=>t.type==="inc"&&t.paid);
     else if(homeFlt==="pago") src=expL.filter(t=>t.paid);
     else if(homeFlt==="guardado") src=popL;
@@ -1375,12 +1526,19 @@ function renderHome(){
         rowsList(src)+'</div></div>';
   }
 
-  const filtered=m.filter(passFilter).sort((a,b)=>a.due<b.due?-1:1);
+  /* a lista pode olhar só o mês exibido ou o histórico inteiro.
+     Os totais do topo continuam sempre presos ao mês — só a lista muda. */
+  const base=filters.scope==="all"?aTx():m;
+  const filtered=base.filter(passFilter).sort((a,b)=>a.due<b.due?1:-1);
   curListIds=filtered.map(t=>t.id);
   const allSel=filtered.length&&filtered.every(t=>selTx.has(t.id));
-  const listBox='<div class="sec"><div class="sec-head"><h2>Lançamentos</h2>'+
-      '<span class="faint" style="font-size:11.5px">'+filtered.length+' de '+m.length+'</span></div>'+
-    filterBar(m)+
+  const somaF=filtered.length&&filterActive()
+    ? '<span class="faint" style="font-size:11.5px">'+filtered.length+' de '+base.length+
+      ' · <b style="color:var(--ink-2)">'+fmt(sum(filtered.filter(t=>t.type!=="inc"),val))+'</b> saídas · '+
+      '<b style="color:var(--ink-2)">'+fmt(sum(filtered.filter(t=>t.type==="inc"),val))+'</b> entradas</span>'
+    : '<span class="faint" style="font-size:11.5px">'+filtered.length+' de '+base.length+'</span>';
+  const listBox='<div class="sec"><div class="sec-head"><h2>Lançamentos</h2>'+somaF+'</div>'+
+    filterBar(base)+
     '<div class="surface" style="padding:6px 0">'+
       (filtered.length?'<div style="padding:10px 20px 4px;display:flex;gap:8px">'+
         '<button class="btn xs ghost" data-action="sel-all">'+(allSel?ic("x")+" Desmarcar todos":ic("checkSquare")+" Selecionar todos")+'</button>'+
@@ -1408,17 +1566,42 @@ function donut(entries,total){
 }
 
 /* ══════════════════ CARTEIRA ══════════════════ */
+/* faturas marcadas na aba Carteira — some ao trocar de mês, porque a soma
+   sempre se refere às faturas do mês exibido */
+let selCards=new Set();
+function cardFatura(c){ return sum(aTx().filter(t=>t.cardId===c.id&&t.type==="exp"&&mkey(t.due)===viewMonth)); }
+function cardPick(c){
+  return '<button class="cpick'+(selCards.has(c.id)?" on":"")+'" data-action="card-pick" data-id="'+c.id+'" '+
+    'aria-label="Selecionar fatura de '+esc(c.nick)+'">'+ic("check")+'</button>';
+}
+/* painel com a soma das faturas marcadas */
+function cardPickSum(){
+  selCards.forEach(id=>{ if(!cardOf(id)) selCards.delete(id); });
+  if(!selCards.size) return "";
+  const sel=S.cards.filter(c=>selCards.has(c.id));
+  const total=sel.reduce((a,c)=>a+cardFatura(c),0);
+  const aberto=sel.reduce((a,c)=>a+sum(aTx().filter(t=>t.cardId===c.id&&t.type==="exp"&&mkey(t.due)===viewMonth&&!t.paid)),0);
+  return '<div class="sec"><div class="stat picked-sum">'+
+    '<div class="k">'+sel.length+' fatura'+(sel.length>1?"s":"")+' de '+shortMonth(viewMonth)+
+      ' <button class="lnk" data-action="card-pick-clear">limpar</button></div>'+
+    '<div class="v violet">'+fmt(total)+'</div>'+
+    '<div class="s">'+(aberto>0?"em aberto "+fmt(aberto)+" · já pago "+fmt(total-aberto):"tudo pago")+'</div>'+
+    '<div class="picked-list">'+sel.map(c=>'<div><span>'+esc(c.nick)+'</span><b>'+fmt(cardFatura(c))+'</b></div>').join("")+'</div>'+
+  '</div></div>';
+}
 function cardFace(c){
-  const fat=sum(S.tx.filter(t=>t.cardId===c.id&&t.type==="exp"&&mkey(t.due)===viewMonth));
+  const fat=cardFatura(c);
   const bg='linear-gradient(140deg,'+c.color+' 0%,'+c.color+'cc 45%,#0A0A0F 145%)';
-  if(c.noLimit) return '<div class="ccard" style="background:'+bg+'" data-action="card-open" data-id="'+c.id+'">'+
+  if(c.noLimit) return '<div class="ccard'+(selCards.has(c.id)?" picked":"")+'" style="background:'+bg+'" data-action="card-open" data-id="'+c.id+'">'+
+    cardPick(c)+
     '<div class="top"><div><div class="bank">'+esc(c.bank).toUpperCase()+'</div><div class="nick">'+esc(c.nick)+'</div></div>'+
       '<div class="brand">3º</div></div>'+
     '<div><div class="dig">•••• ••••</div>'+
       '<div class="lim" style="margin-top:8px"><div><div style="font-size:10px;opacity:.7">FATURA '+shortMonth(viewMonth).toUpperCase()+'</div>'+
         '<div class="u">'+fmt(fat)+'</div></div><div class="a">sem limite<br>vence dia '+c.dueDay+'</div></div></div></div>';
   const used=cardUsed(c), pct=c.limit?Math.min(100,used/c.limit*100):0, over=used>c.limit;
-  return '<div class="ccard'+(over?" over":"")+'" style="background:'+bg+'" data-action="card-open" data-id="'+c.id+'">'+
+  return '<div class="ccard'+(over?" over":"")+(selCards.has(c.id)?" picked":"")+'" style="background:'+bg+'" data-action="card-open" data-id="'+c.id+'">'+
+    cardPick(c)+
     '<div class="top"><div><div class="bank">'+esc(c.bank).toUpperCase()+'</div><div class="nick">'+esc(c.nick)+'</div></div>'+
       '<div class="brand">'+esc(c.bank).slice(0,2).toUpperCase()+'</div></div>'+
     '<div><div class="lim"><div><div style="font-size:10px;opacity:.7">UTILIZADO</div><div class="u">'+fmt(used)+'</div></div>'+
@@ -1436,9 +1619,11 @@ function renderCards(){
       '<div class="metric"><div class="k">'+ic("chart")+' Disponível</div><div class="v '+(totLim-totUsed>0?"up":"down")+'">'+fmt(Math.max(0,totLim-totUsed))+'</div>'+
         '<div class="s">usado '+fmt(totUsed)+'</div></div></div></div>';
 
-  html+='<div class="sec-head" style="margin:0 20px 10px"><h2>Cartões de crédito</h2></div>';
+  html+='<div class="sec-head" style="margin:0 20px 10px"><h2>Cartões de crédito</h2>'+
+    (S.cards.length>1?'<span class="more" data-action="card-pick-all">'+
+      (S.cards.every(c=>selCards.has(c.id))?"Limpar seleção":"Selecionar todas")+'</span>':"")+'</div>';
   if(!S.cards.length) html+='<div class="empty"><div class="e-ic">'+ic("card")+'</div><div class="e-t">Nenhum cartão</div>Adicione seu primeiro cartão para acompanhar limite e faturas.</div>';
-  else html+='<div class="cstack">'+S.cards.map(cardFace).join("")+'</div>';
+  else html+='<div class="cstack">'+S.cards.map(cardFace).join("")+'</div>'+cardPickSum();
   html+='<div class="sec"><button class="btn ghost" data-action="card-add">+ Adicionar cartão</button></div>';
 
   html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Tickets e benefícios</h2></div>';
@@ -1632,6 +1817,11 @@ function renderSettings(){
   return '<div class="sec" style="margin-top:4px"><div class="sec-head"><h2 class="t-h2">Ajustes</h2></div>'+
     '<div class="help" style="margin:0 0 16px">'+esc(user?user.email:"")+'</div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
+    '<div class="sec-head" style="margin:0 0 12px"><h2>Lixeira</h2>'+
+      '<span class="faint" style="font-size:11.5px">'+delTx().length+' item(ns)</span></div>'+
+    '<div class="help" style="margin:0 0 12px">Lançamentos excluídos ficam guardados aqui, fora de qualquer saldo, e podem voltar.</div>'+
+    '<button class="btn ghost" data-action="trash-open">'+ic("trash")+' Abrir lixeira</button></div></div>'+
+  '<div class="sec"><div class="surface" style="padding:20px">'+
     '<div class="sec-head" style="margin:0 0 12px"><h2>Tutorial</h2></div>'+
     '<button class="btn ghost" data-action="tut-open">'+ic("book")+' Rever o tutorial do app</button></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
@@ -1672,10 +1862,11 @@ function renderSettings(){
 
 /* ══════════════════ BARRA DE SELEÇÃO ══════════════════ */
 function updateSelBar(){
-  selTx.forEach(id=>{ if(!S.tx.some(t=>t.id===id)) selTx.delete(id); });
+  // excluir um item selecionado tem que tirá-lo da soma também
+  selTx.forEach(id=>{ if(!aTx().some(t=>t.id===id)) selTx.delete(id); });
   let bar=document.getElementById("selbar");
   if(!selTx.size){ if(bar) bar.remove(); return; }
-  const sel=S.tx.filter(t=>selTx.has(t.id));
+  const sel=aTx().filter(t=>selTx.has(t.id));
   const inc=sel.filter(t=>t.type==="inc"), exp=sel.filter(t=>t.type!=="inc");
   const incT=sum(inc,val), expT=sum(exp,val);
   const unpaid=sel.filter(t=>!t.paid);
@@ -1703,6 +1894,7 @@ const CMD_ACTIONS=[
   {ic:ic("piggy"),t:"Ir para Metas",s:"objetivos",a:"tab",v:"savings"},
   {ic:ic("alert"),t:"Ver atrasados",s:"todos os meses",a:"home-filter",mode:"atraso"},
   {ic:ic("download"),t:"Exportar planilha",s:"CSV / Excel",a:"csv-export"},
+  {ic:ic("trash"),t:"Abrir lixeira",s:"lançamentos excluídos",a:"trash-open"},
   {ic:ic("book"),t:"Rever tutorial",s:"como usar o app",a:"tut-open"},
   {ic:ic("gear"),t:"Ajustes",s:"conta, categorias, backup",a:"tab",v:"settings"}
 ];
@@ -1716,7 +1908,7 @@ function renderCmd(q){
     '<div class="cmd-it" data-action="'+a.a+'"'+(a.v?' data-v="'+a.v+'"':"")+(a.mode?' data-mode="'+a.mode+'"':"")+' data-cmd="1">'+
     '<div class="ci">'+a.ic+'</div><div class="cm"><div class="t">'+a.t+'</div><div class="s">'+a.s+'</div></div></div>').join("");
   if(q){
-    const tx=S.tx.filter(t=>(t.desc+" "+t.cat+" "+(METHODS[t.method]||"")).toLowerCase().includes(q))
+    const tx=aTx().filter(t=>(t.desc+" "+t.cat+" "+(METHODS[t.method]||"")).toLowerCase().includes(q))
       .sort((a,b)=>a.due<b.due?1:-1).slice(0,8);
     if(tx.length) html+='<div class="cmd-sec">Lançamentos</div>'+tx.map(t=>
       '<div class="cmd-it" data-action="tx-edit" data-id="'+t.id+'" data-cmd="1"><div class="ci">'+
@@ -1776,7 +1968,9 @@ function openAdd(){
     '<div><label>Nº de parcelas</label><input id="txN" type="number" min="2" max="60" value="2"></div>'+
     '<div><label>Já pagas</label><input id="txPaidN" type="number" min="0" value="0"></div></div>'+
     '<div class="help">Informe o valor <b>total</b>; eu divido nas parcelas.</div></div>'+
-  '<div id="wrapFixo" class="hidden"><label>Repetir por quantos meses?</label><input id="txMonths" type="number" min="2" max="36" value="12">'+
+  '<div id="wrapFixo" class="hidden">'+
+    '<label class="check-line" style="margin-bottom:10px"><input type="checkbox" id="txPerp"><span>Repetir <b>sempre</b>, sem data para acabar</span></label>'+
+    '<div id="wrapMonths"><label>Repetir por quantos meses?</label><input id="txMonths" type="number" min="2" max="600" value="12"></div>'+
     '<div class="help">Cria nos próximos meses; você confirma quando pagar/receber. A categoria é mantida em todos.</div></div>'+
   '<div id="wrapMethod" class="row2"><div><label>Forma</label><select id="txMethod">'+
     Object.entries(METHODS).filter(([k])=>k!=="ticket"||S.tickets.length).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join("")+'</select></div>'+
@@ -1784,8 +1978,8 @@ function openAdd(){
   '<div id="wrapBuy" class="hidden"><label>Data da compra</label><input id="txBuy" type="date" value="'+todayISO()+'">'+
     '<div class="help">Uso o fechamento do cartão para calcular o vencimento da fatura.</div></div>'+
   '<label id="lblDue">Vencimento</label><input id="txDue" type="date" value="'+todayISO()+'" required>'+
-  '<div id="wrapComp" class="hidden"><label>Mês de competência <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="txComp" type="month">'+
-    '<div class="help">A que mês essa renda pertence. Ex.: adiantamento recebido em julho que é do salário de agosto → escolha agosto. Vazio = mês do recebimento.</div></div>'+
+  '<div id="wrapComp" class="hidden"><label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="txComp" type="month">'+
+    '<div class="help" id="helpComp"></div></div>'+
   '<label class="check-line" id="wrapPaid"><input type="checkbox" id="txAlready"><span id="lblAlready">Já foi pago</span></label>'+
   (!hasWallet?'':'')+
   '<button class="btn" type="submit">Salvar lançamento</button></form>');
@@ -1798,7 +1992,15 @@ function syncAddForm(){
   addDest=isSav?"savings":"normal";
   $("#wrapCat").classList.toggle("hidden",isSav);
   $("#wrapGoal").classList.toggle("hidden",!isSav);
-  if($("#wrapComp")) $("#wrapComp").classList.toggle("hidden",addType!=="inc");
+  /* competência vale para gasto e receita (não para poupança). Sempre opcional:
+     vazio = comportamento de antes, o lançamento pesa no mês do vencimento. */
+  if($("#wrapComp")){
+    $("#wrapComp").classList.toggle("hidden",isSav);
+    const hc=$("#helpComp");
+    if(hc) hc.textContent=addType==="inc"
+      ? "A que mês essa renda pertence. Ex.: adiantamento recebido em julho que é do salário de agosto → escolha agosto. Vazio = mês do recebimento."
+      : "A que mês esse gasto pertence. Ex.: compra feita em julho que é do orçamento de agosto → escolha agosto. Vazio = mês do vencimento.";
+  }
   if(isSav&&!S.goals.length){ toast("Crie uma poupança primeiro"); addType="exp"; syncAddForm(); return; }
   if(!isSav) $("#txCat").innerHTML=catOptions(addType,$("#txCat").value&&$("#txCat").value!=="__new"?$("#txCat").value:undefined);
   $("#lblValor").textContent=addKind==="parcelado"?"Valor total":"Valor";
@@ -1806,10 +2008,15 @@ function syncAddForm(){
   $("#lblDue").textContent=addKind==="parcelado"?"Venc. da 1ª parcela":(addKind==="fixo"?"1º vencimento":(isSav?"Data prevista":(addType==="inc"?"Data prevista de recebimento":"Vencimento")));
   $("#wrapParc").classList.toggle("hidden",addKind!=="parcelado");
   $("#wrapFixo").classList.toggle("hidden",addKind!=="fixo");
+  // "sempre" dispensa a quantidade de meses
+  if($("#wrapMonths")&&$("#txPerp")) $("#wrapMonths").classList.toggle("hidden",$("#txPerp").checked);
   $("#wrapPaid").classList.toggle("hidden",addKind!=="avista");
   // método/carteira só p/ gasto
   const showMethod=addType==="exp";
   $("#wrapMethod").classList.toggle("hidden",!showMethod);
+  /* "Data da compra" fora do if: antes ele só era escondido dentro do ramo de
+     gasto, então ao trocar para Receita o campo ficava preso visível. */
+  $("#wrapBuy").classList.toggle("hidden",!(showMethod&&$("#txMethod").value==="cartao"));
   if(showMethod){ const mv=$("#txMethod").value;
     const isCard=mv==="cartao", isTicket=mv==="ticket";
     $("#wrapWallet").classList.toggle("hidden",!(isCard||isTicket));
@@ -1817,7 +2024,6 @@ function syncAddForm(){
     $("#wrapWallet").querySelector("select")&&($("#wrapWallet").innerHTML='<label id="lblWallet">'+(isTicket?"Ticket":"Cartão")+'</label>'+
       (isTicket?'<select id="txWallet">'+S.tickets.map(t=>'<option value="ticket:'+t.id+'">'+esc(t.name)+'</option>').join("")+'</select>'
                :'<select id="txWallet">'+S.cards.map(c=>'<option value="card:'+c.id+'">'+esc(c.nick)+' ('+esc(c.bank)+')</option>').join("")+'</select>'));
-    $("#wrapBuy").classList.toggle("hidden",!isCard);
     if(isCard&&!S.cards.length){ toast("Cadastre um cartão"); $("#txMethod").value="pix"; syncAddForm(); }
     if(isTicket&&!S.tickets.length){ toast("Cadastre um ticket"); $("#txMethod").value="pix"; syncAddForm(); }
   }
@@ -1840,8 +2046,9 @@ function submitTx(){
   const cat=addType==="savings"?"Poupança":($("#txCat").value==="__new"?"Outros":$("#txCat").value);
   createTx({ type:addType==="inc"?"inc":"exp", dest:addType==="savings"?"savings":null,
     desc:$("#txDesc").value.trim()||"Sem descrição", cat, method, cardId, ticketId, goalId,
-    comp:(addType==="inc"&&$("#txComp")&&$("#txComp").value)?$("#txComp").value:null,
+    comp:(addType!=="savings"&&$("#txComp")&&$("#txComp").value)?$("#txComp").value:null,
     kind:addKind, total:val, n:Math.max(2,parseInt($("#txN").value)||2),
+    perp:addKind==="fixo"&&$("#txPerp")&&$("#txPerp").checked,
     paidCount:Math.max(0,parseInt($("#txPaidN").value)||0), months:Math.max(2,parseInt($("#txMonths").value)||12),
     firstDue:$("#txDue").value||todayISO(), alreadyPaid:addKind==="avista"&&$("#txAlready").checked });
   // se marcou já pago e é poupança, registra movimento
@@ -1861,6 +2068,138 @@ function openPaid(id){
   '<div><label>Valor</label><input id="pdAmt" inputmode="decimal" value="'+String(t.amount).replace(".",",")+'"></div></div>'+
   '<div class="help">Ajuste se houve juros, desconto ou valor parcial.</div>'+
   '<button class="btn" type="submit">Confirmar</button></form>');
+}
+
+/* ----- EXCLUSÃO -----
+   Nada é removido de verdade: marca-se deleted e o lançamento vai para a
+   Lixeira, de onde pode voltar. Por isso não há confirmação assustadora. */
+function markDeleted(list){
+  const agora=new Date().toISOString();
+  list.forEach(t=>{
+    if(t.deleted) return;
+    // pagamento de poupança precisa sair do saldo da meta enquanto excluído
+    if(t.dest==="savings"&&t.goalId){ const g=goalOf(t.goalId);
+      if(g&&g.moves) g.moves=g.moves.filter(mv=>mv.txId!==t.id); }
+    t.deleted=true; t.deletedAt=agora;
+  });
+  return list.length;
+}
+function restoreTx(list){
+  list.forEach(t=>{
+    if(!t.deleted) return;
+    delete t.deleted; delete t.deletedAt;
+    // se voltou já baixado e era poupança, o aporte volta junto
+    if(t.paid&&t.dest==="savings"&&t.goalId) applyPaid(t,t.payDate||t.due,t.payAmt??t.amount);
+  });
+  return list.length;
+}
+function openDelete(id){
+  const t=S.tx.find(x=>x.id===id); if(!t)return;
+  const grp=aTx().filter(x=>x.gid===t.gid);
+  const outros=grp.filter(x=>x.id!==id);
+  const abertos=grp.filter(x=>!x.paid);
+  const linha=x=>'<label class="check-line pick"><input type="checkbox" name="delpick" value="'+x.id+'"'+(x.id===id?" checked":"")+'>'+
+    '<span><b>'+esc(x.desc)+'</b><br><span class="faint" style="font-size:11.5px">'+
+      fmtDate(x.due)+(x.kind!=="avista"?" · "+x.i+"/"+x.n:"")+" · "+fmt(val(x))+" · "+stLabel(x)+'</span></span></label>';
+  openModal(modalHead("Excluir lançamento",esc(t.desc)+" · "+fmt(val(t)))+
+  '<div class="help" style="margin-bottom:14px">Nada é apagado de vez: o que você excluir vai para a '+
+    '<b>Lixeira</b> em Ajustes, deixa de contar em qualquer saldo e pode ser restaurado depois.</div>'+
+  '<div class="del-opts">'+
+    '<button class="del-opt" data-action="del-do" data-mode="one" data-id="'+id+'">'+
+      '<b>Somente este</b><span>1 lançamento</span></button>'+
+    (grp.length>1?
+    '<button class="del-opt" data-action="del-do" data-mode="group" data-id="'+id+'">'+
+      '<b>Todo o grupo</b><span>'+grp.length+' lançamentos, incluindo os já baixados</span></button>'+
+    '<button class="del-opt" data-action="del-do" data-mode="open" data-id="'+id+'">'+
+      '<b>Os que não foram baixados</b><span>'+abertos.length+' em aberto — os já pagos ficam</span></button>'
+    :"")+
+  '</div>'+
+  (grp.length>1?
+    '<form id="fDelPick" data-id="'+id+'">'+
+    '<div class="sec-head" style="margin:20px 0 8px"><h2 style="font-size:13.5px">Ou escolha um a um</h2>'+
+      '<span class="more" data-action="del-pick-all">Marcar todos</span></div>'+
+    '<div class="del-list">'+grp.sort((a,b)=>a.due<b.due?-1:1).map(linha).join("")+'</div>'+
+    '<button class="btn danger" type="submit">Excluir selecionados</button></form>'
+  :"")+
+  (outros.length?"":'<div class="help" style="margin-top:12px">Este lançamento não faz parte de um grupo.</div>'));
+}
+
+/* ----- LIXEIRA ----- */
+function openTrash(){
+  const lixo=delTx().sort((a,b)=>(b.deletedAt||"")<(a.deletedAt||"")?-1:1);
+  if(!lixo.length){
+    openModal(modalHead("Lixeira","Lançamentos excluídos")+
+      '<div class="empty"><div class="e-ic">'+ic("trash")+'</div><div class="e-t">Lixeira vazia</div>'+
+      'Lançamentos que você excluir aparecem aqui e podem ser restaurados.</div>');
+    return;
+  }
+  const total=sum(lixo,val);
+  openModal(modalHead("Lixeira",lixo.length+" lançamento"+(lixo.length>1?"s":"")+" · "+fmt(total))+
+  '<div class="help" style="margin-bottom:12px">Estes lançamentos <b>não entram em nenhum saldo, fatura ou relatório</b>. '+
+    'Ficam guardados como histórico até você restaurar ou apagar de vez.</div>'+
+  '<div class="act-row" style="margin-bottom:14px">'+
+    '<button class="btn small ghost" data-action="trash-restore-all">'+ic("restore")+' Restaurar todos</button>'+
+    '<button class="btn small danger" data-action="trash-purge">'+ic("trash")+' Esvaziar</button></div>'+
+  '<div class="list-plain">'+lixo.map(t=>
+    '<div class="tx trashed">'+
+      '<div class="ic">'+(t.dest==="savings"?ic("piggy"):catIcon(t.cat))+'</div>'+
+      '<div class="mid"><div class="ttl">'+esc(t.desc)+'</div>'+
+        '<div class="meta">'+fmtDate(t.due)+(t.kind!=="avista"?" · "+t.i+"/"+t.n:"")+
+          " · "+esc(t.cat||"")+(t.deletedAt?" · excluído em "+fmtDate(t.deletedAt.slice(0,10)):"")+'</div></div>'+
+      '<div class="rt"><div class="amt '+(t.type==="inc"?"up":"down")+'">'+(t.type==="inc"?"+":"−")+fmt(val(t))+'</div>'+
+        '<div class="act">'+
+          '<button class="btn xs" data-action="trash-restore" data-id="'+t.id+'">Restaurar</button>'+
+          '<button class="btn xs ghost" data-action="trash-purge-one" data-id="'+t.id+'">Apagar</button>'+
+        '</div></div></div>').join("")+'</div>');
+}
+
+/* ----- FILTROS AVANÇADOS ----- */
+function openAdvFilters(){
+  const metodos=Object.entries(METHODS).map(([k,v])=>
+    '<option value="'+k+'"'+(filters.method===k?" selected":"")+'>'+v+'</option>').join("");
+  openModal(modalHead("Filtros avançados","Combinam com a busca e os chips da lista")+
+  '<form id="fAdv">'+
+  '<label>Faixa de valor</label><div class="row2">'+
+    '<input id="fvMin" inputmode="decimal" placeholder="mínimo" value="'+esc(filters.min)+'">'+
+    '<input id="fvMax" inputmode="decimal" placeholder="máximo" value="'+esc(filters.max)+'"></div>'+
+  '<label style="margin-top:14px">Período de vencimento</label><div class="row2">'+
+    '<input id="fdFrom" type="date" value="'+esc(filters.from)+'">'+
+    '<input id="fdTo" type="date" value="'+esc(filters.to)+'"></div>'+
+  '<div class="help">Deixe em branco para não limitar. Use junto com “Todos os meses” para varrer o histórico.</div>'+
+  '<label style="margin-top:14px">Forma de pagamento</label>'+
+    '<select id="fMethod"><option value="all">Todas</option>'+metodos+'</select>'+
+  '<label style="margin-top:14px">Tipo de lançamento</label>'+
+    '<select id="fKind"><option value="all">Todos</option>'+
+      '<option value="avista"'+(filters.kind==="avista"?" selected":"")+'>À vista</option>'+
+      '<option value="parcelado"'+(filters.kind==="parcelado"?" selected":"")+'>Parcelado</option>'+
+      '<option value="fixo"'+(filters.kind==="fixo"?" selected":"")+'>Fixo mensal</option></select>'+
+  '<button class="btn" type="submit">Aplicar filtros</button>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="flt-adv-clear">Limpar avançados</button></div>'+
+  '</form>');
+}
+
+/* ----- ESPELHAR: duplicar o lançamento no tipo oposto -----
+   Gasto vira receita e vice-versa. As listas de categoria dos dois tipos são
+   diferentes, então não dá para reaproveitar a categoria automaticamente —
+   por isso a tela pede a nova categoria em vez de chutar. */
+function openMirror(id){
+  const t=S.tx.find(x=>x.id===id); if(!t)return;
+  const novo=t.type==="inc"?"exp":"inc";
+  const rot=novo==="inc"?"receita":"gasto";
+  openModal(modalHead("Duplicar como "+rot,esc(t.desc)+" · "+fmt(t.amount))+
+  '<div class="help" style="margin-bottom:14px">Cria um lançamento novo de <b>'+rot+'</b> com os mesmos dados. '+
+    'O lançamento original não é alterado.</div>'+
+  '<form id="fMirror" data-id="'+id+'">'+
+  '<label>Descrição</label><input id="miDesc" value="'+esc(t.desc)+'">'+
+  '<div class="row2"><div><label>Valor</label><input id="miVal" inputmode="decimal" value="'+String(t.amount).replace(".",",")+'"></div>'+
+  '<div><label>Categoria</label><select id="miCat">'+catOptions(novo)+'</select></div></div>'+
+  '<label>'+(novo==="inc"?"Data prevista de recebimento":"Vencimento")+'</label>'+
+    '<input id="miDue" type="date" value="'+t.due+'">'+
+  '<label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label>'+
+    '<input id="miComp" type="month" value="'+(t.comp||"")+'">'+
+  '<label class="check-line"><input type="checkbox" id="miPaid"><span>'+
+    (novo==="inc"?"Já foi recebido":"Já foi pago")+'</span></label>'+
+  '<button class="btn" type="submit">Criar '+rot+'</button></form>');
 }
 
 /* ----- TUTORIAL DE PRIMEIRO ACESSO ----- */
@@ -1901,7 +2240,7 @@ function openCatDetail(cat){
     months.push([mk,v]); tot+=v; mxx=Math.max(mxx,v); }
   const media=tot/6;
   const mks=months.map(([mk])=>mk);
-  const win=S.tx.filter(t=>t.type==="exp"&&t.dest!=="savings"&&t.cat===cat&&mks.includes(effMonth(t)));
+  const win=aTx().filter(t=>t.type==="exp"&&t.dest!=="savings"&&t.cat===cat&&mks.includes(effMonth(t)));
   const byVal=win.slice().sort((a,b)=>val(b)-val(a));
   const hi=byVal[0], lo=byVal[byVal.length-1];
   const list=win.slice().sort((a,b)=>a.due<b.due?1:-1).slice(0,40);
@@ -1941,7 +2280,7 @@ function openMonthDetail(mk){
 /* ----- PAGAR FATURA DO CARTÃO (baixa em lote do mês) ----- */
 function openFatura(id){
   const c=cardOf(id); if(!c)return;
-  const mOpen=S.tx.filter(t=>t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth&&!t.paid);
+  const mOpen=aTx().filter(t=>t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth&&!t.paid);
   if(!mOpen.length)return;
   openModal(modalHead("Pagar fatura de "+shortMonth(viewMonth),esc(c.nick)+" · "+mOpen.length+" lançamento(s) · "+fmt(sum(mOpen)))+
   '<form id="fFatura" data-id="'+id+'">'+
@@ -1953,7 +2292,7 @@ function openFatura(id){
 /* ----- EDITAR (bug corrigido: checkbox funciona + categoria mantida) ----- */
 function openEdit(id){
   const t=S.tx.find(x=>x.id===id); if(!t)return;
-  const grp=S.tx.filter(x=>x.gid===t.gid);
+  const grp=aTx().filter(x=>x.gid===t.gid);
   const isExp=t.type==="exp"&&t.dest!=="savings";
   const walletSel=t.method==="ticket"?("ticket:"+t.ticketId):(t.cardId?("card:"+t.cardId):"");
   openModal(modalHead("Editar lançamento",
@@ -1977,15 +2316,17 @@ function openEdit(id){
       Object.entries(METHODS).filter(([k])=>k!=="ticket"||S.tickets.length).map(([k,v])=>'<option value="'+k+'"'+(t.method===k?" selected":"")+'>'+v+'</option>').join("")+'</select></div>'+
     '<div id="edWrapWallet" class="'+((t.method==="cartao"||t.method==="ticket")?"":"hidden")+'"><label id="edLblWallet">'+(t.method==="ticket"?"Ticket":"Cartão")+'</label>'+walletSelect("edWallet",walletSel)+'</div></div>':"")+
   '<label>Vencimento</label><input id="edDue" type="date" value="'+t.due+'">'+
-  (t.type==="inc"?'<label>Mês de competência <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="edComp" type="month" value="'+(t.comp||"")+'">'+
-    '<div class="help">A que mês essa renda pertence. Vazio = mês do recebimento.</div>':"")+
+  (t.dest==="savings"?"":'<label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="edComp" type="month" value="'+(t.comp||"")+'">'+
+    '<div class="help">A que mês '+(t.type==="inc"?"essa renda":"esse gasto")+' pertence. Vazio = mês do '+(t.type==="inc"?"recebimento":"vencimento")+'.</div>')+
   (t.paid?'<div class="row2"><div><label>Data do pagamento</label><input id="edPayDate" type="date" value="'+(t.payDate||t.due)+'"></div>'+
     '<div><label>Valor pago/recebido</label><input id="edPayAmt" inputmode="decimal" value="'+String(t.payAmt??t.amount).replace(".",",")+'"></div></div>':"")+
   (grp.length>1?'<label class="check-line" id="edApplyLine"><input type="checkbox" id="edApplyAll"><span>Aplicar <b style="color:var(--violet-soft)">descrição, categoria e forma</b> às '+grp.length+' ocorrências do grupo</span></label>':"")+
   '<button class="btn" type="submit">Salvar alterações</button>'+
+  (t.dest==="savings"?"":
+    '<div class="act-row"><button type="button" class="btn small ghost" data-action="tx-mirror" data-id="'+id+'">'+
+      ic("swap")+' Duplicar como '+(t.type==="inc"?"gasto":"receita")+'</button></div>')+
   '<div class="act-row">'+
-    '<button type="button" class="btn small danger" data-action="tx-delete" data-id="'+id+'">Excluir este</button>'+
-    (grp.length>1?'<button type="button" class="btn small danger" data-action="tx-delete-group" data-id="'+id+'">Excluir grupo ('+grp.length+')</button>':"")+
+    '<button type="button" class="btn small danger" data-action="tx-delete" data-id="'+id+'">'+ic("trash")+' Excluir…</button>'+
   '</div></form>');
 }
 
@@ -2007,14 +2348,14 @@ function openCardForm(id){
 }
 function openCardDetail(id){
   const c=cardOf(id); if(!c)return;
-  const items=S.tx.filter(t=>t.cardId===id).sort((a,b)=>a.due<b.due?-1:1);
+  const items=aTx().filter(t=>t.cardId===id).sort((a,b)=>a.due<b.due?-1:1);
   let box='';
-  if(c.noLimit){ const fat=sum(S.tx.filter(t=>t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth));
+  if(c.noLimit){ const fat=sum(aTx().filter(t=>t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth));
     box='<div class="stat" style="margin-top:14px"><div class="k">Fatura de '+shortMonth(viewMonth)+'</div><div class="v violet">'+fmt(fat)+'</div><div class="s">cartão de terceiro · sem limite</div></div>'; }
   else { const used=cardUsed(c); const pct=c.limit?Math.min(100,used/c.limit*100):0;
     box='<div class="stat" style="margin-top:14px"><div class="k">Limite usado (em aberto)</div><div class="v violet">'+fmt(used)+' <span style="font-size:12px;color:var(--faint)">de '+fmt(c.limit)+'</span></div>'+
       '<div class="bar-track" style="margin-top:8px"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="s" style="margin-top:6px">Disponível: '+fmt(Math.max(0,c.limit-used))+'</div></div>'; }
-  const mTx=S.tx.filter(t=>t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth);
+  const mTx=aTx().filter(t=>t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth);
   const mOpen=mTx.filter(t=>!t.paid);
   const fatMes=sum(mTx);
   let fatura='';
@@ -2027,10 +2368,35 @@ function openCardDetail(id){
         '<div class="act-row" style="margin-top:8px"><button class="btn tiny ghost" data-action="fatura-unpay" data-id="'+id+'">Desfazer pagamento da fatura</button></div></div>';
     }
   }
+  cardQ="";
   openModal(modalHead(esc(c.nick),esc(c.bank)+(c.noLimit?" · terceiro":" · fecha "+c.closeDay+" · vence "+c.dueDay))+box+fatura+
   '<div class="act-row"><button class="btn small ghost" data-action="card-edit" data-id="'+id+'">Editar cartão</button></div>'+
-  '<h3 style="font-size:13.5px;color:var(--violet-soft);margin:20px 0 4px">Compras de '+shortMonth(viewMonth)+' ('+mOpen.length+' em aberto)</h3>'+
-  (mTx.length?'<div class="list-plain">'+mTx.sort((a,b)=>a.due<b.due?-1:1).map(t=>txRow(t)).join("")+'</div>':'<div class="empty">Nenhuma compra em '+shortMonth(viewMonth)+'.</div>'));
+  '<h3 style="font-size:13.5px;color:var(--v-2);margin:20px 0 8px">Compras de '+shortMonth(viewMonth)+' ('+mOpen.length+' em aberto)</h3>'+
+  (mTx.length?'<input id="cardSearch" data-card="'+id+'" placeholder="Buscar por nome ou valor…" autocomplete="off" style="margin-bottom:10px">':"")+
+  '<div id="cardListBox">'+cardFatList(id)+'</div>');
+}
+/* lista da fatura do mês, filtrada pela busca.
+   A busca aceita texto (descrição/categoria) e número: digitar 90 acha
+   90,00 / 189,90 / 1.900 — casa contra o valor formatado e o cru. */
+let cardQ="";
+function cardFatList(id){
+  let list=aTx().filter(t=>t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth);
+  const total=list.length;
+  const q=cardQ.trim().toLowerCase();
+  if(q){
+    const num=q.replace(/[^\d,.]/g,"").replace(/\./g,"").replace(",",".");
+    list=list.filter(t=>{
+      if((t.desc+" "+(t.cat||"")).toLowerCase().includes(q)) return true;
+      if(!num) return false;
+      const cru=String(t.amount), br=t.amount.toFixed(2).replace(".",",");
+      return cru.includes(num)||br.includes(q.replace(/[^\d,]/g,""))||fmt(t.amount).toLowerCase().includes(q);
+    });
+  }
+  list.sort((a,b)=>a.due<b.due?-1:1);
+  if(!list.length) return '<div class="empty">'+(q?"Nada encontrado para “"+esc(cardQ)+"”.":"Nenhuma compra em "+shortMonth(viewMonth)+".")+'</div>';
+  const soma=sum(list);
+  return (q?'<div class="help" style="margin-bottom:8px">'+list.length+' de '+total+' · soma <b>'+fmt(soma)+'</b></div>':"")+
+    '<div class="list-plain">'+list.map(t=>txRow(t)).join("")+'</div>';
 }
 
 /* ----- TICKET ----- */
@@ -2053,7 +2419,7 @@ function openTicketDetail(id){
   const rec=ticketRecharge(tk,viewMonth), spent=ticketSpent(tk,viewMonth), bal=ticketBalance(tk,viewMonth);
   const pct=rec?Math.min(100,spent/rec*100):0;
   const isOverride=tk.overrides&&tk.overrides[viewMonth]!=null;
-  const items=S.tx.filter(t=>t.ticketId===id&&mkey(t.due)===viewMonth).sort((a,b)=>a.due<b.due?-1:1);
+  const items=aTx().filter(t=>t.ticketId===id&&mkey(t.due)===viewMonth).sort((a,b)=>a.due<b.due?-1:1);
   openModal(modalHead(esc(tk.name),esc(tk.brand)+" · recarrega dia "+tk.day)+
   '<div class="stat" style="margin-top:14px"><div class="k">Saldo de '+shortMonth(viewMonth)+'</div>'+
   '<div class="v teal">'+fmt(bal)+'</div>'+
@@ -2131,7 +2497,7 @@ function download(name,content,type){ const blob=new Blob([content],{type}); con
 function exportCSV(){
   const head=["Tipo","Descrição","Categoria","Forma","Cartão/Ticket","Parcela","Vencimento","Status","Data pagamento","Valor","Valor pago/recebido"];
   const clean=v=>String(v??"").replace(/;/g,",");
-  const rows=S.tx.slice().sort((a,b)=>a.due<b.due?-1:1).map(t=>{
+  const rows=aTx().sort((a,b)=>a.due<b.due?-1:1).map(t=>{
     const w=t.cardId?cardOf(t.cardId):(t.ticketId?ticketOf(t.ticketId):null);
     const wn=w?(w.nick||w.name):""; const s=statusOf(t);
     const tipo=t.dest==="savings"?"Poupança":(t.type==="inc"?"Receita":"Gasto");
@@ -2158,9 +2524,10 @@ document.addEventListener("click", async e=>{
     case "home-filter": homeFlt=el.dataset.mode; render();
       setTimeout(()=>{ const p=document.querySelectorAll("#view .panel"); if(p.length){ p[p.length-1].scrollIntoView({behavior:"smooth",block:"start"}); } },30); break;
     case "home-filter-clear": homeFlt=null; render(); break;
-    case "month-prev": viewMonth=addMonthsISO(viewMonth+"-01",-1).slice(0,7); homeFlt=null; render(); break;
-    case "month-next": viewMonth=addMonthsISO(viewMonth+"-01",1).slice(0,7); homeFlt=null; render(); break;
-    case "month-today": viewMonth=new Date().toISOString().slice(0,7); render(); break;
+    /* a soma de faturas é sempre do mês exibido, então trocar de mês zera a seleção */
+    case "month-prev": viewMonth=addMonthsISO(viewMonth+"-01",-1).slice(0,7); homeFlt=null; selCards.clear(); render(); break;
+    case "month-next": viewMonth=addMonthsISO(viewMonth+"-01",1).slice(0,7); homeFlt=null; selCards.clear(); render(); break;
+    case "month-today": viewMonth=new Date().toISOString().slice(0,7); selCards.clear(); render(); break;
     case "open-add": openAdd(); break;
     case "close-modal": closeModal(); break;
     case "cmd-open": openCmd(); break;
@@ -2171,10 +2538,15 @@ document.addEventListener("click", async e=>{
     case "flt-type": filters.type=el.dataset.v; render(); break;
     case "flt-status": filters.status=el.dataset.v; render(); break;
     case "flt-clear": resetFilters(); render(); break;
+    case "flt-scope": filters.scope=el.dataset.v; render(); break;
+    case "flt-q-clear": filters.q=""; render(); break;
+    case "flt-adv": openAdvFilters(); break;
+    case "flt-adv-clear": { filters.min=filters.max=filters.from=filters.to="";
+      filters.method="all"; filters.kind="all"; closeModal(); render(); toast("Filtros avançados limpos"); break; }
     // transações
     case "fatura-pay": openFatura(id); break;
     case "fatura-unpay": { if(!confirm("Desfazer o pagamento da fatura de "+shortMonth(viewMonth)+"?"))break;
-      S.tx.forEach(t=>{ if(t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth&&t.paid) undoPaid(t); });
+      aTx().forEach(t=>{ if(t.cardId===id&&t.type==="exp"&&mkey(t.due)===viewMonth&&t.paid) undoPaid(t); });
       save(); openCardDetail(id); render(); toast("Pagamento desfeito"); break; }
     case "tx-sel": { if(selTx.has(id)) selTx.delete(id); else selTx.add(id);
       el.classList.toggle("on",selTx.has(id)); updateSelBar(); break; }
@@ -2195,14 +2567,36 @@ document.addEventListener("click", async e=>{
     case "tx-paid": openPaid(id); break;
     case "tx-unpaid": { const t=S.tx.find(x=>x.id===id); if(t){ undoPaid(t); save(); closeModal(); render(); toast("Desfeito"); } break; }
     case "tx-edit": openEdit(id); break;
-    case "tx-delete": { if(!confirm("Excluir este lançamento?"))break;
-      const t=S.tx.find(x=>x.id===id); if(t&&t.goalId){ const g=goalOf(t.goalId); if(g&&g.moves)g.moves=g.moves.filter(mv=>mv.txId!==id); }
-      S.tx=S.tx.filter(x=>x.id!==id); save(); closeModal(); render(); toast("Excluído"); break; }
-    case "tx-delete-group": { const t=S.tx.find(x=>x.id===id); if(!t)break;
-      const n=S.tx.filter(x=>x.gid===t.gid).length;
-      if(!confirm("Excluir todas as "+n+" ocorrências do grupo?"))break;
-      S.tx.filter(x=>x.gid===t.gid).forEach(x=>{ if(x.goalId){ const g=goalOf(x.goalId); if(g&&g.moves)g.moves=g.moves.filter(mv=>mv.txId!==x.id); }});
-      S.tx=S.tx.filter(x=>x.gid!==t.gid); save(); closeModal(); render(); toast("Grupo excluído"); break; }
+    case "tx-mirror": openMirror(id); break;
+    // seleção de faturas na Carteira
+    case "card-pick": { selCards.has(id)?selCards.delete(id):selCards.add(id); render(); break; }
+    case "card-pick-all": { if(S.cards.every(c=>selCards.has(c.id))) selCards.clear();
+      else S.cards.forEach(c=>selCards.add(c.id)); render(); break; }
+    case "card-pick-clear": selCards.clear(); render(); break;
+    // exclusão (reversível — vai para a Lixeira)
+    case "tx-delete": openDelete(id); break;
+    case "del-do": { const t=S.tx.find(x=>x.id===id); if(!t)break;
+      const grp=aTx().filter(x=>x.gid===t.gid);
+      const alvo=el.dataset.mode==="group"?grp
+        :el.dataset.mode==="open"?grp.filter(x=>!x.paid)
+        :[t];
+      const n=markDeleted(alvo);
+      save(); closeModal(); render();
+      toast(n+" lançamento"+(n>1?"s":"")+" na lixeira"); break; }
+    case "del-pick-all": { const cx=document.querySelectorAll('input[name="delpick"]');
+      const todos=[...cx].every(c=>c.checked); cx.forEach(c=>c.checked=!todos);
+      el.textContent=todos?"Marcar todos":"Desmarcar todos"; break; }
+    // lixeira
+    case "trash-open": openTrash(); break;
+    case "trash-restore": { const t=S.tx.find(x=>x.id===id); if(!t)break;
+      restoreTx([t]); save(); render(); openTrash(); toast("Restaurado ✓"); break; }
+    case "trash-restore-all": { const n=restoreTx(delTx());
+      save(); closeModal(); render(); toast(n+" restaurado"+(n>1?"s":"")+" ✓"); break; }
+    case "trash-purge": { const n=delTx().length;
+      if(!confirm("Apagar definitivamente "+n+" lançamento"+(n>1?"s":"")+" da lixeira?\n\nEsta ação não pode ser desfeita."))break;
+      S.tx=aTx(); save(); closeModal(); render(); toast("Lixeira esvaziada"); break; }
+    case "trash-purge-one": { if(!confirm("Apagar este lançamento definitivamente?"))break;
+      S.tx=S.tx.filter(x=>x.id!==id); save(); render(); openTrash(); toast("Apagado"); break; }
     // cartões
     case "card-add": openCardForm(); break;
     case "card-open": openCardDetail(id); break;
@@ -2265,6 +2659,10 @@ document.addEventListener("click", async e=>{
 let searchTimer=null;
 document.addEventListener("input", e=>{
   if(e.target.id==="cmdInput"){ renderCmd(e.target.value); return; }
+  /* busca dentro da fatura: troca só a lista, para o campo não perder o foco */
+  if(e.target.id==="cardSearch"){ cardQ=e.target.value;
+    const box=$("#cardListBox"); if(box) box.innerHTML=cardFatList(e.target.dataset.card);
+    return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
       // re-render mantendo foco
@@ -2281,6 +2679,7 @@ document.addEventListener("change", e=>{
     const on=t.value==="cartao"||t.value==="ticket";
     if($("#edWrapWallet")) $("#edWrapWallet").classList.toggle("hidden",!on);
     if($("#edLblWallet")) $("#edLblWallet").textContent=t.value==="ticket"?"Ticket":"Cartão"; }
+  if(t.id==="txPerp"){ syncAddForm(); }
   if(t.id==="edKind"){ const f=$("#fEdit"); const tx=f&&S.tx.find(x=>x.id===f.dataset.id);
     if(tx){ const changed=t.value!==tx.kind;
       if($("#edWrapParc")) $("#edWrapParc").classList.toggle("hidden",!(changed&&t.value==="parcelado"));
@@ -2317,12 +2716,35 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fDelPick"){
+    const ids=[...document.querySelectorAll('input[name="delpick"]:checked')].map(c=>c.value);
+    if(!ids.length){ toast("Marque ao menos um"); return; }
+    const n=markDeleted(S.tx.filter(x=>ids.includes(x.id)));
+    save(); closeModal(); render(); toast(n+" lançamento"+(n>1?"s":"")+" na lixeira"); }
+  else if(f.id==="fAdv"){
+    filters.min=$("#fvMin").value.trim(); filters.max=$("#fvMax").value.trim();
+    filters.from=$("#fdFrom").value; filters.to=$("#fdTo").value;
+    filters.method=$("#fMethod").value; filters.kind=$("#fKind").value;
+    /* período explícito só faz sentido varrendo tudo, senão o mês exibido corta o resultado */
+    if(filters.from||filters.to) filters.scope="all";
+    closeModal(); render(); toast("Filtros aplicados ✓"); }
   else if(f.id==="fFatura"){ const cid=f.dataset.id; const dt=$("#ftDate").value||todayISO();
-    let n=0; S.tx.forEach(t=>{ if(t.cardId===cid&&t.type==="exp"&&mkey(t.due)===viewMonth&&!t.paid){ applyPaid(t,dt,t.amount); n++; } });
+    let n=0; aTx().forEach(t=>{ if(t.cardId===cid&&t.type==="exp"&&mkey(t.due)===viewMonth&&!t.paid){ applyPaid(t,dt,t.amount); n++; } });
     save(); closeModal(); openCardDetail(cid); render(); toast("Fatura paga ✓ ("+n+" lançamentos)"); }
   else if(f.id==="fPaid"){ const t=S.tx.find(x=>x.id===f.dataset.id); if(!t)return;
     applyPaid(t,$("#pdDate").value||todayISO(),parseMoney($("#pdAmt").value)||t.amount);
     save(); closeModal(); render(); toast(t.type==="inc"?"Recebido ✓":(t.dest==="savings"?"Guardado ✓":"Pago ✓")); }
+  else if(f.id==="fMirror"){ const t=S.tx.find(x=>x.id===f.dataset.id); if(!t)return;
+    const novo=t.type==="inc"?"exp":"inc";
+    const val=parseMoney($("#miVal").value); if(!val){ toast("Informe um valor válido"); return; }
+    const cat=$("#miCat").value==="__new"?"Outros":$("#miCat").value;
+    /* sempre à vista: espelhar um parcelado geraria um segundo grupo de N
+       parcelas, que quase nunca é o que se quer ao inverter o sinal */
+    createTx({ type:novo, dest:null, desc:$("#miDesc").value.trim()||t.desc, cat,
+      method:novo==="inc"?"transferencia":"pix", cardId:null, ticketId:null, goalId:null,
+      comp:$("#miComp").value||null, kind:"avista", total:val, n:2, paidCount:0, months:12,
+      firstDue:$("#miDue").value||t.due, alreadyPaid:$("#miPaid").checked });
+    save(); closeModal(); render(); toast((novo==="inc"?"Receita":"Gasto")+" criado ✓"); }
   else if(f.id==="fEdit"){ const t=S.tx.find(x=>x.id===f.dataset.id); if(!t)return;
     const nDesc=$("#edDesc").value.trim()||t.desc;
     const nCat=($("#edCat")&&$("#edCat").value!=="__new")?$("#edCat").value:t.cat;
@@ -2338,12 +2760,12 @@ document.addEventListener("submit", async e=>{
       } else { nMethod=mv; nCard=null; nTicket=null; } }
     // mudou o tipo? recria o grupo inteiro
     if($("#edKind")&&$("#edKind").value!==t.kind){
-      const nk=$("#edKind").value; const gid=t.gid; const old=S.tx.filter(x=>x.gid===gid);
+      const nk=$("#edKind").value; const gid=t.gid; const old=aTx().filter(x=>x.gid===gid);
       if(!confirm("Mudar o tipo recria o grupo ("+old.length+" lançamento(s)) a partir de "+nDue.split("-").reverse().join("/")+", usando "+fmt(nVal)+" como valor total. Pagamentos do grupo serão desfeitos. Continuar?")) return;
       old.forEach(x=>{ if(x.paid) undoPaid(x); });
       S.tx=S.tx.filter(x=>x.gid!==gid);
       createTx({ type:t.type, dest:null, desc:nDesc, cat:nCat, method:nMethod, cardId:nCard, ticketId:nTicket, goalId:null,
-        comp:(t.type==="inc"&&$("#edComp")&&$("#edComp").value)?$("#edComp").value:null,
+        comp:($("#edComp")&&$("#edComp").value)?$("#edComp").value:null,
         kind:nk, total:nVal, n:Math.max(2,parseInt($("#edN")&&$("#edN").value)||2),
         paidCount:Math.max(0,parseInt($("#edPaidN")&&$("#edPaidN").value)||0),
         months:Math.max(2,parseInt($("#edMonths")&&$("#edMonths").value)||12),
@@ -2354,7 +2776,7 @@ document.addEventListener("submit", async e=>{
     if($("#edComp")) t.comp=$("#edComp").value||null;
     if(t.paid&&$("#edPayDate")){ t.payDate=$("#edPayDate").value; t.payAmt=parseMoney($("#edPayAmt").value)||t.amount;
       if(t.dest==="savings"&&t.goalId){ const g=goalOf(t.goalId); if(g&&g.moves){ const mv=g.moves.find(m=>m.txId===t.id); if(mv){ mv.date=t.payDate; mv.amount=t.payAmt; } } } }
-    if($("#edApplyAll")&&$("#edApplyAll").checked){ S.tx.forEach(x=>{ if(x.gid===t.gid){ x.desc=t.desc; x.cat=t.cat; x.method=t.method; x.cardId=t.cardId; x.ticketId=t.ticketId; } }); }
+    if($("#edApplyAll")&&$("#edApplyAll").checked){ aTx().forEach(x=>{ if(x.gid===t.gid){ x.desc=t.desc; x.cat=t.cat; x.method=t.method; x.cardId=t.cardId; x.ticketId=t.ticketId; } }); }
     save(); closeModal(); render(); toast("Alterações salvas ✓"); }
   else if(f.id==="fCard"){ const noLimit=$("#cdNoLimit").checked;
     const data={ bank:$("#cdBank").value, nick:$("#cdNick").value.trim()||"Meu cartão", color:cardColor, noLimit,
