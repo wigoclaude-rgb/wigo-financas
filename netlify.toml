@@ -1,0 +1,22 @@
+# Configuracao do deploy no Netlify.
+#
+# O app e um HTML unico, sem etapa de build: o Netlify so precisa publicar
+# a raiz do repositorio como esta. Por isso "command" fica vazio — e o que
+# mantem o consumo de build minutes proximo de zero.
+
+[build]
+  command = ""
+  publish = "."
+
+# SPA: qualquer rota cai no index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# O HTML nunca fica em cache, senao um deploy novo demora a aparecer
+# para quem ja abriu o app antes.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

@@ -2,34 +2,27 @@
 
 App de finanças pessoais em arquivo único (`index.html`), com Firebase Auth + Firestore.
 
-- **Projeto Firebase:** `app-fin-ebcfe`
-- **Hosting novo:** https://app-fin-ebcfe.web.app
-- **Hosting antigo:** https://stalwart-capybara-312533.netlify.app (Netlify — desligar só depois de validar o novo)
+- **Site:** https://stalwart-capybara-312533.netlify.app
+- **Repositório:** https://github.com/wigoclaude-rgb/wigo-financas (privado)
+- **Projeto Firebase:** `app-fin-ebcfe` (só Auth + Firestore — o site não é hospedado lá)
 
 ---
 
 ## Como fazer deploy
 
-```bash
-firebase deploy --only hosting
-```
-
-Sempre com `--only hosting`. Sem essa flag, um `firebase deploy` tenta publicar
-tudo que estiver declarado no `firebase.json`.
-
-Não existe limite de quantidade de deploys no plano Spark (gratuito).
-
-## Fluxo de trabalho
+O Netlify está ligado a este repositório. Publicar é só empurrar para o `main`:
 
 ```bash
 git add .
 git commit -m "descricao da mudanca"
 git push
-firebase deploy --only hosting
 ```
 
-O `git push` guarda o histórico. O `firebase deploy` publica. São passos
-independentes — dá pra commitar sem publicar e vice-versa.
+O Netlify detecta o push e publica sozinho em ~30 segundos. Não há terminal
+nem upload manual no meio do caminho.
+
+Como o `netlify.toml` deixa o `command` vazio, não existe etapa de build —
+o consumo de build minutes por deploy fica perto de zero.
 
 ---
 
@@ -38,9 +31,9 @@ independentes — dá pra commitar sem publicar e vice-versa.
 | Arquivo | Papel |
 |---|---|
 | `index.html` | O app inteiro — CSS, JS e markup inline |
-| `firebase.json` | Config do Hosting (SPA rewrite + no-cache no HTML) |
-| `.firebaserc` | Aponta para o projeto `app-fin-ebcfe` |
-| `firestore.rules.referencia` | Regras de segurança sugeridas — **não** entram em nenhum deploy |
+| `netlify.toml` | Config do deploy: sem build, SPA redirect, no-cache no HTML |
+| `firestore.rules.referencia` | Regras de segurança sugeridas — referência, não é publicado |
+| `firebase.json` / `.firebaserc` | **Inativos.** Sobraram de uma migração para Firebase Hosting que foi abandonada. Não afetam o deploy do Netlify |
 
 ## Onde os dados ficam
 
@@ -50,9 +43,9 @@ Firestore, um documento por usuário:
 users/{uid} = { data: "<estado completo em JSON>", updatedAt: <timestamp> }
 ```
 
-O Hosting serve apenas o `index.html`. Trocar de host não afeta os dados —
-eles vivem no Firestore e são acessados pelo mesmo `projectId` em qualquer
-lugar que o app rode.
+O Netlify serve apenas o `index.html`. Os dados vivem no Firestore e são
+acessados pelo `projectId` embutido no HTML, de qualquer lugar que o app rode —
+hospedagem e banco são independentes.
 
 ## Histórico de versões do `index.html`
 
