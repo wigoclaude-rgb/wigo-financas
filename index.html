@@ -642,6 +642,86 @@ input[type=date],input[type=month]{-webkit-appearance:none}
 .tx .mid{flex:1;min-width:0}
 .tx .amt{font-family:var(--f-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
 h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
+
+/* ==========================================================================
+   SIDEBAR + LAYOUT DESKTOP
+   Tudo abaixo vive dentro de @media (min-width:1024px). Abaixo desse ponto
+   nada muda — o mobile continua sendo exatamente o layout original.
+   ========================================================================== */
+#side{display:none}
+.side-brand{font-family:var(--f-display);font-weight:800;font-size:19px;letter-spacing:-.03em;
+  padding:2px 10px var(--sp-5)}
+.side-brand b{background:var(--grad-v);-webkit-background-clip:text;background-clip:text;color:transparent}
+.side-add{display:flex;align-items:center;gap:9px;padding:11px 14px;border-radius:var(--r-sm);
+  background:var(--grad-v);color:#fff;font-weight:650;font-size:var(--t-sm);
+  box-shadow:var(--e-glow);transition:transform var(--dur-1) var(--ease),filter var(--dur-1)}
+.side-add:hover{filter:brightness(1.08)}
+.side-add:active{transform:scale(.975)}
+.side-nav{display:flex;flex-direction:column;gap:2px;margin-top:var(--sp-5)}
+.side-nav button,.side-nav-item{
+  display:flex;align-items:center;gap:11px;padding:9.5px 12px;border-radius:var(--r-sm);
+  color:var(--ink-2);font-size:var(--t-sm);font-weight:550;text-align:left;width:100%;
+  transition:background var(--dur-1),color var(--dur-1);
+}
+.side-nav button:hover,.side-nav-item:hover{background:var(--s-2);color:var(--ink)}
+.side-nav button.on{background:var(--grad-v-soft);color:var(--ink);font-weight:650}
+.side-nav button.on .icn{color:var(--v-2)}
+.side-nav .icn,.side-nav-item .icn{width:18px;height:18px}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:2px;
+  padding-top:var(--sp-4);border-top:1px solid var(--line)}
+.side-foot kbd{margin-left:auto;font-family:var(--f-text);font-size:10px;color:var(--ink-4);
+  border:1px solid var(--line-2);border-radius:5px;padding:2px 5px}
+
+@media (min-width:1024px){
+  #dock{display:none!important}
+
+  #side:not(.hidden){
+    display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:250px;z-index:70;
+    padding:var(--sp-6) var(--sp-3) var(--sp-4);
+    background:rgba(10,10,15,.72);backdrop-filter:blur(24px) saturate(180%);
+    -webkit-backdrop-filter:blur(24px) saturate(180%);
+    border-right:1px solid var(--line);
+  }
+
+  #appScreen{padding-left:250px;padding-bottom:var(--sp-10)}
+  .appbar{padding-top:var(--sp-5);padding-bottom:var(--sp-4)}
+  /* busca e engrenagem já estão na sidebar */
+  .appbar [data-action="cmd-open"],.appbar [data-action="tab"]{display:none}
+  .appbar .hi .name{font-size:22px}
+
+  /* conteúdo respira e ganha largura, sem esticar demais em telas enormes */
+  #view,.appbar{max-width:1240px;margin-inline:auto}
+  .sec{margin-inline:var(--sp-6)}
+
+  /* métricas em 4 colunas em vez de 2 */
+  .grid.g2{grid-template-columns:repeat(4,minmax(0,1fr))}
+  /* cartões deixam de ser carrossel horizontal e viram grade */
+  .cstack{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));
+    gap:var(--sp-4);overflow:visible;padding:var(--sp-1) var(--sp-6) var(--sp-4)}
+  .cstack>*{scroll-snap-align:none}
+
+  /* sheet vira painel lateral direito: bottom sheet numa tela de 27" é estranho */
+  #sheetWrap{align-items:stretch;justify-content:flex-end}
+  #sheet{
+    max-width:460px;height:100%;max-height:100%;
+    border-radius:var(--r-xl) 0 0 var(--r-xl);
+    border:1px solid var(--line-2);border-right:none;
+    padding:var(--sp-5) var(--sp-6) var(--sp-8);
+    transform:translateX(100%);
+    box-shadow:-24px 0 64px rgba(0,0,0,.6);
+  }
+  #sheetWrap.open #sheet{transform:none}
+  #sheet .grab{display:none}
+
+  /* barra de seleção: sem dock embaixo, ela desce e respeita a sidebar */
+  #selbar{left:calc(250px + var(--sp-6));right:var(--sp-6);bottom:var(--sp-6);
+    margin-inline:auto;max-width:640px}
+}
+
+/* telas largas: um respiro a mais nas laterais */
+@media (min-width:1440px){
+  .sec{margin-inline:var(--sp-8)}
+}
 </style>
 </head>
 <body>
@@ -672,6 +752,45 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
     <div id="authMsg" class="auth-msg"></div>
   </div>
 </div>
+
+<!-- ══ SIDEBAR (só desktop ≥1024px) ══
+     Irmã de #appScreen, não mãe: assim o layout mobile continua exatamente
+     como era e a sidebar é puramente aditiva. -->
+<aside id="side" class="hidden">
+  <div class="side-brand">WIG<b>O</b></div>
+  <button class="side-add" data-action="open-add">
+    <svg class="icn" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>
+    <span>Novo lançamento</span>
+  </button>
+  <nav class="side-nav" id="sideNav">
+    <button data-action="tab" data-v="home" class="on">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M3 10.2 12 3l9 7.2"/><path d="M5.5 9.3V19a1.6 1.6 0 0 0 1.6 1.6H10v-5.3h4v5.3h2.9a1.6 1.6 0 0 0 1.6-1.6V9.3"/></svg>
+      <span>Início</span>
+    </button>
+    <button data-action="tab" data-v="cards">
+      <svg class="icn" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.8"/><path d="M2.5 9.8h19M6 15h3.2"/></svg>
+      <span>Carteira</span>
+    </button>
+    <button data-action="tab" data-v="savings">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M4.6 11.3a4.2 4.2 0 0 1 4.2-4.2h6a4.4 4.4 0 0 1 3.1 1.3l2.4.7-.8 2.6.5 1.3a5.3 5.3 0 0 1-5.2 5.3H9.9a5.3 5.3 0 0 1-5.3-5.3z"/><path d="M11.6 7.1V4.4M7.5 17.6V20M16 17.6V20"/><circle cx="16.4" cy="11.6" r=".95" fill="currentColor" stroke="none"/></svg>
+      <span>Metas</span>
+    </button>
+    <button data-action="tab" data-v="report">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M4 20V12.6M9.3 20V5M14.7 20v-6.2M20 20V8.8"/></svg>
+      <span>Análise</span>
+    </button>
+  </nav>
+  <div class="side-foot">
+    <button class="side-nav-item" data-action="cmd-open">
+      <svg class="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+      <span>Buscar</span><kbd>Ctrl K</kbd>
+    </button>
+    <button class="side-nav-item" data-action="tab" data-v="settings">
+      <svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.1 14.6a1.55 1.55 0 0 0 .3 1.7l.1.1a1.9 1.9 0 1 1-2.7 2.7l-.1-.1a1.55 1.55 0 0 0-1.7-.3 1.55 1.55 0 0 0-.95 1.4v.3a1.9 1.9 0 1 1-3.8 0v-.2a1.55 1.55 0 0 0-1-1.4 1.55 1.55 0 0 0-1.7.3l-.1.1a1.9 1.9 0 1 1-2.7-2.7l.1-.1a1.55 1.55 0 0 0 .3-1.7 1.55 1.55 0 0 0-1.4-.95h-.3a1.9 1.9 0 1 1 0-3.8h.2a1.55 1.55 0 0 0 1.4-1 1.55 1.55 0 0 0-.3-1.7l-.1-.1a1.9 1.9 0 1 1 2.7-2.7l.1.1a1.55 1.55 0 0 0 1.7.3h.1a1.55 1.55 0 0 0 .95-1.4v-.3a1.9 1.9 0 1 1 3.8 0v.2a1.55 1.55 0 0 0 .95 1.4 1.55 1.55 0 0 0 1.7-.3l.1-.1a1.9 1.9 0 1 1 2.7 2.7l-.1.1a1.55 1.55 0 0 0-.3 1.7v.1a1.55 1.55 0 0 0 1.4.95h.3a1.9 1.9 0 1 1 0 3.8h-.2a1.55 1.55 0 0 0-1.4.95z"/></svg>
+      <span>Ajustes</span>
+    </button>
+  </div>
+</aside>
 
 <!-- ══ APP ══ -->
 <div id="appScreen" class="hidden">
@@ -913,8 +1032,8 @@ function setAuthMode(m){ authMode=m; $("#tabLogin").classList.toggle("on",m==="l
   $("#pass2Wrap").classList.toggle("hidden",m!=="reg"); $("#authBtn").textContent=m==="reg"?"Criar conta":"Entrar"; $("#authMsg").className="auth-msg"; }
 
 onAuthStateChanged(auth, async u=>{ user=u;
-  if(u){ $("#authScreen").classList.add("hidden"); $("#appScreen").classList.remove("hidden"); $("#dock").classList.remove("hidden"); await load(); }
-  else { $("#authScreen").classList.remove("hidden"); $("#appScreen").classList.add("hidden"); $("#dock").classList.add("hidden"); S=defaultState(); }
+  if(u){ $("#authScreen").classList.add("hidden"); $("#appScreen").classList.remove("hidden"); $("#dock").classList.remove("hidden"); $("#side").classList.remove("hidden"); await load(); }
+  else { $("#authScreen").classList.remove("hidden"); $("#appScreen").classList.add("hidden"); $("#dock").classList.add("hidden"); $("#side").classList.add("hidden"); S=defaultState(); }
 });
 
 /* ============ MOTOR DE LANÇAMENTOS ============ */
@@ -1022,7 +1141,7 @@ function lastMonths(n,from){ const out=[];
 
 /* ---------- render principal ---------- */
 function render(){
-  document.querySelectorAll('#dock [data-action="tab"]').forEach(b=>b.classList.toggle("on",b.dataset.v===tab));
+  document.querySelectorAll('#dock [data-action="tab"],#side [data-action="tab"]').forEach(b=>b.classList.toggle("on",b.dataset.v===tab));
   const v=$("#view");
   if(tab==="home") v.innerHTML=renderHome();
   else if(tab==="cards") v.innerHTML=renderCards();
