@@ -1,0 +1,41 @@
+// ============================================================
+// REFERENCIA — NAO E APLICADO POR `firebase deploy --only hosting`
+// ============================================================
+//
+// Este arquivo NAO esta registrado no firebase.json de proposito.
+// Ele existe apenas para comparacao com as regras que estao hoje
+// no console do Firebase.
+//
+// Como conferir as regras ATUAIS de producao:
+//   https://console.firebase.google.com/project/app-fin-ebcfe/firestore/rules
+//
+// O app grava o estado inteiro do usuario em um unico documento:
+//   users/{uid}  ->  { data: "<json>", updatedAt: <timestamp> }
+//   (ver index.html, funcao de save por volta da linha 360)
+//
+// Portanto a regra minima correta e a abaixo: cada usuario so
+// enxerga e escreve o proprio documento, e ninguem sem login
+// enxerga nada.
+//
+// Se as regras do console ja forem equivalentes a estas, nao ha
+// nada a fazer. Se forem mais permissivas (por exemplo
+// `allow read, write: if true`), qualquer pessoa com o apiKey
+// consegue ler os dados de todos os usuarios — e o apiKey esta
+// visivel no index.html, que e publico por natureza.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Cada usuario autenticado acessa somente users/{seu proprio uid}
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Qualquer outro caminho fica bloqueado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
