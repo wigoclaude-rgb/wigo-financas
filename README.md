@@ -2,7 +2,7 @@
 
 App de finanças pessoais em arquivo único (`index.html`), com Firebase Auth + Firestore.
 
-- **Site:** https://stalwart-capybara-312533.netlify.app
+- **Site:** https://fastidious-hamster-2b9ffd.netlify.app (projeto `hamster-fastidious-2b9ffd`)
 - **Repositório:** https://github.com/wigoclaude-rgb/wigo-financas (privado)
 - **Projeto Firebase:** `app-fin-ebcfe` (só Auth + Firestore — o site não é hospedado lá)
 
@@ -47,19 +47,20 @@ O Netlify serve apenas o `index.html`. Os dados vivem no Firestore e são
 acessados pelo `projectId` embutido no HTML, de qualquer lugar que o app rode —
 hospedagem e banco são independentes.
 
-## Histórico de versões do `index.html`
+## Atenção: existem dois projetos no Netlify
 
-| Commit | Origem | Tamanho | Estado |
+| Projeto | URL | Publicado | Situação |
 |---|---|---|---|
-| 1º | Produção do Netlify (= `WIGO3.html`, 06/07/2026) | 100.314 B | O que está no ar hoje |
-| 2º | `Downloads/WIGO.html` (08/08/2026) | 153.834 B | Versão atual — a publicar |
+| `hamster-fastidious-2b9ffd` | fastidious-hamster-2b9ffd.netlify.app | 27/07/2026 | **Este é o site real** |
+| `stalwart-capibara-312533` | stalwart-capybara-312533.netlify.app | 06/07/2026 | Abandonado — versão velha |
 
-A versão nova traz Competência, design system Aurora, Command Palette,
-tutorial de onboarding, spending heatmap, floating dock e bottom sheets.
+O `index.html` deste repo é **byte a byte igual** ao que está publicado no
+site real (MD5 `c0ff78d454c387d880a781bb01951e9e`). O mesmo arquivo está em
+`Downloads/WIGO.html`.
 
-Ela aponta para o mesmo projeto (`app-fin-ebcfe`) e grava no mesmo caminho
-(`users/{uid}`) que a versão em produção, então **não há migração de dados**
-envolvida na troca.
+O projeto `stalwart-capibara` serve a versão de 06/07 e não recebe
+atualizações desde então. Só existe risco se alguém acessar aquele link
+achando que é o app atual.
 
 Observação: o app usa **Firestore**, não Realtime Database — documentos
 anteriores diziam o contrário.
