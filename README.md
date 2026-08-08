@@ -3,7 +3,7 @@
 App de finanças pessoais em arquivo único (`index.html`), com Firebase Auth + Firestore.
 
 - **Site:** https://fastidious-hamster-2b9ffd.netlify.app (projeto `hamster-fastidious-2b9ffd`)
-- **Repositório:** https://github.com/wigoclaude-rgb/wigo-financas (privado)
+- **Repositório:** https://github.com/wigoclaude-rgb/wigo-financas (público)
 - **Projeto Firebase:** `app-fin-ebcfe` (só Auth + Firestore — o site não é hospedado lá)
 
 ---
@@ -23,6 +23,20 @@ nem upload manual no meio do caminho.
 
 Como o `netlify.toml` deixa o `command` vazio, não existe etapa de build —
 o consumo de build minutes por deploy fica perto de zero.
+
+### Por que o repositório é público
+
+O plano gratuito do Netlify só aceita **um contribuidor** em repositórios
+privados, e exige que o autor do commit seja um membro verificado da conta.
+Com o repositório privado, o deploy do commit `60df7fe` foi recusado com
+*"Build bloqueada: contribuinte Git não reconhecido"*.
+
+Tornar o repositório público remove essa restrição e não expõe nada novo: o
+`firebaseConfig` já é visível no código-fonte do site publicado, e não há
+`.env`, token nem chave privada versionados.
+
+O que protege os dados é a regra do Firestore (`users/{uid}` amarrado ao
+`request.auth.uid`), não o sigilo do código — ver `firestore.rules.referencia`.
 
 ---
 
