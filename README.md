@@ -54,13 +54,19 @@ O Hosting serve apenas o `index.html`. Trocar de host não afeta os dados —
 eles vivem no Firestore e são acessados pelo mesmo `projectId` em qualquer
 lugar que o app rode.
 
-## Versão publicada em 08/08/2026
+## Histórico de versões do `index.html`
 
-O `index.html` deste repo foi capturado direto da produção do Netlify
-(MD5 `882a0e8dc4bdf0043ede214c4ae6456a`). É idêntico ao `WIGO3.html`
-de 06/07/2026.
+| Commit | Origem | Tamanho | Estado |
+|---|---|---|---|
+| 1º | Produção do Netlify (= `WIGO3.html`, 06/07/2026) | 100.314 B | O que está no ar hoje |
+| 2º | `Downloads/WIGO.html` (08/08/2026) | 153.834 B | Versão atual — a publicar |
 
-Features descritas em documentos anteriores que **não** existem neste código:
-campo de Competência, design system Aurora, Command Palette, tutorial de
-9 steps, spending heatmap, floating dock. O app também usa **Firestore**,
-não Realtime Database.
+A versão nova traz Competência, design system Aurora, Command Palette,
+tutorial de onboarding, spending heatmap, floating dock e bottom sheets.
+
+Ela aponta para o mesmo projeto (`app-fin-ebcfe`) e grava no mesmo caminho
+(`users/{uid}`) que a versão em produção, então **não há migração de dados**
+envolvida na troca.
+
+Observação: o app usa **Firestore**, não Realtime Database — documentos
+anteriores diziam o contrário.
