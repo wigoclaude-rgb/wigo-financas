@@ -643,6 +643,57 @@ input[type=date],input[type=month]{-webkit-appearance:none}
 .tx .amt{font-family:var(--f-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
 h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 
+/* ==========================================================================
+   RELATÓRIO PARA IMPRESSÃO / PDF
+   #printRoot fica fora da tela no uso normal e vira a página inteira quando
+   o navegador imprime. Preto no branco de propósito: o tema escuro do app
+   gastaria tinta e ficaria ilegível no papel.
+   ========================================================================== */
+#printRoot{display:none}
+.rep{color:#111;background:#fff;font-family:var(--f-text);font-size:11px;line-height:1.45}
+.rep header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+  border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}
+.rep h1{font-family:var(--f-display);font-size:21px;letter-spacing:-.02em;margin:0}
+.rep .sub{font-size:11px;color:#555;margin-top:2px}
+.rep .meta{text-align:right;font-size:10px;color:#333;line-height:1.7}
+.rep .filtros{background:#f4f4f6;border:1px solid #e3e3e8;border-radius:5px;
+  padding:6px 9px;font-size:10px;color:#333;margin-bottom:14px}
+.rep .cards{display:flex;gap:8px;margin-bottom:16px}
+.rep .cards div{flex:1;border:1px solid #e3e3e8;border-radius:6px;padding:8px 10px}
+.rep .cards span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#666}
+.rep .cards b{font-size:14px;font-variant-numeric:tabular-nums}
+.rep h3.gh{font-family:var(--f-display);font-size:12.5px;margin:16px 0 6px;
+  padding-bottom:3px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between}
+.rep h3.gh span{font-weight:400;font-size:10px;color:#666}
+.rep table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.rep th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+  color:#555;border-bottom:1px solid #bbb;padding:5px 6px}
+.rep td{padding:5px 6px;border-bottom:1px solid #eee;vertical-align:top}
+.rep .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rep .nw{white-space:nowrap}
+.rep .pos{color:#0a7a55}
+.rep .neg{color:#b3243f}
+.rep .tag{font-size:8.5px;border:1px solid #ccc;border-radius:3px;padding:0 3px;color:#666}
+.rep tr.sub td{font-weight:700;border-top:1px solid #bbb;border-bottom:none;background:#fafafa}
+.rep table.tot{margin-top:14px;border-top:2px solid #111;width:auto;min-width:260px;margin-left:auto}
+.rep table.tot td{border:none;padding:3px 6px}
+.rep table.tot tr.big td{font-size:14px;font-weight:800;border-top:1px solid #bbb;padding-top:6px}
+.rep .vazio{padding:28px;text-align:center;color:#777;border:1px dashed #ccc;border-radius:6px}
+.rep footer{margin-top:18px;padding-top:8px;border-top:1px solid #ddd;
+  font-size:9px;color:#777;text-align:center}
+
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  body::before{display:none!important}
+  body.printing>*{display:none!important}
+  body.printing #printRoot{display:block!important;position:static}
+  body.printing{background:#fff!important}
+  .rep table{page-break-inside:auto}
+  .rep tr{page-break-inside:avoid}
+  .rep h3.gh{page-break-after:avoid}
+  .rep thead{display:table-header-group}
+}
+
 /* --- exclusão e lixeira --- */
 .del-opts{display:flex;flex-direction:column;gap:8px}
 .del-opt{display:flex;flex-direction:column;gap:2px;text-align:left;padding:13px 15px;
@@ -837,6 +888,10 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
     </button>
   </nav>
   <div class="side-foot">
+    <button class="side-nav-item" data-action="rep-pdf">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M12 3.8v11.4M7.6 11l4.4 4.3 4.4-4.3"/><path d="M4.2 19.6h15.6"/></svg>
+      <span>Relatório PDF</span>
+    </button>
     <button class="side-nav-item" data-action="trash-open">
       <svg class="icn" viewBox="0 0 24 24"><path d="M3.8 6.4h16.4M8.6 6.4V4.8a1.4 1.4 0 0 1 1.4-1.4h4a1.4 1.4 0 0 1 1.4 1.4v1.6"/><path d="M5.8 6.4l1 13a1.6 1.6 0 0 0 1.6 1.5h7.2a1.6 1.6 0 0 0 1.6-1.5l1-13"/><path d="M10.2 10.6v6M13.8 10.6v6"/></svg>
       <span>Lixeira</span><span class="tcount" id="trashCount"></span>
@@ -1809,7 +1864,9 @@ function renderReport(){
           '<button class="btn xs ghost" data-action="sel-all">'+(allSel?ic("x")+" Desmarcar todos":ic("checkSquare")+" Selecionar todos")+'</button>'+
           (filterActive()?'<button class="btn xs ghost" data-action="flt-clear">Limpar</button>':"")+'</div>':"")+
         rowsList(m.slice().sort((a,b)=>a.due<b.due?-1:1))+'</div></div>'+
-    '<div class="sec"><button class="btn ghost" data-action="csv-export">'+ic("download")+' Exportar planilha (CSV)</button></div>';
+    '<div class="sec"><div class="act-row">'+
+      '<button class="btn ghost" data-action="rep-pdf">'+ic("receipt")+' Relatório em PDF</button>'+
+      '<button class="btn ghost" data-action="csv-export">'+ic("download")+' Planilha (CSV)</button></div></div>';
 }
 
 /* ══════════════════ AJUSTES ══════════════════ */
@@ -1894,6 +1951,7 @@ const CMD_ACTIONS=[
   {ic:ic("piggy"),t:"Ir para Metas",s:"objetivos",a:"tab",v:"savings"},
   {ic:ic("alert"),t:"Ver atrasados",s:"todos os meses",a:"home-filter",mode:"atraso"},
   {ic:ic("download"),t:"Exportar planilha",s:"CSV / Excel",a:"csv-export"},
+  {ic:ic("receipt"),t:"Relatório em PDF",s:"filtrar e imprimir",a:"rep-pdf"},
   {ic:ic("trash"),t:"Abrir lixeira",s:"lançamentos excluídos",a:"trash-open"},
   {ic:ic("book"),t:"Rever tutorial",s:"como usar o app",a:"tut-open"},
   {ic:ic("gear"),t:"Ajustes",s:"conta, categorias, backup",a:"tab",v:"settings"}
@@ -2122,6 +2180,156 @@ function openDelete(id){
     '<button class="btn danger" type="submit">Excluir selecionados</button></form>'
   :"")+
   (outros.length?"":'<div class="help" style="margin-top:12px">Este lançamento não faz parte de um grupo.</div>'));
+}
+
+/* ══════════════════ RELATÓRIO EM PDF ══════════════════
+   Sem biblioteca externa: monta uma folha em #printRoot e chama print(),
+   onde o próprio navegador oferece "Salvar como PDF". Funciona offline e
+   não adiciona peso ao arquivo. */
+let rep={scope:"month",from:"",to:"",status:"all",type:"all",q:"",group:"none",detail:1};
+function openReportPdf(){
+  // herda o que já estiver filtrado na tela, que é o caso de uso comum
+  if(filters.q&&!rep.q) rep.q=filters.q;
+  const sel=(v,x)=>v===x?" selected":"";
+  openModal(modalHead("Exportar relatório","Gera um PDF pela impressão do navegador")+
+  '<form id="fRep">'+
+  '<label>Buscar (opcional)</label>'+
+    '<input id="rpQ" value="'+esc(rep.q)+'" placeholder="Ex.: nome de uma pessoa, loja, categoria…">'+
+    '<div class="help">Procura em descrição, categoria e cartão. Útil para juntar tudo de alguém que você anotou na descrição.</div>'+
+  '<label style="margin-top:14px">Período</label>'+
+    '<select id="rpScope">'+
+      '<option value="month"'+sel(rep.scope,"month")+'>Mês exibido ('+monthLabel(viewMonth)+')</option>'+
+      '<option value="all"'+sel(rep.scope,"all")+'>Tudo — todos os meses</option>'+
+      '<option value="range"'+sel(rep.scope,"range")+'>Intervalo de datas…</option></select>'+
+  '<div id="rpRange" class="'+(rep.scope==="range"?"":"hidden")+'"><div class="row2" style="margin-top:10px">'+
+    '<input id="rpFrom" type="date" value="'+esc(rep.from)+'">'+
+    '<input id="rpTo" type="date" value="'+esc(rep.to)+'"></div></div>'+
+  '<label style="margin-top:14px">Situação</label>'+
+    '<select id="rpStatus">'+
+      '<option value="all"'+sel(rep.status,"all")+'>Ambos — pagos e em aberto</option>'+
+      '<option value="open"'+sel(rep.status,"open")+'>Somente em aberto (a pagar / a receber)</option>'+
+      '<option value="paid"'+sel(rep.status,"paid")+'>Somente baixados (pagos / recebidos)</option>'+
+      '<option value="late"'+sel(rep.status,"late")+'>Somente em atraso</option></select>'+
+  '<label style="margin-top:14px">Tipo</label>'+
+    '<select id="rpType">'+
+      '<option value="all"'+sel(rep.type,"all")+'>Ambos — receitas e gastos</option>'+
+      '<option value="inc"'+sel(rep.type,"inc")+'>Somente receitas</option>'+
+      '<option value="exp"'+sel(rep.type,"exp")+'>Somente gastos</option></select>'+
+  '<label style="margin-top:14px">Agrupar por</label>'+
+    '<select id="rpGroup">'+
+      '<option value="none"'+sel(rep.group,"none")+'>Nada — lista corrida</option>'+
+      '<option value="month"'+sel(rep.group,"month")+'>Mês</option>'+
+      '<option value="cat"'+sel(rep.group,"cat")+'>Categoria</option>'+
+      '<option value="wallet"'+sel(rep.group,"wallet")+'>Cartão / forma de pagamento</option>'+
+      '<option value="status"'+sel(rep.group,"status")+'>Situação</option></select>'+
+  '<label class="check-line" style="margin-top:14px"><input type="checkbox" id="rpDetail"'+(rep.detail?" checked":"")+'>'+
+    '<span>Incluir colunas de categoria, forma e competência</span></label>'+
+  '<button class="btn" type="submit">'+ic("download")+' Gerar relatório</button>'+
+  '</form>');
+}
+function repRows(){
+  let list=aTx();
+  if(rep.scope==="month") list=list.filter(t=>effMonth(t)===viewMonth);
+  else if(rep.scope==="range"){
+    if(rep.from) list=list.filter(t=>t.due>=rep.from);
+    if(rep.to) list=list.filter(t=>t.due<=rep.to);
+  }
+  if(rep.status==="open") list=list.filter(t=>!t.paid);
+  else if(rep.status==="paid") list=list.filter(t=>t.paid);
+  else if(rep.status==="late") list=list.filter(t=>!t.paid&&statusOf(t)==="atrasado");
+  if(rep.type==="inc") list=list.filter(t=>t.type==="inc");
+  else if(rep.type==="exp") list=list.filter(t=>t.type==="exp");
+  if(rep.q){ const q=rep.q.toLowerCase().trim();
+    list=list.filter(t=>(t.desc+" "+(t.cat||"")+" "+(METHODS[t.method]||"")+" "+
+      (t.cardId&&cardOf(t.cardId)?cardOf(t.cardId).nick:"")).toLowerCase().includes(q)); }
+  return list.sort((a,b)=>a.due<b.due?-1:1);
+}
+function repGroupKey(t){
+  if(rep.group==="month") return monthLabel(effMonth(t));
+  if(rep.group==="cat") return t.cat||"Sem categoria";
+  if(rep.group==="wallet"){ if(t.cardId){const c=cardOf(t.cardId);return c?c.nick:"Cartão";}
+    if(t.ticketId){const k=ticketOf(t.ticketId);return k?k.name:"Ticket";} return METHODS[t.method]||t.method; }
+  if(rep.group==="status") return t.paid?(t.type==="inc"?"Recebidos":"Pagos")
+    :(statusOf(t)==="atrasado"?"Em atraso":(t.type==="inc"?"A receber":"A pagar"));
+  return "";
+}
+function repPeriodo(){
+  if(rep.scope==="month") return monthLabel(viewMonth);
+  if(rep.scope==="range"){
+    if(rep.from&&rep.to) return fmtDate(rep.from)+" a "+fmtDate(rep.to);
+    if(rep.from) return "a partir de "+fmtDate(rep.from);
+    if(rep.to) return "até "+fmtDate(rep.to);
+  }
+  return "Todos os meses";
+}
+function buildReport(){
+  const list=repRows();
+  const inc=list.filter(t=>t.type==="inc"), exp=list.filter(t=>t.type!=="inc");
+  const incPago=sum(inc.filter(t=>t.paid),val), incAb=sum(inc.filter(t=>!t.paid),val);
+  const expPago=sum(exp.filter(t=>t.paid),val), expAb=sum(exp.filter(t=>!t.paid),val);
+  const d=rep.detail;
+  const th='<tr><th>Venc.</th><th>Descrição</th>'+(d?'<th>Categoria</th><th>Forma</th><th>Comp.</th>':"")+
+    '<th>Situação</th><th class="r">Valor</th></tr>';
+  const tr=t=>'<tr><td class="nw">'+fmtDate(t.due)+'</td><td>'+esc(t.desc)+
+    (t.kind!=="avista"?' <span class="tag">'+(t.kind==="fixo"?(t.perp?"fixo":"fixo "+t.i+"/"+t.n):t.i+"/"+t.n)+'</span>':"")+'</td>'+
+    (d?'<td>'+esc(t.cat||"—")+'</td><td>'+esc(t.cardId&&cardOf(t.cardId)?cardOf(t.cardId).nick
+      :(t.ticketId&&ticketOf(t.ticketId)?ticketOf(t.ticketId).name:(METHODS[t.method]||"—")))+'</td>'+
+      '<td class="nw">'+(t.comp?shortMonth(t.comp):"—")+'</td>':"")+
+    '<td class="nw">'+(t.paid?(t.type==="inc"?"Recebido":"Pago")+" "+(t.payDate?fmtDate(t.payDate):"")
+      :(statusOf(t)==="atrasado"?"Em atraso":"Em aberto"))+'</td>'+
+    '<td class="r '+(t.type==="inc"?"pos":"neg")+'">'+(t.type==="inc"?"+":"−")+fmt(val(t))+'</td></tr>';
+
+  let corpo="";
+  if(rep.group==="none"){
+    corpo='<table>'+th+list.map(tr).join("")+'</table>';
+  } else {
+    const grupos={};
+    list.forEach(t=>{ const k=repGroupKey(t); (grupos[k]=grupos[k]||[]).push(t); });
+    corpo=Object.keys(grupos).sort().map(k=>{
+      const g=grupos[k], gi=sum(g.filter(t=>t.type==="inc"),val), ge=sum(g.filter(t=>t.type!=="inc"),val);
+      return '<h3 class="gh">'+esc(k)+' <span>'+g.length+' lançamento'+(g.length>1?"s":"")+'</span></h3>'+
+        '<table>'+th+g.map(tr).join("")+
+        '<tr class="sub"><td colspan="'+(d?6:3)+'">Subtotal</td><td class="r">'+
+          (gi?'<span class="pos">+'+fmt(gi)+'</span> ':"")+(ge?'<span class="neg">−'+fmt(ge)+'</span>':(gi?"":fmt(0)))+
+        '</td></tr></table>';
+    }).join("");
+  }
+
+  const filtrosTxt=[
+    rep.q?'busca: "'+esc(rep.q)+'"':"",
+    rep.status==="open"?"somente em aberto":rep.status==="paid"?"somente baixados":rep.status==="late"?"somente em atraso":"",
+    rep.type==="inc"?"somente receitas":rep.type==="exp"?"somente gastos":"",
+    rep.group!=="none"?"agrupado por "+({month:"mês",cat:"categoria",wallet:"cartão/forma",status:"situação"})[rep.group]:""
+  ].filter(Boolean).join(" · ");
+
+  return '<div class="rep">'+
+    '<header><div><h1>'+esc(S.appName||"WIGO")+'</h1><div class="sub">Relatório de lançamentos</div></div>'+
+      '<div class="meta"><div><b>Período:</b> '+repPeriodo()+'</div>'+
+        '<div><b>Emitido em:</b> '+fmtDate(todayISO())+'</div>'+
+        '<div><b>Conta:</b> '+esc(user?user.email:"—")+'</div></div></header>'+
+    (filtrosTxt?'<div class="filtros"><b>Filtros:</b> '+filtrosTxt+'</div>':"")+
+    (list.length?
+      '<div class="cards">'+
+        '<div><span>Recebido</span><b class="pos">'+fmt(incPago)+'</b></div>'+
+        '<div><span>A receber</span><b class="pos">'+fmt(incAb)+'</b></div>'+
+        '<div><span>Pago</span><b class="neg">'+fmt(expPago)+'</b></div>'+
+        '<div><span>A pagar</span><b class="neg">'+fmt(expAb)+'</b></div>'+
+      '</div>'+corpo+
+      '<table class="tot"><tr><td>Total de receitas</td><td class="r pos">+'+fmt(incPago+incAb)+'</td></tr>'+
+        '<tr><td>Total de gastos</td><td class="r neg">−'+fmt(expPago+expAb)+'</td></tr>'+
+        '<tr class="big"><td>Saldo</td><td class="r">'+fmt(incPago+incAb-expPago-expAb)+'</td></tr></table>'
+      :'<p class="vazio">Nenhum lançamento encontrado com esses filtros.</p>')+
+    '<footer>'+list.length+' lançamento'+(list.length===1?"":"s")+' · gerado por '+esc(S.appName||"WIGO")+'</footer>'+
+  '</div>';
+}
+function printReport(){
+  let root=document.getElementById("printRoot");
+  if(!root){ root=document.createElement("div"); root.id="printRoot"; document.body.appendChild(root); }
+  root.innerHTML=buildReport();
+  document.body.classList.add("printing");
+  const limpar=()=>{ document.body.classList.remove("printing"); window.removeEventListener("afterprint",limpar); };
+  window.addEventListener("afterprint",limpar);
+  setTimeout(()=>{ window.print(); setTimeout(limpar,800); },60);
 }
 
 /* ----- LIXEIRA ----- */
@@ -2587,6 +2795,7 @@ document.addEventListener("click", async e=>{
       const todos=[...cx].every(c=>c.checked); cx.forEach(c=>c.checked=!todos);
       el.textContent=todos?"Marcar todos":"Desmarcar todos"; break; }
     // lixeira
+    case "rep-pdf": openReportPdf(); break;
     case "trash-open": openTrash(); break;
     case "trash-restore": { const t=S.tx.find(x=>x.id===id); if(!t)break;
       restoreTx([t]); save(); render(); openTrash(); toast("Restaurado ✓"); break; }
@@ -2680,6 +2889,7 @@ document.addEventListener("change", e=>{
     if($("#edWrapWallet")) $("#edWrapWallet").classList.toggle("hidden",!on);
     if($("#edLblWallet")) $("#edLblWallet").textContent=t.value==="ticket"?"Ticket":"Cartão"; }
   if(t.id==="txPerp"){ syncAddForm(); }
+  if(t.id==="rpScope"&&$("#rpRange")) $("#rpRange").classList.toggle("hidden",t.value!=="range");
   if(t.id==="edKind"){ const f=$("#fEdit"); const tx=f&&S.tx.find(x=>x.id===f.dataset.id);
     if(tx){ const changed=t.value!==tx.kind;
       if($("#edWrapParc")) $("#edWrapParc").classList.toggle("hidden",!(changed&&t.value==="parcelado"));
@@ -2716,6 +2926,14 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fRep"){
+    rep.q=$("#rpQ").value.trim(); rep.scope=$("#rpScope").value;
+    rep.from=$("#rpFrom")?$("#rpFrom").value:""; rep.to=$("#rpTo")?$("#rpTo").value:"";
+    rep.status=$("#rpStatus").value; rep.type=$("#rpType").value;
+    rep.group=$("#rpGroup").value; rep.detail=$("#rpDetail").checked?1:0;
+    const n=repRows().length;
+    if(!n){ toast("Nenhum lançamento com esses filtros"); return; }
+    closeModal(); setTimeout(printReport,220); }
   else if(f.id==="fDelPick"){
     const ids=[...document.querySelectorAll('input[name="delpick"]:checked')].map(c=>c.value);
     if(!ids.length){ toast("Marque ao menos um"); return; }
