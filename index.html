@@ -2257,9 +2257,9 @@ function buildReport(){
 
   return '<div class="rep">'+
     '<header><div><h1>'+esc(S.appName||"WIGO")+'</h1><div class="sub">Relatório de lançamentos</div></div>'+
+      /* sem o e-mail da conta: o relatório costuma ser enviado a terceiros */
       '<div class="meta"><div><b>Período:</b> '+repPeriodo()+'</div>'+
-        '<div><b>Emitido em:</b> '+fmtDate(todayISO())+'</div>'+
-        '<div><b>Conta:</b> '+esc(user?user.email:"—")+'</div></div></header>'+
+        '<div><b>Emitido em:</b> '+fmtDate(todayISO())+'</div></div></header>'+
     (filtrosTxt?'<div class="filtros"><b>Filtros:</b> '+filtrosTxt+'</div>':"")+
     (list.length?
       '<div class="cards">'+
