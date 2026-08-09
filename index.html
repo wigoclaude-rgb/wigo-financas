@@ -643,56 +643,9 @@ input[type=date],input[type=month]{-webkit-appearance:none}
 .tx .amt{font-family:var(--f-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
 h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 
-/* ==========================================================================
-   RELATÓRIO PARA IMPRESSÃO / PDF
-   #printRoot fica fora da tela no uso normal e vira a página inteira quando
-   o navegador imprime. Preto no branco de propósito: o tema escuro do app
-   gastaria tinta e ficaria ilegível no papel.
-   ========================================================================== */
-#printRoot{display:none}
-.rep{color:#111;background:#fff;font-family:var(--f-text);font-size:11px;line-height:1.45}
-.rep header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
-  border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}
-.rep h1{font-family:var(--f-display);font-size:21px;letter-spacing:-.02em;margin:0}
-.rep .sub{font-size:11px;color:#555;margin-top:2px}
-.rep .meta{text-align:right;font-size:10px;color:#333;line-height:1.7}
-.rep .filtros{background:#f4f4f6;border:1px solid #e3e3e8;border-radius:5px;
-  padding:6px 9px;font-size:10px;color:#333;margin-bottom:14px}
-.rep .cards{display:flex;gap:8px;margin-bottom:16px}
-.rep .cards div{flex:1;border:1px solid #e3e3e8;border-radius:6px;padding:8px 10px}
-.rep .cards span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#666}
-.rep .cards b{font-size:14px;font-variant-numeric:tabular-nums}
-.rep h3.gh{font-family:var(--f-display);font-size:12.5px;margin:16px 0 6px;
-  padding-bottom:3px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between}
-.rep h3.gh span{font-weight:400;font-size:10px;color:#666}
-.rep table{width:100%;border-collapse:collapse;margin-bottom:10px}
-.rep th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.05em;
-  color:#555;border-bottom:1px solid #bbb;padding:5px 6px}
-.rep td{padding:5px 6px;border-bottom:1px solid #eee;vertical-align:top}
-.rep .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.rep .nw{white-space:nowrap}
-.rep .pos{color:#0a7a55}
-.rep .neg{color:#b3243f}
-.rep .tag{font-size:8.5px;border:1px solid #ccc;border-radius:3px;padding:0 3px;color:#666}
-.rep tr.sub td{font-weight:700;border-top:1px solid #bbb;border-bottom:none;background:#fafafa}
-.rep table.tot{margin-top:14px;border-top:2px solid #111;width:auto;min-width:260px;margin-left:auto}
-.rep table.tot td{border:none;padding:3px 6px}
-.rep table.tot tr.big td{font-size:14px;font-weight:800;border-top:1px solid #bbb;padding-top:6px}
-.rep .vazio{padding:28px;text-align:center;color:#777;border:1px dashed #ccc;border-radius:6px}
-.rep footer{margin-top:18px;padding-top:8px;border-top:1px solid #ddd;
-  font-size:9px;color:#777;text-align:center}
-
-@media print{
-  @page{size:A4;margin:14mm 12mm}
-  body::before{display:none!important}
-  body.printing>*{display:none!important}
-  body.printing #printRoot{display:block!important;position:static}
-  body.printing{background:#fff!important}
-  .rep table{page-break-inside:auto}
-  .rep tr{page-break-inside:avoid}
-  .rep h3.gh{page-break-after:avoid}
-  .rep thead{display:table-header-group}
-}
+/* O CSS do relatório em PDF não fica aqui: ele é injetado dentro de um
+   iframe isolado (ver REPORT_CSS no script). Assim a folha impressa não
+   depende de esconder a tela do app na hora de imprimir. */
 
 /* --- exclusão e lixeira --- */
 .del-opts{display:flex;flex-direction:column;gap:8px}
@@ -2183,7 +2136,7 @@ function openDelete(id){
 }
 
 /* ══════════════════ RELATÓRIO EM PDF ══════════════════
-   Sem biblioteca externa: monta uma folha em #printRoot e chama print(),
+   Sem biblioteca externa: monta a folha num iframe isolado e chama print(),
    onde o próprio navegador oferece "Salvar como PDF". Funciona offline e
    não adiciona peso ao arquivo. */
 let rep={scope:"month",from:"",to:"",status:"all",type:"all",q:"",group:"none",detail:1};
@@ -2322,14 +2275,79 @@ function buildReport(){
     '<footer>'+list.length+' lançamento'+(list.length===1?"":"s")+' · gerado por '+esc(S.appName||"WIGO")+'</footer>'+
   '</div>';
 }
+/* Folha de estilo da versão impressa. Vive aqui, e não no <style> da página,
+   porque é injetada num iframe isolado — o relatório não divide CSS com a
+   tela do app. Preto no branco de propósito: o tema escuro gastaria tinta e
+   ficaria ilegível no papel. */
+const REPORT_CSS=`
+@page{size:A4;margin:14mm 12mm}
+*{margin:0;padding:0;box-sizing:border-box}
+body{color:#111;background:#fff;font-size:11px;line-height:1.45;
+  font-family:'Inter',-apple-system,'Segoe UI',system-ui,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rep header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+  border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}
+.rep h1{font-family:'Sora',Georgia,serif;font-size:21px;letter-spacing:-.02em}
+.rep .sub{font-size:11px;color:#555;margin-top:2px}
+.rep .meta{text-align:right;font-size:10px;color:#333;line-height:1.7}
+.rep .filtros{background:#f4f4f6;border:1px solid #e3e3e8;border-radius:5px;
+  padding:6px 9px;font-size:10px;color:#333;margin-bottom:14px}
+.rep .cards{display:flex;gap:8px;margin-bottom:16px}
+.rep .cards div{flex:1;border:1px solid #e3e3e8;border-radius:6px;padding:8px 10px}
+.rep .cards span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#666}
+.rep .cards b{font-size:14px;font-variant-numeric:tabular-nums}
+.rep h3.gh{font-family:'Sora',Georgia,serif;font-size:12.5px;margin:16px 0 6px;
+  padding-bottom:3px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between}
+.rep h3.gh span{font-weight:400;font-size:10px;color:#666}
+.rep table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.rep th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+  color:#555;border-bottom:1px solid #bbb;padding:5px 6px}
+.rep td{padding:5px 6px;border-bottom:1px solid #eee;vertical-align:top}
+.rep .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rep .nw{white-space:nowrap}
+.rep .pos{color:#0a7a55}
+.rep .neg{color:#b3243f}
+.rep .tag{font-size:8.5px;border:1px solid #ccc;border-radius:3px;padding:0 3px;color:#666}
+.rep tr.sub td{font-weight:700;border-top:1px solid #bbb;border-bottom:none;background:#fafafa}
+.rep table.tot{margin-top:14px;border-top:2px solid #111;width:auto;min-width:260px;margin-left:auto}
+.rep table.tot td{border:none;padding:3px 6px}
+.rep table.tot tr.big td{font-size:14px;font-weight:800;border-top:1px solid #bbb;padding-top:6px}
+.rep .vazio{padding:28px;text-align:center;color:#777;border:1px dashed #ccc;border-radius:6px}
+.rep footer{margin-top:18px;padding-top:8px;border-top:1px solid #ddd;
+  font-size:9px;color:#777;text-align:center}
+table{page-break-inside:auto}
+tr{page-break-inside:avoid}
+h3.gh{page-break-after:avoid}
+`;
+/* Imprime num iframe isolado em vez de esconder a tela do app.
+   A tentativa anterior escondia o app com uma classe no body e a removia por
+   temporizador — só que o diálogo de impressão fica aberto o tempo que o
+   usuário quiser, então a página voltava ao normal antes de ele salvar e o
+   PDF saía com a tela inteira. Dentro do iframe isso não acontece: ele
+   contém apenas o relatório, do começo ao fim. */
 function printReport(){
-  let root=document.getElementById("printRoot");
-  if(!root){ root=document.createElement("div"); root.id="printRoot"; document.body.appendChild(root); }
-  root.innerHTML=buildReport();
-  document.body.classList.add("printing");
-  const limpar=()=>{ document.body.classList.remove("printing"); window.removeEventListener("afterprint",limpar); };
-  window.addEventListener("afterprint",limpar);
-  setTimeout(()=>{ window.print(); setTimeout(limpar,800); },60);
+  const antigo=document.getElementById("printFrame");
+  if(antigo) antigo.remove();
+  const f=document.createElement("iframe");
+  f.id="printFrame";
+  f.setAttribute("aria-hidden","true");
+  f.style.cssText="position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;pointer-events:none";
+  document.body.appendChild(f);
+  const d=f.contentWindow.document;
+  d.open();
+  d.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'+
+    '<title>'+esc(S.appName||"WIGO")+' — relatório</title>'+
+    '<style>'+REPORT_CSS+'</style></head><body>'+buildReport()+'</body></html>');
+  d.close();
+  const disparar=()=>{
+    try{ f.contentWindow.focus(); f.contentWindow.print(); }
+    catch(e){ toast("Não foi possível abrir a impressão"); }
+    // só remove quando o diálogo fecha e o foco volta para o app
+    const limpar=()=>{ window.removeEventListener("focus",limpar); setTimeout(()=>f.remove(),400); };
+    window.addEventListener("focus",limpar);
+  };
+  // dá um instante para as fontes e o layout assentarem antes de medir a página
+  if(d.readyState==="complete") setTimeout(disparar,120);
+  else f.onload=()=>setTimeout(disparar,120);
 }
 
 /* ----- LIXEIRA ----- */
