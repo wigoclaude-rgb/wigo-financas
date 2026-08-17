@@ -106,8 +106,6 @@ svg{stroke:currentColor;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .tx .ic .icn,.goal .gi .icn{width:20px;height:20px}
 .cmd-it .ci .icn{width:17px;height:17px}
 .empty .e-ic .icn{width:38px;height:38px;stroke-width:1.25}
-.tut-ic{margin-bottom:10px;line-height:0;display:flex;justify-content:center;color:var(--v-2)}
-.tut-ic .icn{width:46px;height:46px;stroke-width:1.25}
 ::-webkit-scrollbar{width:0;height:0}
 
 /* ========================= TIPOGRAFIA ========================= */
@@ -666,6 +664,39 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   font-size:10px;font-weight:700;display:none;place-items:center;background:var(--s-4);color:var(--ink-2)}
 .side-nav-item .tcount.on{display:grid}
 
+/* --- tour guiado: máscara, recorte e balão --- */
+#tourWrap{position:fixed;inset:0;z-index:400}
+#tourWrap .t-mask{position:absolute;inset:0;background:rgba(0,0,0,.62);
+  backdrop-filter:blur(1.5px);animation:fadeIn var(--dur-2) var(--ease)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* o "buraco" é feito com uma sombra gigante em volta do alvo */
+#tourWrap .t-ring{position:absolute;border-radius:var(--r-md);pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 2px var(--v-2),0 0 26px 4px var(--v-glow);
+  transition:all var(--dur-2) var(--ease)}
+#tourWrap .t-box{position:absolute;z-index:2;background:var(--s-2);
+  border:1px solid var(--line-2);border-radius:var(--r-lg);padding:16px 18px 14px;
+  box-shadow:var(--e-4);animation:tourIn var(--dur-3) var(--ease-out)}
+#tourWrap .t-box.mid{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(360px,calc(100vw - 32px))}
+@keyframes tourIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1}}
+#tourWrap .t-h{font-family:var(--f-display);font-weight:700;font-size:15.5px;margin-bottom:7px}
+#tourWrap .t-b{font-size:var(--t-sm);line-height:1.55;color:var(--ink-2)}
+#tourWrap .t-b b{color:var(--ink)}
+#tourWrap .t-f{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+#tourWrap .t-dots{display:flex;gap:5px}
+#tourWrap .t-dots i{width:6px;height:6px;border-radius:50%;background:var(--s-4);
+  transition:background var(--dur-1)}
+#tourWrap .t-dots i.on{background:var(--v-2);width:16px;border-radius:3px}
+#tourWrap .t-btns{display:flex;gap:7px}
+
+/* --- novidades da versão --- */
+.news{display:flex;flex-direction:column;gap:2px;margin-bottom:18px}
+.news .ni{display:flex;flex-direction:column;gap:2px;padding:11px 0;
+  border-bottom:1px solid var(--line)}
+.news .ni:last-child{border-bottom:none}
+.news .ni b{font-size:var(--t-sm);font-weight:650}
+.news .ni span{font-size:var(--t-xs);color:var(--ink-2);line-height:1.5}
+
 /* --- extrato de caixa no hero --- */
 .ledger{margin:16px 0 4px;border-top:1px solid rgba(255,255,255,.1);padding-top:4px}
 .ledger .lg{display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -842,11 +873,11 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
      como era e a sidebar é puramente aditiva. -->
 <aside id="side" class="hidden">
   <div class="side-brand">WIG<b>O</b></div>
-  <button class="side-add" data-action="open-add">
+  <button class="side-add" data-action="open-add" data-tour="add">
     <svg class="icn" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>
     <span>Novo lançamento</span>
   </button>
-  <nav class="side-nav" id="sideNav">
+  <nav class="side-nav" id="sideNav" data-tour="nav">
     <button data-action="tab" data-v="home" class="on">
       <svg class="icn" viewBox="0 0 24 24"><path d="M3 10.2 12 3l9 7.2"/><path d="M5.5 9.3V19a1.6 1.6 0 0 0 1.6 1.6H10v-5.3h4v5.3h2.9a1.6 1.6 0 0 0 1.6-1.6V9.3"/></svg>
       <span>Início</span>
@@ -869,7 +900,7 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
       <svg class="icn" viewBox="0 0 24 24"><path d="M12 3.8v11.4M7.6 11l4.4 4.3 4.4-4.3"/><path d="M4.2 19.6h15.6"/></svg>
       <span>Relatório PDF</span>
     </button>
-    <button class="side-nav-item" data-action="trash-open">
+    <button class="side-nav-item" data-action="trash-open" data-tour="trash">
       <svg class="icn" viewBox="0 0 24 24"><path d="M3.8 6.4h16.4M8.6 6.4V4.8a1.4 1.4 0 0 1 1.4-1.4h4a1.4 1.4 0 0 1 1.4 1.4v1.6"/><path d="M5.8 6.4l1 13a1.6 1.6 0 0 0 1.6 1.5h7.2a1.6 1.6 0 0 0 1.6-1.5l1-13"/><path d="M10.2 10.6v6M13.8 10.6v6"/></svg>
       <span>Lixeira</span><span class="tcount" id="trashCount"></span>
     </button>
@@ -903,7 +934,7 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 </div>
 
 <!-- ══ DOCK ══ -->
-<nav class="dock hidden" id="dock">
+<nav class="dock hidden" id="dock" data-tour="nav">
   <button data-action="tab" data-v="home" class="on">
     <svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 001 1h3.5v-6h5v6H18a1 1 0 001-1V9.5"/></svg>
     <span class="lb">Início</span>
@@ -912,7 +943,7 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
     <svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="3"/><path d="M2.5 10h19"/><path d="M6 14.5h3"/></svg>
     <span class="lb">Carteira</span>
   </button>
-  <button class="plus" data-action="open-add" aria-label="Novo lançamento">
+  <button class="plus" data-action="open-add" aria-label="Novo lançamento" data-tour="add">
     <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
   </button>
   <button data-action="tab" data-v="savings">
@@ -1118,7 +1149,7 @@ async function load(){
   // estica os fixos "sempre" para cobrir os próximos meses
   if(extendPerpetual()) save();
   updateAppName(); render();
-  if(S&&!S.tutorialSeen&&!window.__tutShown){ window.__tutShown=true; setTimeout(openTutorial,400); }
+  if(!window.__onboarded){ window.__onboarded=true; setTimeout(decidirOnboarding,500); }
 }
 
 /* ============ AUTENTICAÇÃO ============ */
@@ -1398,7 +1429,7 @@ function markSaving(on){ const d=$("#syncDot"); if(d) d.classList.toggle("busy",
 /* ---------- seletor de mês ---------- */
 function mpick(){
   const isNow=viewMonth===mkey(todayISO());
-  return '<div class="mpick">'+
+  return '<div class="mpick" data-tour="month">'+
     '<button data-action="month-prev" aria-label="Mês anterior"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg></button>'+
     '<div class="cur" data-action="month-today">'+monthLabel(viewMonth)+
       '<small>'+(isNow?"mês atual":"toque para voltar a hoje")+'</small></div>'+
@@ -1442,7 +1473,7 @@ function filterBar(list){
     ["pago","Pagos",list.filter(x=>x.paid).length]];
   const cats=[...new Set(list.map(x=>x.cat).filter(Boolean))].sort();
   const adv=advCount();
-  return '<div class="srch">'+
+  return '<div class="srch" data-tour="search">'+
       '<span class="si">'+ic("search")+'</span>'+
       '<input id="fltQ" placeholder="Buscar por descrição, categoria, cartão ou valor…" value="'+esc(filters.q)+'" autocomplete="off">'+
       (filters.q?'<button class="sx" data-action="flt-q-clear">'+ic("x")+'</button>':"")+
@@ -1563,7 +1594,7 @@ function renderHome(){
      que ainda falta acontecer até fechar o mês. */
   const cx=cashFlow(viewMonth);
   const tot=Math.max(1,incT+expT);
-  const hero='<div class="hero">'+
+  const hero='<div class="hero" data-tour="ledger">'+
     '<div class="cap">Saldo atual · <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
     '<div class="big '+(cx.atual>=0?"":"down")+'">'+fmt(cx.atual)+'</div>'+
     (cx.semAbertura
@@ -1743,7 +1774,7 @@ function renderCards(){
     (S.cards.length>1?'<span class="more" data-action="card-pick-all">'+
       (S.cards.every(c=>selCards.has(c.id))?"Limpar seleção":"Selecionar todas")+'</span>':"")+'</div>';
   if(!S.cards.length) html+='<div class="empty"><div class="e-ic">'+ic("card")+'</div><div class="e-t">Nenhum cartão</div>Adicione seu primeiro cartão para acompanhar limite e faturas.</div>';
-  else html+='<div class="cstack">'+S.cards.map(cardFace).join("")+'</div>'+cardPickSum();
+  else html+='<div class="cstack" data-tour="cards">'+S.cards.map(cardFace).join("")+'</div>'+cardPickSum();
   html+='<div class="sec"><button class="btn ghost" data-action="card-add">+ Adicionar cartão</button></div>';
 
   html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Tickets e benefícios</h2></div>';
@@ -1953,8 +1984,18 @@ function renderSettings(){
     '<div class="help" style="margin:0 0 12px">Lançamentos excluídos ficam guardados aqui, fora de qualquer saldo, e podem voltar.</div>'+
     '<button class="btn ghost" data-action="trash-open">'+ic("trash")+' Abrir lixeira</button></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
-    '<div class="sec-head" style="margin:0 0 12px"><h2>Tutorial</h2></div>'+
-    '<button class="btn ghost" data-action="tut-open">'+ic("book")+' Rever o tutorial do app</button></div></div>'+
+    '<div class="sec-head" style="margin:0 0 12px"><h2>Saldo de abertura</h2></div>'+
+    '<div class="help" style="margin:0 0 12px">'+(S.opening
+      ? 'Definido: <b>'+fmt(S.opening.amount)+'</b> a partir de '+monthLabel(S.opening.month)+'.'
+      : 'Não definido — o saldo mostra a variação, não o valor real em conta.')+'</div>'+
+    '<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button></div></div>'+
+  '<div class="sec"><div class="surface" style="padding:20px">'+
+    '<div class="sec-head" style="margin:0 0 12px"><h2>Ajuda</h2></div>'+
+    '<div class="act-row" style="flex-direction:column;align-items:stretch;gap:8px">'+
+      '<button class="btn ghost" data-action="tut-open">'+ic("book")+' Tour de introdução</button>'+
+      '<button class="btn ghost" data-action="tour-adv">'+ic("target")+' Tour dos recursos avançados</button>'+
+      '<button class="btn ghost" data-action="news-open">'+ic("rocket")+' O que mudou na versão '+APP_VERSION+'</button>'+
+    '</div></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
     '<div class="sec-head" style="margin:0 0 12px"><h2>Identidade</h2></div>'+
     '<form id="fAppName"><label>Nome do app</label>'+
@@ -2573,33 +2614,167 @@ function openMirror(id){
   '<button class="btn" type="submit">Criar '+rot+'</button></form>');
 }
 
-/* ----- TUTORIAL DE PRIMEIRO ACESSO ----- */
-const TUT=[
- {ic:ic("wave","xl"),t:"Bem-vindo ao WIGO",b:"Seu controle financeiro inteligente. Em 1 minuto você aprende tudo. Vamos lá?"},
- {ic:ic("home","xl"),t:"Início",b:"Seu painel do mês: quanto recebeu, quanto pagou, o que está em atraso e o saldo previsto.<br><br><b>Dica:</b> toque nos cards (Recebido, Pago, atraso) para ver os lançamentos de cada um na hora."},
- {ic:ic("plus","xl"),t:"Adicionar lançamento",b:"Toque no botão roxo <b>+</b> no centro do menu.<br><br>Escolha: <b>Gasto</b>, <b>Receita</b> ou <b>Guardar</b> (poupança). Depois o tipo: <b>À vista</b>, <b>Parcelado</b> ou <b>Fixo mensal</b> (repete todo mês)."},
- {ic:ic("card","xl"),t:"Carteira (cartões)",b:"Cadastre seus cartões e acompanhe o <b>limite usado</b> em tempo real.<br><br>Ao abrir um cartão, toque em <b>“Marcar fatura como paga”</b> — todos os lançamentos do mês são baixados de uma vez e o limite é liberado."},
- {ic:ic("checkSquare","xl"),t:"Seleção múltipla",b:"Toque no <b>círculo</b> ao lado de qualquer lançamento para selecionar. A soma aparece na barra flutuante.<br><br>Use <b>“Selecionar todos”</b> na lista e depois <b>“Marcar pagos”</b> para baixar tudo em um toque."},
- {ic:ic("calendar","xl"),t:"Competência (receitas)",b:"Recebe adiantamento? Ao criar uma receita, defina o <b>Mês de competência</b> — o mês a que aquele dinheiro pertence.<br><br>Ex.: adiantamento recebido em julho que é do salário de agosto → conta em agosto."},
- {ic:ic("piggy","xl"),t:"Poupança",b:"Crie metas (viagem, reserva…), registre aportes e acompanhe o progresso.<br><br>O WIGO ainda estima o rendimento pelo <b>CDI</b>."},
- {ic:ic("chart","xl"),t:"Relatório",b:"Tendência de 12 meses, comparação mês a mês, média por categoria e projeção até o fim do mês.<br><br><b>Toque em um mês ou categoria</b> para abrir o detalhamento completo."},
- {ic:ic("rocket","xl"),t:"Pronto!",b:"Agora é com você. Lance seus gastos e receitas e deixe o WIGO organizar o resto.<br><br>Reveja este tutorial quando quiser em <b>Ajustes</b>."}
+/* ══════════════════ TOUR GUIADO ══════════════════
+   Balões ancorados em elementos reais da tela, com o resto escurecido.
+
+   Cada passo aponta para um [data-tour]. Se o alvo não existir na tela
+   naquele momento, o passo é pulado — é o que permite o mesmo roteiro
+   funcionar no celular e no computador, onde a navegação é diferente.
+
+   O passo pode pedir uma aba (tab) e o tour troca sozinho antes de medir a
+   posição do alvo. O primeiro passo, sem alvo, aparece centralizado. */
+
+const TOUR_BASIC=[
+ {t:"Bem-vindo ao WIGO",
+  b:"Vou te mostrar o essencial em menos de um minuto. Você pode sair quando quiser."},
+ {sel:"nav",tab:"home",place:"right",t:"Por aqui você navega",
+  b:"<b>Início</b> é o painel do mês. <b>Carteira</b> guarda cartões e vales, <b>Metas</b> é a poupança e <b>Análise</b> mostra a evolução."},
+ {sel:"add",tab:"home",place:"right",t:"Tudo começa aqui",
+  b:"O botão de <b>novo lançamento</b>. Você escolhe <b>Gasto</b>, <b>Receita</b> ou <b>Guardar</b>, e se é à vista, parcelado ou fixo mensal — que pode repetir para sempre, sem data para acabar."},
+ {sel:"month",tab:"home",place:"bottom",t:"O mês que você está vendo",
+  b:"Use as setas para andar no tempo. Tudo na tela — saldo, faturas, listas — acompanha esse mês."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Seu saldo, como num extrato",
+  b:"Começa com o que sobrou do mês passado, soma o que entrou, tira o que saiu. O <b>saldo atual</b> é o que você tem agora — dá para comparar com o app do banco.<br><br>Abaixo dele, o que ainda falta acontecer até fechar o mês."},
+ {sel:"search",tab:"home",place:"top",t:"Achar qualquer lançamento",
+  b:"Busque por descrição, categoria, cartão ou <b>valor</b> — digitar <i>90</i> encontra R$ 90,00 e R$ 190,00.<br><br>No ícone de filtro dá para limitar por faixa de valor, período e forma de pagamento."},
+ {tab:"report",t:"Análise",b:"Aqui ficam a tendência dos últimos 12 meses, a comparação com o mês anterior, a média por categoria e o mapa de gastos por dia. Toque em qualquer mês ou categoria para abrir o detalhe."},
+ {t:"É só isso para começar",
+  b:"Cadastre seus cartões e lance seus gastos. Quando tiver alguns lançamentos, eu volto para mostrar os recursos mais avançados.<br><br>Este tour fica salvo em <b>Ajustes</b>."}
 ];
-let tutStep=0;
-function openTutorial(){ tutStep=0; renderTutorial(); }
-function renderTutorial(){
-  const s=TUT[tutStep], last=tutStep===TUT.length-1;
-  openModal('<div style="text-align:center;padding:6px 2px 2px">'+
-    '<div class="tut-ic">'+s.ic+'</div>'+
-    '<h2 style="margin-bottom:10px">'+s.t+'</h2>'+
-    '<div class="help" style="font-size:13.5px;line-height:1.55;text-align:center">'+s.b+'</div>'+
-    '<div style="display:flex;gap:6px;justify-content:center;margin:18px 0 14px">'+
-      TUT.map((_,i)=>'<span style="width:7px;height:7px;border-radius:50%;background:'+(i===tutStep?"var(--violet)":"var(--line)")+'"></span>').join("")+'</div>'+
-    '<div style="display:flex;gap:10px">'+
-      (tutStep>0?'<button class="btn small ghost" data-action="tut-prev" style="flex:1">‹ Voltar</button>':"")+
-      '<button class="btn small" data-action="'+(last?"tut-done":"tut-next")+'" style="flex:2">'+(last?"Começar a usar":"Próximo ›")+'</button></div>'+
-    (last?"":'<a data-action="tut-done" style="display:inline-block;margin-top:12px;font-size:12px;color:var(--muted);cursor:pointer">Pular tutorial</a>')+
-  '</div>');
+
+const TOUR_ADV=[
+ {t:"Agora que você já tem dados…",
+  b:"Alguns recursos que economizam bastante tempo no dia a dia."},
+ {sel:"cards",tab:"cards",place:"bottom",t:"Somar faturas",
+  b:"Toque no círculo de cada cartão para marcá-lo. Aparece a soma das faturas selecionadas, com o detalhe de quanto está em aberto e quanto já foi pago.<br><br>Ao abrir um cartão você também pode buscar dentro da fatura por nome ou valor."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Competência",
+  b:"Recebeu adiantamento em julho que é do salário de agosto? Ao lançar, preencha o <b>mês de competência</b> e ele conta em agosto na Análise.<br><br>Vale para gastos também, e é sempre opcional — em branco, funciona como sempre."},
+ {sel:"trash",tab:"home",place:"right",t:"Nada se perde",
+  b:"Ao excluir, você escolhe: só aquele, o grupo todo, ou apenas os que ainda não foram pagos.<br><br>O que sai vai para a <b>Lixeira</b>: some de todos os saldos, mas pode voltar quando quiser."},
+ {t:"Relatório em PDF",
+  b:"Em <b>Ajustes</b> ou pelo atalho, você gera um PDF filtrado — por exemplo, tudo que alguém te deve: busque o nome da pessoa, escolha <i>todos os meses</i> e <i>somente em aberto</i>.<br><br>Sai pronto para enviar."},
+ {t:"Pronto",b:"Se precisar rever, os dois tours ficam em <b>Ajustes</b>."}
+];
+
+let tour=null, tourStep=0;
+const tourEl=s=>[...document.querySelectorAll('[data-tour="'+s+'"]')]
+  .find(e=>e.offsetParent!==null&&e.getBoundingClientRect().width>0);
+
+function startTour(lista,marca){
+  tour={ passos:lista, marca }; tourStep=0;
+  closeModal();
+  renderTour();
+}
+function endTour(){
+  if(tour&&tour.marca){ S[tour.marca]=true; save(); }
+  tour=null;
+  const w=document.getElementById("tourWrap"); if(w) w.remove();
+}
+function renderTour(){
+  if(!tour) return;
+  // pula passos cujo alvo não existe nesta tela
+  while(tourStep<tour.passos.length){
+    const p=tour.passos[tourStep];
+    if(p.tab&&tab!==p.tab){ tab=p.tab; homeFlt=null; render(); }
+    if(!p.sel||tourEl(p.sel)) break;
+    tourStep++;
+  }
+  if(tourStep>=tour.passos.length){ endTour(); toast("Tour concluído ✓"); return; }
+
+  const p=tour.passos[tourStep];
+  const alvo=p.sel?tourEl(p.sel):null;
+  let w=document.getElementById("tourWrap");
+  if(!w){ w=document.createElement("div"); w.id="tourWrap"; document.body.appendChild(w); }
+
+  const ultimo=tourStep===tour.passos.length-1;
+  const dots=tour.passos.map((_,i)=>'<i class="'+(i===tourStep?"on":"")+'"></i>').join("");
+  w.innerHTML='<div class="t-mask"></div>'+
+    (alvo?'<div class="t-ring"></div>':"")+
+    '<div class="t-box'+(alvo?"":" mid")+'">'+
+      '<div class="t-h">'+esc(p.t)+'</div>'+
+      '<div class="t-b">'+p.b+'</div>'+
+      '<div class="t-f"><div class="t-dots">'+dots+'</div>'+
+        '<div class="t-btns">'+
+          (tourStep>0?'<button class="btn xs ghost" data-action="tour-prev">Voltar</button>':
+            '<button class="btn xs ghost" data-action="tour-end">Pular</button>')+
+          '<button class="btn xs" data-action="'+(ultimo?"tour-end":"tour-next")+'">'+
+            (ultimo?"Concluir":"Próximo")+'</button>'+
+        '</div></div></div>';
+
+  if(alvo){
+    alvo.scrollIntoView({block:"center",behavior:"instant"});
+    requestAnimationFrame(()=>posicionaTour(alvo,p.place||"bottom"));
+  }
+}
+/* Coloca o recorte sobre o alvo e o balão no lado que couber. */
+function posicionaTour(alvo,lado){
+  const w=document.getElementById("tourWrap"); if(!w) return;
+  const ring=w.querySelector(".t-ring"), box=w.querySelector(".t-box");
+  if(!ring||!box) return;
+  const r=alvo.getBoundingClientRect(), pad=6;
+  ring.style.cssText="top:"+(r.top-pad)+"px;left:"+(r.left-pad)+"px;"+
+    "width:"+(r.width+pad*2)+"px;height:"+(r.height+pad*2)+"px";
+
+  const bw=Math.min(340,innerWidth-24), gap=14;
+  box.style.width=bw+"px";
+  const bh=box.offsetHeight;
+  let top,left;
+  const cabeDireita=r.right+gap+bw<innerWidth;
+  const cabeAbaixo=r.bottom+gap+bh<innerHeight;
+  if(lado==="right"&&cabeDireita){ left=r.right+gap; top=Math.max(12,r.top); }
+  else if(lado==="top"&&r.top-gap-bh>0){ left=r.left; top=r.top-gap-bh; }
+  else if(cabeAbaixo){ left=r.left; top=r.bottom+gap; }
+  else if(r.top-gap-bh>0){ left=r.left; top=r.top-gap-bh; }
+  else { left=(innerWidth-bw)/2; top=innerHeight-bh-20; }
+  left=Math.max(12,Math.min(left,innerWidth-bw-12));
+  top=Math.max(12,Math.min(top,innerHeight-bh-12));
+  box.style.top=top+"px"; box.style.left=left+"px";
+}
+/* Compatibilidade: o botão antigo de tutorial abre o tour básico. */
+function openTutorial(){ startTour(TOUR_BASIC,"tutorialSeen"); }
+
+/* ══════════════════ NOVIDADES DA VERSÃO ══════════════════
+   S.seenVersion guarda a última versão que o usuário já viu. Quando publico
+   algo novo, subo APP_VERSION e escrevo os itens aqui — não dá para deduzir
+   isso do código sozinho. */
+const APP_VERSION="2.0";
+const WHATS_NEW=[
+ {v:"2.0",d:"Agosto de 2026",itens:[
+   ["Visual novo","Menu lateral no computador, ícones redesenhados e telas mais largas."],
+   ["Saldo como extrato","Saldo inicial, o que entrou, o que saiu e o saldo atual — encadeado de um mês para o outro."],
+   ["Saldo de abertura","Informe uma vez quanto tem em conta e o saldo passa a bater com o banco."],
+   ["Busca detalhada","Procure por texto ou valor, com filtros de faixa, período, forma e tipo. Dá para ver todos os meses de uma vez."],
+   ["Competência em gastos","Antes só valia para receitas. Continua opcional."],
+   ["Duplicar invertido","Transforme um gasto em receita (ou o contrário) sem redigitar."],
+   ["Fixo sem fim","Lançamento mensal que se repete para sempre, sem precisar dizer por quantos meses."],
+   ["Lixeira","Excluir não apaga: o lançamento sai das contas mas pode ser restaurado."],
+   ["Faturas somadas","Marque vários cartões e veja o total das faturas do mês."],
+   ["Relatório em PDF","Filtre por pessoa, período e situação e gere um PDF pronto para enviar."]
+ ]}
+];
+/* Decide o que mostrar ao abrir o app. Uma coisa de cada vez: quem acabou de
+   chegar não precisa saber o que mudou numa versão que nunca usou. */
+function decidirOnboarding(){
+  if(!S) return;
+  // 1) primeiro acesso: tour básico
+  if(!S.tutorialSeen){
+    // quem já chega com dados (conta antiga) não precisa do tour de boas-vindas
+    if(!aTx().length){ startTour(TOUR_BASIC,"tutorialSeen"); return; }
+    S.tutorialSeen=true; S.seenVersion=S.seenVersion||null; save();
+  }
+  // 2) já usa o app e ainda não viu as novidades desta versão
+  if(S.seenVersion!==APP_VERSION){ openWhatsNew(true); return; }
+  // 3) já tem dados suficientes para o tour avançado fazer sentido
+  if(!S.tourAdvSeen&&aTx().length>=3&&(S.cards.length||S.tickets.length)){
+    startTour(TOUR_ADV,"tourAdvSeen");
+  }
+}
+function openWhatsNew(marcar){
+  const r=WHATS_NEW[0];
+  openModal(modalHead("O que mudou","Versão "+r.v+" · "+r.d)+
+    '<div class="news">'+r.itens.map(([t,b])=>
+      '<div class="ni"><b>'+esc(t)+'</b><span>'+esc(b)+'</span></div>').join("")+'</div>'+
+    '<button class="btn" data-action="'+(marcar?"news-done":"close-modal")+'">Entendi</button>');
 }
 
 /* ----- SUB-TELAS DO RELATÓRIO: categoria e mês ----- */
@@ -2925,10 +3100,18 @@ document.addEventListener("click", async e=>{
       if(all) curListIds.forEach(x=>selTx.delete(x)); else curListIds.forEach(x=>selTx.add(x));
       render(); break; }
     case "cat-detail": openCatDetail(el.dataset.cat); break;
-    case "tut-next": tutStep=Math.min(TUT.length-1,tutStep+1); renderTutorial(); break;
-    case "tut-prev": tutStep=Math.max(0,tutStep-1); renderTutorial(); break;
-    case "tut-done": S.tutorialSeen=true; save(); closeModal(); break;
-    case "tut-open": openTutorial(); break;
+    // tour guiado
+    case "tour-next": tourStep++; renderTour(); break;
+    case "tour-prev": tourStep=Math.max(0,tourStep-1); renderTour(); break;
+    case "tour-end": endTour(); break;
+    case "tut-open": startTour(TOUR_BASIC,"tutorialSeen"); break;
+    case "tour-adv": startTour(TOUR_ADV,"tourAdvSeen"); break;
+    // novidades da versão
+    case "news-open": openWhatsNew(false); break;
+    case "news-done": S.seenVersion=APP_VERSION; save(); closeModal(); break;
+    // saldo de abertura
+    case "open-set": openOpening(); break;
+    case "open-clear": { S.opening=null; save(); closeModal(); render(); toast("Abertura removida"); break; }
     case "month-detail": openMonthDetail(el.dataset.mk); break;
     case "sel-pay": { let n=0; const today=todayISO();
       selTx.forEach(sid=>{ const t=S.tx.find(x=>x.id===sid); if(t&&!t.paid){ applyPaid(t,today,t.amount); n++; } });
