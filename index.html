@@ -666,6 +666,30 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   font-size:10px;font-weight:700;display:none;place-items:center;background:var(--s-4);color:var(--ink-2)}
 .side-nav-item .tcount.on{display:grid}
 
+/* --- extrato de caixa no hero --- */
+.ledger{margin:16px 0 4px;border-top:1px solid rgba(255,255,255,.1);padding-top:4px}
+.ledger .lg{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:7px 0;font-size:var(--t-sm);border-bottom:1px solid rgba(255,255,255,.055)}
+.ledger .lg:last-child{border-bottom:none}
+.ledger .lg span{color:rgba(255,255,255,.62)}
+.ledger .lg b{font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:-.01em}
+.ledger .lg b.up{color:var(--up)}
+.ledger .lg b.down{color:var(--down)}
+.ledger .lg[data-action]{cursor:pointer;margin-inline:-8px;padding-inline:8px;border-radius:8px;
+  transition:background var(--dur-1)}
+.ledger .lg[data-action]:hover{background:rgba(255,255,255,.055)}
+/* as duas linhas de fechamento se destacam do resto */
+.ledger .lg.now,.ledger .lg.end{border-top:1px solid rgba(255,255,255,.16);border-bottom:none;
+  margin-top:2px;padding-top:9px}
+.ledger .lg.now span,.ledger .lg.end span{color:#fff;font-weight:600}
+.ledger .lg.now b,.ledger .lg.end b{font-family:var(--f-display);font-size:16px;font-weight:800}
+.ledger .lt{font-style:normal;font-size:var(--t-micro);color:var(--warn);
+  background:var(--warn-bg);border-radius:5px;padding:1px 5px;margin-left:5px}
+.open-warn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  color:var(--warn);font-weight:600;font-size:var(--t-xs)}
+.open-warn .icn{width:14px;height:14px}
+.open-warn:hover{text-decoration:underline}
+
 /* --- barra de busca da lista --- */
 .srch{display:flex;align-items:center;gap:8px;margin-bottom:10px;
   background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:0 10px}
@@ -1029,7 +1053,11 @@ const CDI_ANUAL=0.1465; // taxa CDI anual de referência (~14,65% a.a. em 2026) 
 /* ============ ESTADO ============ */
 function defaultState(){
   return { appName:"WIGO", expCats:[...EXP_CATS], incCats:[...INC_CATS],
-    cards:[], tickets:[], tx:[], goals:[], cdiRef:CDI_ANUAL };
+    cards:[], tickets:[], tx:[], goals:[], cdiRef:CDI_ANUAL,
+    /* saldo de abertura: quanto havia em caixa no início de opening.month.
+       É o ponto de partida do encadeamento de saldos. null = não informado,
+       e aí o saldo mostrado é relativo (variação), não o valor real. */
+    opening:null };
 }
 let S=defaultState();
 let user=null, tab="home", viewMonth=new Date().toISOString().slice(0,7), saveTimer=null;
@@ -1196,6 +1224,70 @@ function cardUsed(c){ return sum(aTx().filter(t=>t.cardId===c.id&&t.type==="exp"
 function effMonth(t){ if(t.comp) return t.comp; return t.paid?mkey(t.payDate||t.due):mkey(t.due); }
 function txEffMonth(mk){ return aTx().filter(t=>effMonth(t)===mk); }
 function sum(list,f){ return list.reduce((a,t)=>a+(f?f(t):t.amount),0); }
+
+/* ══════════════════ SALDO DE CAIXA ══════════════════
+   Regime de caixa, para bater com o extrato do banco. Difere de effMonth()
+   de propósito: effMonth respeita a COMPETÊNCIA (a que mês o valor pertence),
+   enquanto o caixa segue a data em que o dinheiro realmente se moveu.
+
+   Um adiantamento recebido em julho com competência de agosto é de agosto
+   na Análise, mas entrou no banco em julho — e é julho que o extrato mostra.
+
+   Poupança sai do caixa (vira Patrimônio), então entra aqui como saída.  */
+
+/* mês em que o dinheiro se moveu; null enquanto não foi baixado */
+function cashMonth(t){ return t.paid?mkey(t.payDate||t.due):null; }
+/* +entrada / −saída */
+function signed(t){ return (t.type==="inc"?1:-1)*val(t); }
+
+/* soma de tudo que já se moveu, do início da abertura até o fim de mk */
+function cashRealized(mk){
+  const ini=S.opening?S.opening.month:null;
+  let saldo=S.opening?(S.opening.amount||0):0;
+  aTx().forEach(t=>{
+    const m=cashMonth(t); if(!m) return;
+    if(ini&&m<ini) return;      // antes da abertura já está embutido no valor informado
+    if(m>mk) return;            // ainda não aconteceu na data de corte
+    saldo+=signed(t);
+  });
+  return saldo;
+}
+/* o que ainda não foi baixado e vence até o fim de mk.
+   Inclui atrasado de mês anterior de propósito: dívida vencida continua
+   pendente e tem que aparecer na frente até ser paga. */
+function cashPending(mk){
+  return aTx().filter(t=>!t.paid&&mkey(t.due)<=mk);
+}
+/* a linha de saldo de um mês: abre, movimenta, fecha.
+
+   O saldo inicial é o REALIZADO até o fim do mês anterior — o dinheiro que
+   de fato estava na conta —, não o final previsto. Assim a coluna fecha na
+   tela: inicial + recebido − pago = atual.
+
+   Quando tudo que estava previsto é pago, o final de um mês é igual à
+   abertura do seguinte. Se algo não for pago, os dois diferem exatamente
+   pelo valor em aberto — que reaparece em "a pagar" do mês seguinte e
+   continua na frente até ser baixado. */
+function cashFlow(mk){
+  const ant=addMonthsISO(mk+"-01",-1).slice(0,7);
+  const inicial=S.opening&&mk===S.opening.month
+    ? (S.opening.amount||0)                        // o próprio mês da abertura
+    : cashRealized(ant);                           // o que sobrou de fato
+  const movidos=aTx().filter(t=>cashMonth(t)===mk);
+  const entrou=sum(movidos.filter(t=>t.type==="inc"),val);
+  const saiu=sum(movidos.filter(t=>t.type!=="inc"),val);
+  const atual=cashRealized(mk);
+  const pend=cashPending(mk);
+  const aReceber=sum(pend.filter(t=>t.type==="inc"),val);
+  const aPagar=sum(pend.filter(t=>t.type!=="inc"),val);
+  return { mk, inicial, entrou, saiu, atual, aReceber, aPagar,
+    final:atual+aReceber-aPagar,
+    /* quanto do pendente já venceu — o que explica saldo final menor que o atual */
+    atrasado:sum(pend.filter(t=>statusOf(t)==="atrasado"),val),
+    semAbertura:!S.opening };
+}
+/* saldo dos pendentes até mk, usado para encadear os meses */
+function pendSaldo(mk){ return cashPending(mk).reduce((a,t)=>a+signed(t),0); }
 
 /* quando marca/desmarca pago, sincroniza movimento de poupança */
 function applyPaid(t,date,amt){
@@ -1465,21 +1557,35 @@ function renderHome(){
   const prev=monthAgg(addMonthsISO(viewMonth+"-01",-1).slice(0,7));
   const patr=S.goals.reduce((a,g)=>a+goalBalance(g),0);
 
-  /* --- HERO --- */
+  /* --- HERO: extrato de caixa do mês ---
+     O número em destaque é o SALDO ATUAL, o que existe em caixa agora — é ele
+     que se compara com o app do banco. Acima dele, de onde partiu; abaixo, o
+     que ainda falta acontecer até fechar o mês. */
+  const cx=cashFlow(viewMonth);
   const tot=Math.max(1,incT+expT);
   const hero='<div class="hero">'+
-    '<div class="cap">Saldo previsto · <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
-    '<div class="big '+(saldo>=0?"":"down")+'">'+fmt(saldo)+'</div>'+
-    '<div class="sub">'+deltaChip(pctDelta(incT-expT,prev.inc-prev.exp))+
-      '<span>Disponível agora: <b style="color:#fff">'+fmt(disp)+'</b></span></div>'+
+    '<div class="cap">Saldo atual · <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
+    '<div class="big '+(cx.atual>=0?"":"down")+'">'+fmt(cx.atual)+'</div>'+
+    (cx.semAbertura
+      ? '<div class="sub"><span class="open-warn" data-action="open-set">'+ic("alert")+
+        ' Informe seu saldo de abertura para bater com o banco</span></div>'
+      : '<div class="sub">'+deltaChip(pctDelta(incT-expT,prev.inc-prev.exp))+
+        '<span>Fecha o mês em <b style="color:#fff">'+fmt(cx.final)+'</b></span></div>')+
+
+    '<div class="ledger">'+
+      '<div class="lg"><span>Saldo inicial</span><b>'+fmt(cx.inicial)+'</b></div>'+
+      '<div class="lg" data-action="home-filter" data-mode="recebido"><span>+ Recebido</span><b class="up">'+fmt(cx.entrou)+'</b></div>'+
+      '<div class="lg" data-action="home-filter" data-mode="pago"><span>− Pago</span><b class="down">'+fmt(cx.saiu)+'</b></div>'+
+      '<div class="lg now"><span>= Saldo atual</span><b>'+fmt(cx.atual)+'</b></div>'+
+      (cx.aReceber?'<div class="lg" data-action="home-filter" data-mode="areceber"><span>+ A receber</span><b class="up">'+fmt(cx.aReceber)+'</b></div>':"")+
+      (cx.aPagar?'<div class="lg" data-action="home-filter" data-mode="apagar"><span>− A pagar'+
+        (cx.atrasado?' <i class="lt">'+fmt(cx.atrasado)+' vencido</i>':"")+'</span><b class="down">'+fmt(cx.aPagar)+'</b></div>':"")+
+      '<div class="lg end"><span>= Saldo final</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>'+
+    '</div>'+
+
     '<div class="flowbar"><i style="width:'+(incT/tot*100)+'%;background:linear-gradient(90deg,#00E5A8,#00b98a)"></i>'+
       '<i style="width:'+(expT/tot*100)+'%;background:linear-gradient(90deg,#FF5C7A,#e0405f)"></i></div>'+
-    '<div class="hero-split">'+
-      '<div data-action="home-filter" data-mode="recebido"><div class="k"><i class="dot-i" style="background:#00E5A8"></i>Entradas</div>'+
-        '<div class="v" style="color:#00E5A8">'+fmt(incPaid)+'</div><div class="s">a receber '+fmt(incOpen)+'</div></div>'+
-      '<div data-action="home-filter" data-mode="pago"><div class="k"><i class="dot-i" style="background:#FF5C7A"></i>Saídas</div>'+
-        '<div class="v" style="color:#FF5C7A">'+fmt(expPaid)+'</div><div class="s">a pagar '+fmt(expOpen)+'</div></div>'+
-    '</div></div>';
+    '</div>';
 
   /* --- alertas --- */
   let alerts="";
@@ -1515,12 +1621,18 @@ function renderHome(){
   if(homeFlt){
     let src,lbl;
     const L={atraso:"Em atraso · todos os meses",proximo:"Vencendo em até 3 dias",
-      recebido:"Entradas de "+shortMonth(viewMonth),pago:"Saídas de "+shortMonth(viewMonth),
-      guardado:"Guardado em "+shortMonth(viewMonth)};
+      recebido:"Recebido em "+shortMonth(viewMonth),pago:"Pago em "+shortMonth(viewMonth),
+      guardado:"Guardado em "+shortMonth(viewMonth),
+      areceber:"A receber até o fim de "+shortMonth(viewMonth),
+      apagar:"A pagar até o fim de "+shortMonth(viewMonth)};
     if(homeFlt==="atraso") src=aTx().filter(t=>!t.paid&&statusOf(t)==="atrasado");
     else if(homeFlt==="proximo") src=aTx().filter(t=>!t.paid&&statusOf(t)==="proximo"&&daysTo(t.due)<=3);
-    else if(homeFlt==="recebido") src=m.filter(t=>t.type==="inc"&&t.paid);
-    else if(homeFlt==="pago") src=expL.filter(t=>t.paid);
+    /* recebido/pago seguem o CAIXA: o que se moveu neste mês, pela data de
+       pagamento — por isso cashMonth e não o mês de competência */
+    else if(homeFlt==="recebido") src=aTx().filter(t=>t.type==="inc"&&cashMonth(t)===viewMonth);
+    else if(homeFlt==="pago") src=aTx().filter(t=>t.type!=="inc"&&cashMonth(t)===viewMonth);
+    else if(homeFlt==="areceber") src=cashPending(viewMonth).filter(t=>t.type==="inc");
+    else if(homeFlt==="apagar") src=cashPending(viewMonth).filter(t=>t.type!=="inc");
     else if(homeFlt==="guardado") src=popL;
     else src=m;
     src=src.slice().sort((a,b)=>a.due<b.due?-1:1); curListIds=src.map(t=>t.id);
@@ -1827,6 +1939,15 @@ function renderSettings(){
   return '<div class="sec" style="margin-top:4px"><div class="sec-head"><h2 class="t-h2">Ajustes</h2></div>'+
     '<div class="help" style="margin:0 0 16px">'+esc(user?user.email:"")+'</div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
+    '<div class="sec-head" style="margin:0 0 12px"><h2>Saldo de abertura</h2>'+
+      '<span class="faint" style="font-size:11.5px">'+(S.opening
+        ? fmt(S.opening.amount)+" · "+shortMonth(S.opening.month)
+        : "não definido")+'</span></div>'+
+    '<div class="help" style="margin:0 0 12px">'+(S.opening
+      ? "Seu saldo parte de "+fmt(S.opening.amount)+" em "+monthLabel(S.opening.month)+" e se encadeia mês a mês a partir dali."
+      : "Sem ele, o saldo mostrado é a variação do período, não o valor que você tem em conta.")+'</div>'+
+    '<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar abertura":"Definir saldo de abertura")+'</button></div></div>'+
+  '<div class="sec"><div class="surface" style="padding:20px">'+
     '<div class="sec-head" style="margin:0 0 12px"><h2>Lixeira</h2>'+
       '<span class="faint" style="font-size:11.5px">'+delTx().length+' item(ns)</span></div>'+
     '<div class="help" style="margin:0 0 12px">Lançamentos excluídos ficam guardados aqui, fora de qualquer saldo, e podem voltar.</div>'+
@@ -1904,6 +2025,7 @@ const CMD_ACTIONS=[
   {ic:ic("piggy"),t:"Ir para Metas",s:"objetivos",a:"tab",v:"savings"},
   {ic:ic("alert"),t:"Ver atrasados",s:"todos os meses",a:"home-filter",mode:"atraso"},
   {ic:ic("download"),t:"Exportar planilha",s:"CSV / Excel",a:"csv-export"},
+  {ic:ic("coin"),t:"Saldo de abertura",s:"ponto de partida do caixa",a:"open-set"},
   {ic:ic("receipt"),t:"Relatório em PDF",s:"filtrar e imprimir",a:"rep-pdf"},
   {ic:ic("trash"),t:"Abrir lixeira",s:"lançamentos excluídos",a:"trash-open"},
   {ic:ic("book"),t:"Rever tutorial",s:"como usar o app",a:"tut-open"},
@@ -2348,6 +2470,29 @@ function printReport(){
   // dá um instante para as fontes e o layout assentarem antes de medir a página
   if(d.readyState==="complete") setTimeout(disparar,120);
   else f.onload=()=>setTimeout(disparar,120);
+}
+
+/* ----- SALDO DE ABERTURA -----
+   Ponto de partida do encadeamento. Preenchido uma vez: informa-se quanto
+   havia em caixa no primeiro dia daquele mês, e daí em diante cada mês puxa
+   o fechamento do anterior. */
+function openOpening(){
+  const o=S.opening||{};
+  const primeiro=aTx().reduce((a,t)=>(!a||t.due<a)?t.due:a,null);
+  openModal(modalHead("Saldo de abertura","O ponto de partida do seu saldo")+
+  '<div class="help" style="margin-bottom:14px">Informe quanto você tinha em conta no <b>primeiro dia</b> '+
+    'do mês escolhido. A partir daí o WIGO encadeia os meses sozinho — o saldo final de um vira o inicial do seguinte.'+
+    (primeiro?'<br><br>Seu lançamento mais antigo é de <b>'+fmtDate(primeiro)+'</b>; '+
+      'usar o mês dele (ou um anterior) faz todo o histórico ser considerado.':"")+'</div>'+
+  '<form id="fOpening">'+
+  '<label>Saldo em caixa</label><input id="opAmt" inputmode="decimal" placeholder="0,00" value="'+
+    (o.amount!=null?String(o.amount).replace(".",","):"")+'">'+
+  '<div class="help">Some as contas que você usa no dia a dia. Pode ser negativo, se estiver no vermelho.</div>'+
+  '<label style="margin-top:14px">A partir de qual mês</label>'+
+    '<input id="opMonth" type="month" value="'+(o.month||(primeiro?mkey(primeiro):viewMonth))+'">'+
+  '<button class="btn" type="submit">Salvar saldo de abertura</button>'+
+  (S.opening?'<div class="act-row"><button type="button" class="btn small ghost" data-action="open-clear">Remover abertura</button></div>':"")+
+  '</form>');
 }
 
 /* ----- LIXEIRA ----- */
@@ -2814,6 +2959,8 @@ document.addEventListener("click", async e=>{
       el.textContent=todos?"Marcar todos":"Desmarcar todos"; break; }
     // lixeira
     case "rep-pdf": openReportPdf(); break;
+    case "open-set": openOpening(); break;
+    case "open-clear": { S.opening=null; save(); closeModal(); render(); toast("Abertura removida"); break; }
     case "trash-open": openTrash(); break;
     case "trash-restore": { const t=S.tx.find(x=>x.id===id); if(!t)break;
       restoreTx([t]); save(); render(); openTrash(); toast("Restaurado ✓"); break; }
@@ -2944,6 +3091,12 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fOpening"){
+    const v=$("#opAmt").value.trim();
+    const neg=v.startsWith("-");
+    const amt=(neg?-1:1)*parseMoney(v.replace("-",""));
+    S.opening={ amount:amt||0, month:$("#opMonth").value||viewMonth };
+    save(); closeModal(); render(); toast("Saldo de abertura salvo ✓"); }
   else if(f.id==="fRep"){
     rep.q=$("#rpQ").value.trim(); rep.scope=$("#rpScope").value;
     rep.from=$("#rpFrom")?$("#rpFrom").value:""; rep.to=$("#rpTo")?$("#rpTo").value:"";
