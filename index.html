@@ -689,6 +689,16 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 #tourWrap .t-dots i.on{background:var(--v-2);width:16px;border-radius:3px}
 #tourWrap .t-btns{display:flex;gap:7px}
 
+/* --- lista de capítulos do tutorial --- */
+.cap-list{display:grid;gap:7px}
+@media (min-width:600px){ .cap-list{grid-template-columns:1fr 1fr} }
+.cap{display:flex;flex-direction:column;gap:2px;text-align:left;padding:11px 13px;
+  background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  transition:border-color var(--dur-1),background var(--dur-1)}
+.cap:hover{border-color:var(--v-1);background:var(--s-3)}
+.cap b{font-size:var(--t-sm);font-weight:650}
+.cap span{font-size:var(--t-xs);color:var(--ink-3)}
+
 /* --- novidades da versão --- */
 .news{display:flex;flex-direction:column;gap:2px;margin-bottom:18px}
 .news .ni{display:flex;flex-direction:column;gap:2px;padding:11px 0;
@@ -1447,8 +1457,8 @@ function txRow(t){
   else if(t.paid&&t.payDate&&mkey(t.payDate)!==mkey(t.due)) meta.push(ic("outflow")+" pago em "+shortMonth(mkey(t.payDate)));
   const sign=t.type==="inc"?"+":"−";
   const col=isPop?"info":(t.type==="inc"?"up":"down");
-  return '<div class="row">'+
-    '<div class="sel'+(selTx.has(t.id)?" on":"")+'" data-action="tx-sel" data-id="'+t.id+'"></div>'+
+  return '<div class="row" data-tour="linha">'+
+    '<div class="sel'+(selTx.has(t.id)?" on":"")+'" data-tour="marcar" data-action="tx-sel" data-id="'+t.id+'"></div>'+
     '<div class="av" data-action="tx-edit" data-id="'+t.id+'">'+(isPop?ic("piggy"):catIcon(t.cat))+'</div>'+
     '<div class="mid" data-action="tx-edit" data-id="'+t.id+'">'+
       '<div class="ttl">'+esc(t.desc)+'</div>'+
@@ -1461,7 +1471,7 @@ function txRow(t){
 }
 function rowsList(list,emptyMsg){
   if(!list.length) return '<div class="empty"><div class="e-ic">'+ic("leaf")+'</div><div class="e-t">Nada por aqui</div>'+(emptyMsg||"")+'</div>';
-  return '<div class="rows">'+list.map(txRow).join("")+'</div>';
+  return '<div class="rows" data-tour="lista">'+list.map(txRow).join("")+'</div>';
 }
 
 /* ---------- barra de filtros ---------- */
@@ -1990,11 +2000,22 @@ function renderSettings(){
       : 'Não definido — o saldo mostra a variação, não o valor real em conta.')+'</div>'+
     '<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
-    '<div class="sec-head" style="margin:0 0 12px"><h2>Ajuda</h2></div>'+
-    '<div class="act-row" style="flex-direction:column;align-items:stretch;gap:8px">'+
-      '<button class="btn ghost" data-action="tut-open">'+ic("book")+' Tour de introdução</button>'+
-      '<button class="btn ghost" data-action="tour-adv">'+ic("target")+' Tour dos recursos avançados</button>'+
-      '<button class="btn ghost" data-action="news-open">'+ic("rocket")+' O que mudou na versão '+APP_VERSION+'</button>'+
+    '<div class="sec-head" style="margin:0 0 4px"><h2>Ajuda</h2></div>'+
+    '<div class="help" style="margin:0 0 14px">Tutoriais em balões, apontando direto na tela. Dá para sair no meio e voltar depois.</div>'+
+    '<button class="btn" data-action="tut-open">'+ic("book")+' Tutorial completo</button>'+
+    '<div class="help" style="margin:8px 0 14px">Ou escolha só o que precisa:</div>'+
+    '<div class="cap-list">'+
+      [["intro","Primeiros passos","como a tela é organizada"],
+       ["lancar","Como lançar","campo a campo, com o formulário aberto"],
+       ["conferir","Conferir e dar baixa","saldo, listas e pagamento em lote"],
+       ["cartoes","Cartões e vales","limite, fatura e soma de faturas"],
+       ["analise","Análise e PDF","gráficos, médias e relatório"],
+       ["avancado","Recursos avançados","abertura, competência e lixeira"]
+      ].map(([v,t,s])=>'<button class="cap" data-action="tour-cap" data-v="'+v+'">'+
+        '<b>'+t+'</b><span>'+s+'</span></button>').join("")+
+    '</div>'+
+    '<div class="act-row" style="margin-top:14px">'+
+      '<button class="btn small ghost" data-action="news-open">'+ic("rocket")+' O que mudou na versão '+APP_VERSION+'</button>'+
     '</div></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
     '<div class="sec-head" style="margin:0 0 12px"><h2>Identidade</h2></div>'+
@@ -2125,16 +2146,16 @@ function openAdd(){
   addType="exp"; addKind="avista"; addDest="normal";
   const hasWallet=S.cards.length||S.tickets.length;
   openModal(modalHead("Novo lançamento")+
-  '<div class="seg" id="segType">'+
+  '<div class="seg" id="segType" data-tour="f-tipo">'+
     '<button data-action="seg-type" data-v="exp" class="on">'+ic("outflow")+' Gasto</button>'+
     '<button data-action="seg-type" data-v="inc">'+ic("inflow")+' Receita</button>'+
     '<button data-action="seg-type" data-v="savings">'+ic("piggy")+' Guardar</button></div>'+
   '<form id="fTx">'+
-  '<label>Descrição</label><input id="txDesc" placeholder="Ex.: Mercado do mês" required>'+
-  '<div class="row2"><div><label id="lblValor">Valor</label><input id="txVal" inputmode="decimal" placeholder="0,00" required></div>'+
-  '<div id="wrapCat"><label>Categoria</label><select id="txCat">'+catOptions("exp")+'</select></div>'+
+  '<label>Descrição</label><input id="txDesc" data-tour="f-desc" placeholder="Ex.: Mercado do mês" required>'+
+  '<div class="row2"><div data-tour="f-valor"><label id="lblValor">Valor</label><input id="txVal" inputmode="decimal" placeholder="0,00" required></div>'+
+  '<div id="wrapCat" data-tour="f-cat"><label>Categoria</label><select id="txCat">'+catOptions("exp")+'</select></div>'+
   '<div id="wrapGoal" class="hidden"><label>Poupança</label><select id="txGoal">'+S.goals.map(g=>'<option value="'+g.id+'">'+esc(g.name)+'</option>').join("")+'</select></div></div>'+
-  '<label>Tipo</label><div class="seg small" id="segKind">'+
+  '<label>Tipo</label><div class="seg small" id="segKind" data-tour="f-kind">'+
     '<button type="button" data-action="seg-kind" data-v="avista" class="on">À vista</button>'+
     '<button type="button" data-action="seg-kind" data-v="parcelado">Parcelado</button>'+
     '<button type="button" data-action="seg-kind" data-v="fixo">Fixo mensal</button></div>'+
@@ -2146,17 +2167,17 @@ function openAdd(){
     '<label class="check-line" style="margin-bottom:10px"><input type="checkbox" id="txPerp"><span>Repetir <b>sempre</b>, sem data para acabar</span></label>'+
     '<div id="wrapMonths"><label>Repetir por quantos meses?</label><input id="txMonths" type="number" min="2" max="600" value="12"></div>'+
     '<div class="help">Cria nos próximos meses; você confirma quando pagar/receber. A categoria é mantida em todos.</div></div>'+
-  '<div id="wrapMethod" class="row2"><div><label>Forma</label><select id="txMethod">'+
+  '<div id="wrapMethod" class="row2" data-tour="f-forma"><div><label>Forma</label><select id="txMethod">'+
     Object.entries(METHODS).filter(([k])=>k!=="ticket"||S.tickets.length).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join("")+'</select></div>'+
   '<div id="wrapWallet" class="hidden"><label id="lblWallet">Cartão</label>'+walletSelect("txWallet","")+'</div></div>'+
   '<div id="wrapBuy" class="hidden"><label>Data da compra</label><input id="txBuy" type="date" value="'+todayISO()+'">'+
     '<div class="help">Uso o fechamento do cartão para calcular o vencimento da fatura.</div></div>'+
-  '<label id="lblDue">Vencimento</label><input id="txDue" type="date" value="'+todayISO()+'" required>'+
-  '<div id="wrapComp" class="hidden"><label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="txComp" type="month">'+
+  '<label id="lblDue">Vencimento</label><input id="txDue" data-tour="f-venc" type="date" value="'+todayISO()+'" required>'+
+  '<div id="wrapComp" class="hidden" data-tour="f-comp"><label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="txComp" type="month">'+
     '<div class="help" id="helpComp"></div></div>'+
-  '<label class="check-line" id="wrapPaid"><input type="checkbox" id="txAlready"><span id="lblAlready">Já foi pago</span></label>'+
+  '<label class="check-line" id="wrapPaid" data-tour="f-pago"><input type="checkbox" id="txAlready"><span id="lblAlready">Já foi pago</span></label>'+
   (!hasWallet?'':'')+
-  '<button class="btn" type="submit">Salvar lançamento</button></form>');
+  '<button class="btn" type="submit" data-tour="f-salvar">Salvar lançamento</button></form>');
   syncAddForm();
 }
 function syncAddForm(){
@@ -2642,19 +2663,97 @@ const TOUR_BASIC=[
   b:"Cadastre seus cartões e lance seus gastos. Quando tiver alguns lançamentos, eu volto para mostrar os recursos mais avançados.<br><br>Este tour fica salvo em <b>Ajustes</b>."}
 ];
 
-const TOUR_ADV=[
- {t:"Agora que você já tem dados…",
-  b:"Alguns recursos que economizam bastante tempo no dia a dia."},
- {sel:"cards",tab:"cards",place:"bottom",t:"Somar faturas",
-  b:"Toque no círculo de cada cartão para marcá-lo. Aparece a soma das faturas selecionadas, com o detalhe de quanto está em aberto e quanto já foi pago.<br><br>Ao abrir um cartão você também pode buscar dentro da fatura por nome ou valor."},
- {sel:"ledger",tab:"home",place:"bottom",t:"Competência",
-  b:"Recebeu adiantamento em julho que é do salário de agosto? Ao lançar, preencha o <b>mês de competência</b> e ele conta em agosto na Análise.<br><br>Vale para gastos também, e é sempre opcional — em branco, funciona como sempre."},
- {sel:"trash",tab:"home",place:"right",t:"Nada se perde",
-  b:"Ao excluir, você escolhe: só aquele, o grupo todo, ou apenas os que ainda não foram pagos.<br><br>O que sai vai para a <b>Lixeira</b>: some de todos os saldos, mas pode voltar quando quiser."},
- {t:"Relatório em PDF",
-  b:"Em <b>Ajustes</b> ou pelo atalho, você gera um PDF filtrado — por exemplo, tudo que alguém te deve: busque o nome da pessoa, escolha <i>todos os meses</i> e <i>somente em aberto</i>.<br><br>Sai pronto para enviar."},
- {t:"Pronto",b:"Se precisar rever, os dois tours ficam em <b>Ajustes</b>."}
+/* Como lançar — abre o formulário de verdade e explica campo a campo.
+   Nada é salvo: o passo final fecha a tela sem submeter. */
+const TOUR_LANCAR=[
+ {t:"Como lançar",b:"Vou abrir o formulário e explicar cada campo. <b>Nada será salvo</b> — é só demonstração."},
+ {abre:()=>openAdd(),sel:"f-tipo",place:"bottom",t:"1. O que você está lançando",
+  b:"<b>Gasto</b> é dinheiro saindo. <b>Receita</b> é dinheiro entrando. <b>Guardar</b> move para uma meta de poupança — sai do caixa, mas continua sendo seu."},
+ {sel:"f-desc",place:"bottom",t:"2. Descrição",
+  b:"Escreva de um jeito que você reconheça depois. Vale colocar o nome de alguém: <i>“Empréstimo Carlos”</i> — assim você acha tudo dele numa busca e gera um PDF para cobrar."},
+ {sel:"f-valor",place:"bottom",t:"3. Valor",
+  b:"Digite só os números: <b>1250</b> vira R$ 1.250,00. Para centavos, use vírgula: <b>89,90</b>."},
+ {sel:"f-cat",place:"bottom",t:"4. Categoria",
+  b:"É por ela que a Análise agrupa seus gastos. Se faltar alguma, escolha <b>Criar nova categoria</b> no fim da lista."},
+ {sel:"f-kind",place:"bottom",t:"5. À vista, parcelado ou fixo",
+  b:"<b>À vista</b> é uma vez só.<br><b>Parcelado</b>: informe o valor <b>total</b> e o número de parcelas — o WIGO divide e agenda cada uma.<br><b>Fixo mensal</b>: repete todo mês, e marcando <i>repetir sempre</i> ele nunca acaba."},
+ {sel:"f-forma",place:"bottom",t:"6. Como foi pago",
+  b:"Escolhendo <b>Cartão</b>, aparece a data da compra e o WIGO calcula sozinho em qual fatura ela cai, usando o dia de fechamento.<br><br>Escolhendo <b>Ticket</b>, o valor sai do saldo do vale."},
+ {sel:"f-venc",place:"top",t:"7. Vencimento",
+  b:"A data em que a conta vence, ou em que você espera receber. É ela que define se o lançamento aparece <i>no prazo</i>, <i>a vencer</i> ou <i>em atraso</i>."},
+ {sel:"f-pago",place:"top",t:"8. Já aconteceu?",
+  b:"Marque se o dinheiro <b>já saiu ou já entrou</b>. Marcado, entra no saldo atual na hora. Desmarcado, fica como previsto até você confirmar."},
+ {sel:"f-salvar",place:"top",t:"9. Salvar",
+  b:"Pronto — ele aparece na lista do mês correspondente."},
+ {fecha:true,t:"Depois de lançar",
+  b:"Na lista, cada linha tem o botão <b>Pagar</b> (ou <b>Receber</b>). Ao confirmar dá para ajustar data e valor — útil quando veio juros ou desconto.<br><br>Tocar na linha abre a edição, onde ficam duplicar e excluir."}
 ];
+
+/* Conferir e dar baixa */
+const TOUR_CONFERIR=[
+ {tab:"home",t:"Conferir e dar baixa",b:"Como acompanhar o que está pago, o que falta e o que venceu."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"O extrato do mês",
+  b:"<b>Saldo inicial</b> é o que sobrou do mês passado. Somando o recebido e tirando o pago, chega no <b>saldo atual</b> — esse é o número para comparar com o app do banco.<br><br>Abaixo dele fica o que ainda deve acontecer até o mês fechar."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Cada linha é um atalho",
+  b:"Toque em <b>Recebido</b>, <b>Pago</b>, <b>A receber</b> ou <b>A pagar</b> e a lista passa a mostrar exatamente aqueles lançamentos."},
+ {sel:"lista",tab:"home",place:"top",t:"A lista do mês",
+  b:"Cada linha traz vencimento, forma de pagamento e situação. O que está vencido aparece destacado."},
+ {sel:"linha",tab:"home",place:"bottom",t:"Dar baixa",
+  b:"O botão <b>Pagar</b> (ou <b>Receber</b>) confirma que o dinheiro se moveu. Na confirmação dá para ajustar a <b>data</b> e o <b>valor</b> — é assim que juros, desconto ou pagamento parcial ficam registrados certo.<br><br>Tocar no resto da linha abre a edição."},
+ {sel:"marcar",tab:"home",place:"right",t:"Marcar vários de uma vez",
+  b:"Toque no círculo ao lado de qualquer lançamento. Aparece uma barra com a <b>soma dos selecionados</b> e um botão para baixar todos juntos — serve para fechar o mês em poucos toques."},
+ {sel:"search",tab:"home",place:"top",t:"Procurar",
+  b:"Busque por descrição, categoria, cartão ou valor. No ícone de filtro dá para limitar por faixa de valor, período, forma e tipo.<br><br>Nos chips acima, alterne entre <b>o mês atual</b> e <b>todos os meses</b>."}
+];
+
+/* Cartões e vales */
+const TOUR_CARTOES=[
+ {tab:"cards",t:"Cartões e vales",b:"Como acompanhar limite e fatura."},
+ {sel:"cards",tab:"cards",place:"bottom",t:"Seus cartões",
+  b:"Cada cartão mostra o <b>limite usado</b>, o disponível e a fatura do mês exibido.<br><br>Cadastre com o dia de fechamento e o de vencimento — é assim que o WIGO sabe em qual fatura cai cada compra."},
+ {sel:"cards",tab:"cards",place:"bottom",t:"Somar faturas",
+  b:"O círculo no canto de cada cartão marca a fatura. Marcando vários, aparece o <b>total das faturas do mês</b>, com quanto está em aberto e quanto já foi pago."},
+ {sel:"cards",tab:"cards",place:"bottom",t:"Dentro do cartão",
+  b:"Tocando no cartão você vê todas as compras daquele mês e pode <b>buscar por nome ou valor</b> dentro da fatura.<br><br>O botão <b>Marcar fatura como paga</b> baixa tudo de uma vez e libera o limite."},
+ {tab:"cards",t:"Vales e benefícios",
+  b:"Vale-alimentação e afins entram como <b>Ticket</b>: você informa quanto recarrega por mês e o WIGO acompanha o saldo, separado do seu dinheiro."}
+];
+
+/* Análise e relatórios */
+const TOUR_ANALISE=[
+ {tab:"report",t:"Análise",b:"Onde você enxerga o padrão, não só o mês."},
+ {tab:"report",t:"Tendência de 12 meses",
+  b:"O gráfico compara entradas e saídas mês a mês. Serve para ver se a linha de gasto vem subindo ao longo do ano."},
+ {tab:"report",t:"Comparação e médias",
+  b:"Mostra quanto subiu ou caiu em relação ao mês anterior, e a <b>média dos últimos 6 meses</b> por categoria — o número que revela para onde o dinheiro realmente vai."},
+ {tab:"report",t:"Projeção do mês",
+  b:"A partir do ritmo de gasto até aqui, estima como o mês deve fechar. O mapa de calor mostra os dias de maior gasto; toque num dia para ver o que foi."},
+ {tab:"report",t:"Detalhar",
+  b:"Toque em qualquer <b>mês</b> ou <b>categoria</b> para abrir o detalhamento com todos os lançamentos daquele recorte."},
+ {t:"Relatório em PDF",
+  b:"Em <b>Ajustes</b>, o botão <b>Relatório em PDF</b> gera um documento filtrado.<br><br>Para cobrar alguém: busque o nome da pessoa, escolha <i>todos os meses</i> e <i>somente em aberto</i>. Sai pronto para enviar."}
+];
+
+/* Recursos avançados */
+const TOUR_ADV=[
+ {t:"Recursos avançados",b:"O que economiza tempo depois que o app já faz parte da rotina."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Saldo de abertura",
+  b:"Em <b>Ajustes</b>, informe uma vez quanto você tem em conta. A partir daí o saldo passa a bater com o extrato do banco, e o fechamento de um mês vira a abertura do seguinte."},
+ {abre:()=>openAdd(),sel:"f-comp",place:"top",t:"Competência",
+  b:"Recebeu em julho um adiantamento que é do salário de agosto? Preencha aqui o <b>mês de competência</b>: ele conta em agosto na Análise, mas entra no caixa em julho — como no banco.<br><br>Vale para gastos também. Em branco, funciona como sempre."},
+ {sel:"trash",tab:"home",place:"right",t:"Nada se perde",
+  b:"Ao excluir você escolhe: só aquele, o grupo inteiro, apenas os que ainda não foram pagos, ou marcando um a um.<br><br>O que sai vai para a <b>Lixeira</b>: some de todos os saldos, mas pode voltar."},
+ {t:"Duplicar invertido",
+  b:"Emprestou dinheiro e vai receber de volta? Abra o lançamento e use <b>Duplicar como receita</b> — mesmos dados, sinal trocado, sem redigitar."},
+ {t:"Metas de poupança",
+  b:"Na aba <b>Metas</b> você cria objetivos com valor alvo e aporte mensal. O WIGO acompanha o progresso e estima o rendimento pelo CDI."},
+ {t:"Pronto",b:"Todos os tutoriais ficam em <b>Ajustes → Ajuda</b> para rever quando quiser."}
+];
+
+/* Primeiro acesso: tudo em sequência, na ordem em que se aprende. */
+const TOUR_COMPLETO=[...TOUR_BASIC.slice(0,-1),...TOUR_LANCAR,...TOUR_CONFERIR,
+  ...TOUR_CARTOES,...TOUR_ANALISE,
+  {t:"Terminamos",b:"Comece cadastrando seus cartões e lançando o mês atual.<br><br>Para rever qualquer parte, tudo está em <b>Ajustes → Ajuda</b>."}];
 
 let tour=null, tourStep=0;
 const tourEl=s=>[...document.querySelectorAll('[data-tour="'+s+'"]')]
@@ -2676,10 +2775,16 @@ function renderTour(){
   while(tourStep<tour.passos.length){
     const p=tour.passos[tourStep];
     if(p.tab&&tab!==p.tab){ tab=p.tab; homeFlt=null; render(); }
+    /* abre (ou fecha) a tela que o passo precisa mostrar — é o que permite
+       explicar os campos do formulário de lançamento por dentro.
+       Passos cujo alvo não é campo de formulário fecham o que estiver aberto,
+       para não deixar a tela presa ao voltar um passo. */
+    if(p.abre){ try{ p.abre(); }catch(e){} }
+    else if(p.fecha||!(p.sel||"").startsWith("f-")) closeModal();
     if(!p.sel||tourEl(p.sel)) break;
     tourStep++;
   }
-  if(tourStep>=tour.passos.length){ endTour(); toast("Tour concluído ✓"); return; }
+  if(tourStep>=tour.passos.length){ endTour(); toast("Tutorial concluído ✓"); return; }
 
   const p=tour.passos[tourStep];
   const alvo=p.sel?tourEl(p.sel):null;
@@ -2756,10 +2861,10 @@ const WHATS_NEW=[
    chegar não precisa saber o que mudou numa versão que nunca usou. */
 function decidirOnboarding(){
   if(!S) return;
-  // 1) primeiro acesso: tour básico
+  // 1) primeiro acesso: tutorial completo
   if(!S.tutorialSeen){
     // quem já chega com dados (conta antiga) não precisa do tour de boas-vindas
-    if(!aTx().length){ startTour(TOUR_BASIC,"tutorialSeen"); return; }
+    if(!aTx().length){ startTour(TOUR_COMPLETO,"tutorialSeen"); return; }
     S.tutorialSeen=true; S.seenVersion=S.seenVersion||null; save();
   }
   // 2) já usa o app e ainda não viu as novidades desta versão
@@ -3104,8 +3209,11 @@ document.addEventListener("click", async e=>{
     case "tour-next": tourStep++; renderTour(); break;
     case "tour-prev": tourStep=Math.max(0,tourStep-1); renderTour(); break;
     case "tour-end": endTour(); break;
-    case "tut-open": startTour(TOUR_BASIC,"tutorialSeen"); break;
+    case "tut-open": startTour(TOUR_COMPLETO,"tutorialSeen"); break;
     case "tour-adv": startTour(TOUR_ADV,"tourAdvSeen"); break;
+    case "tour-cap": { const caps={intro:TOUR_BASIC,lancar:TOUR_LANCAR,conferir:TOUR_CONFERIR,
+        cartoes:TOUR_CARTOES,analise:TOUR_ANALISE,avancado:TOUR_ADV};
+      const c=caps[el.dataset.v]; if(c) startTour(c,el.dataset.v==="avancado"?"tourAdvSeen":null); break; }
     // novidades da versão
     case "news-open": openWhatsNew(false); break;
     case "news-done": S.seenVersion=APP_VERSION; save(); closeModal(); break;
