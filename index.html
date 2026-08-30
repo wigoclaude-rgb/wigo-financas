@@ -3232,8 +3232,17 @@ function openTutorial(){ startTour(TOUR_BASIC,"tutorialSeen"); }
    S.seenVersion guarda a última versão que o usuário já viu. Quando publico
    algo novo, subo APP_VERSION e escrevo os itens aqui — não dá para deduzir
    isso do código sozinho. */
-const APP_VERSION="2.0";
+const APP_VERSION="2.1";
 const WHATS_NEW=[
+ {v:"2.1",d:"Agosto de 2026",itens:[
+   ["Contas","Cadastre banco, poupança e dinheiro em espécie. Cada conta tem saldo próprio e o total é a soma delas."],
+   ["Transferência entre contas","Mover dinheiro de uma conta para outra sem virar receita nem despesa — o total não muda."],
+   ["Cartão ligado à conta","Diga em qual conta cada fatura é debitada. A compra no crédito só sai da conta quando a fatura é paga."],
+   ["Pessoas","Vincule lançamentos a alguém e acompanhe quanto essa pessoa deve, ou quanto você deve a ela. Com PDF de cobrança em um toque."],
+   ["Vincular o que já existe","Marque vários lançamentos antigos de uma vez e ligue todos a uma pessoa."],
+   ["Saldo que concilia","O saldo final de um mês encerrado é exatamente a abertura do mês seguinte — dá para conferir contra o extrato do banco."],
+   ["Tutorial refeito","Balões apontando direto na tela, com um capítulo que abre o formulário e explica campo a campo."]
+ ]},
  {v:"2.0",d:"Agosto de 2026",itens:[
    ["Visual novo","Menu lateral no computador, ícones redesenhados e telas mais largas."],
    ["Saldo como extrato","Saldo inicial, o que entrou, o que saiu e o saldo atual — encadeado de um mês para o outro."],
