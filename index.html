@@ -1139,7 +1139,11 @@ function defaultState(){
 }
 let S=defaultState();
 let user=null, tab="home", viewMonth=new Date().toISOString().slice(0,7), saveTimer=null;
-let filters={ q:"", type:"all", cat:"all", card:"all", status:"all" };
+/* o estado inicial sai de resetFilters(), e não de um objeto repetido aqui:
+   quando os filtros avançados foram criados, esta linha ficou para trás e os
+   campos novos nasciam undefined — como undefined !== "all", passFilter
+   rejeitava todos os lançamentos e a lista abria vazia. */
+let filters; resetFilters();
 let homeFlt=null; // atalho do dashboard: 'atraso'|'proximo'|'recebido'|'pago'|'guardado'|null
 let selTx=new Set(); // ids dos lançamentos selecionados (soma + ação em lote)
 let curListIds=[]; // ids da lista filtrada atualmente exibida (p/ selecionar todos)
