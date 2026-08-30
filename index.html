@@ -753,6 +753,10 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .ledger .lg.now b,.ledger .lg.end b{font-family:var(--f-display);font-size:16px;font-weight:800}
 .ledger .lt{font-style:normal;font-size:var(--t-micro);color:var(--warn);
   background:var(--warn-bg);border-radius:5px;padding:1px 5px;margin-left:5px}
+/* nota de mês encerrado: informa o que ficou pendente sem entrar na conta */
+.ledger .lg.nota{border-bottom:none;padding-top:3px}
+.ledger .lg.nota span{font-size:var(--t-xs);color:rgba(255,255,255,.45)}
+.ledger .lg.nota b{font-size:var(--t-xs);font-weight:600}
 .open-warn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
   color:var(--warn);font-weight:600;font-size:var(--t-xs)}
 .open-warn .icn{width:14px;height:14px}
@@ -1406,8 +1410,18 @@ function cashFlow(mk,acc){
   let aReceber=0,aPagar=0;
   pend.forEach(t=>{ const v=signedFor(t,acc);
     if(v>0) aReceber+=v; else if(v<0) aPagar+=-v; });
-  return { mk, acc:acc||null, inicial, entrou, saiu, atual, aReceber, aPagar,
-    final:atual+aReceber-aPagar,
+
+  /* Mês encerrado não tem previsão: ele já aconteceu. O saldo final de um mês
+     passado é o realizado — e é justamente isso que faz o fechamento de um mês
+     ser sempre igual à abertura do seguinte, fechando a conciliação.
+
+     O que ficou pendente não some: continua aparecendo em "a pagar" do mês
+     corrente até ser baixado. Só deixa de ser descontado de um mês que já
+     terminou, onde ele nunca chegou a sair do caixa. */
+  const fechado=mk<mkey(todayISO());
+  const final=fechado?atual:atual+aReceber-aPagar;
+
+  return { mk, acc:acc||null, inicial, entrou, saiu, atual, aReceber, aPagar, final, fechado,
     /* quanto do pendente já venceu — o que explica saldo final menor que o atual */
     atrasado:sum(pend.filter(t=>statusOf(t)==="atrasado"&&signedFor(t,acc)<0),val),
     semAbertura:!temAbertura(acc) };
@@ -1452,6 +1466,10 @@ function pesFlow(id){
 /* quando marca/desmarca pago, sincroniza movimento de poupança */
 function applyPaid(t,date,amt){
   t.paid=true; t.payDate=date||todayISO(); t.payAmt=amt!=null?amt:t.amount;
+  /* a compra no cartão nasce sem conta — o dinheiro não saiu no dia da compra.
+     Ao pagar a fatura ela ganha a conta de débito do cartão, e é aí que o
+     valor sai do saldo daquela conta. */
+  if(!t.accId&&t.cardId){ const c=cardOf(t.cardId); if(c&&c.accId) t.accId=c.accId; }
   if(t.dest==="savings"&&t.goalId){ const g=goalOf(t.goalId);
     if(g){ g.moves=g.moves||[]; if(!g.moves.some(mv=>mv.txId===t.id))
       g.moves.push({id:uid(),txId:t.id,date:t.payDate,amount:t.payAmt,kind:"in"}); } }
@@ -1734,23 +1752,35 @@ function renderHome(){
   const cx=cashFlow(viewMonth);
   const tot=Math.max(1,incT+expT);
   const hero='<div class="hero" data-tour="ledger">'+
-    '<div class="cap">Saldo atual · <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
+    '<div class="cap">'+(cx.fechado?"Saldo ao fim de":"Saldo atual ·")+
+      ' <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
     '<div class="big '+(cx.atual>=0?"":"down")+'">'+fmt(cx.atual)+'</div>'+
     (cx.semAbertura
       ? '<div class="sub"><span class="open-warn" data-action="open-set">'+ic("alert")+
         ' Informe seu saldo de abertura para bater com o banco</span></div>'
       : '<div class="sub">'+deltaChip(pctDelta(incT-expT,prev.inc-prev.exp))+
-        '<span>Fecha o mês em <b style="color:#fff">'+fmt(cx.final)+'</b></span></div>')+
+        '<span>'+(cx.fechado
+          ? 'Foi com isso que '+shortMonth(addMonthsISO(viewMonth+"-01",1).slice(0,7))+' começou'
+          : 'Fecha o mês em <b style="color:#fff">'+fmt(cx.final)+'</b>')+'</span></div>')+
 
+    /* mês encerrado mostra o que de fato aconteceu; o pendente aparece como
+       nota, não somado, porque aquele dinheiro nunca saiu naquele mês */
     '<div class="ledger">'+
       '<div class="lg"><span>Saldo inicial</span><b>'+fmt(cx.inicial)+'</b></div>'+
       '<div class="lg" data-action="home-filter" data-mode="recebido"><span>+ Recebido</span><b class="up">'+fmt(cx.entrou)+'</b></div>'+
       '<div class="lg" data-action="home-filter" data-mode="pago"><span>− Pago</span><b class="down">'+fmt(cx.saiu)+'</b></div>'+
-      '<div class="lg now"><span>= Saldo atual</span><b>'+fmt(cx.atual)+'</b></div>'+
-      (cx.aReceber?'<div class="lg" data-action="home-filter" data-mode="areceber"><span>+ A receber</span><b class="up">'+fmt(cx.aReceber)+'</b></div>':"")+
-      (cx.aPagar?'<div class="lg" data-action="home-filter" data-mode="apagar"><span>− A pagar'+
-        (cx.atrasado?' <i class="lt">'+fmt(cx.atrasado)+' vencido</i>':"")+'</span><b class="down">'+fmt(cx.aPagar)+'</b></div>':"")+
-      '<div class="lg end"><span>= Saldo final</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>'+
+      (cx.fechado
+        ? '<div class="lg end"><span>= Saldo final</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>'+
+          ((cx.aReceber||cx.aPagar)
+            ? '<div class="lg nota"><span>Ficou pendente</span><b>'+
+              (cx.aReceber?'<span class="up">+'+fmt(cx.aReceber)+'</span> ':"")+
+              (cx.aPagar?'<span class="down">−'+fmt(cx.aPagar)+'</span>':"")+'</b></div>'
+            : "")
+        : '<div class="lg now"><span>= Saldo atual</span><b>'+fmt(cx.atual)+'</b></div>'+
+          (cx.aReceber?'<div class="lg" data-action="home-filter" data-mode="areceber"><span>+ A receber</span><b class="up">'+fmt(cx.aReceber)+'</b></div>':"")+
+          (cx.aPagar?'<div class="lg" data-action="home-filter" data-mode="apagar"><span>− A pagar'+
+            (cx.atrasado?' <i class="lt">'+fmt(cx.atrasado)+' vencido</i>':"")+'</span><b class="down">'+fmt(cx.aPagar)+'</b></div>':"")+
+          '<div class="lg end"><span>= Saldo final previsto</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>')+
     '</div>'+
 
     '<div class="flowbar"><i style="width:'+(incT/tot*100)+'%;background:linear-gradient(90deg,#00E5A8,#00b98a)"></i>'+
@@ -2392,6 +2422,14 @@ function syncAddForm(){
   /* "Data da compra" fora do if: antes ele só era escondido dentro do ramo de
      gasto, então ao trocar para Receita o campo ficava preso visível. */
   $("#wrapBuy").classList.toggle("hidden",!(showMethod&&$("#txMethod").value==="cartao"));
+  /* cartão e vale não debitam conta na hora da compra: o cartão debita quando
+     a fatura é paga, e o vale tem saldo próprio. Pedir a conta aqui daria a
+     entender que o dinheiro já saiu. */
+  if($("#wrapAcc")){
+    const forma=showMethod?$("#txMethod").value:"";
+    const semConta=forma==="cartao"||forma==="ticket";
+    $("#wrapAcc").classList.toggle("hidden",!S.accounts.length||semConta);
+  }
   if(showMethod){ const mv=$("#txMethod").value;
     const isCard=mv==="cartao", isTicket=mv==="ticket";
     $("#wrapWallet").classList.toggle("hidden",!(isCard||isTicket));
@@ -2422,7 +2460,9 @@ function submitTx(){
   createTx({ type:addType==="inc"?"inc":"exp", dest:addType==="savings"?"savings":null,
     desc:$("#txDesc").value.trim()||"Sem descrição", cat, method, cardId, ticketId, goalId,
     comp:(addType!=="savings"&&$("#txComp")&&$("#txComp").value)?$("#txComp").value:null,
-    accId:($("#txAcc")&&$("#txAcc").value)||null,
+    /* compra no cartão ou no vale nasce sem conta: ela só ganha uma quando a
+       fatura for paga, e aí é a conta de débito do cartão */
+    accId:(method==="cartao"||method==="ticket")?null:(($("#txAcc")&&$("#txAcc").value)||null),
     pesId:($("#txPes")&&$("#txPes").value)||null,
     kind:addKind, total:val, n:Math.max(2,parseInt($("#txN").value)||2),
     perp:addKind==="fixo"&&$("#txPerp")&&$("#txPerp").checked,
@@ -3364,6 +3404,12 @@ function openCardForm(id){
   '<div id="cdLimitWrap" class="'+(cardNoLimit?"hidden":"")+'"><label>Limite (R$)</label><input id="cdLimit" inputmode="decimal" value="'+(c?c.limit:"")+'" placeholder="0,00"></div>'+
   '<div class="row2"><div id="cdCloseWrap" class="'+(cardNoLimit?"hidden":"")+'"><label>Fecha dia</label><input id="cdClose" type="number" min="1" max="31" value="'+(c?c.closeDay:1)+'"></div>'+
   '<div><label>Vence dia</label><input id="cdDue" type="number" min="1" max="31" value="'+(c?c.dueDay:10)+'"></div></div>'+
+  /* a compra no cartão não sai de conta nenhuma; quem debita é o pagamento da
+     fatura, e é sempre a mesma conta — por isso ela pertence ao cartão */
+  (S.accounts.length?'<label>Fatura debitada em</label><select id="cdAcc">'+
+    '<option value="">— escolher na hora de pagar</option>'+
+    S.accounts.map(a=>'<option value="'+a.id+'"'+(c&&c.accId===a.id?" selected":"")+'>'+esc(a.name)+'</option>').join("")+
+    '</select><div class="help">Ao marcar a fatura como paga, o valor sai desta conta. Ex.: cartão Nubank debitando na conta Nubank.</div>':"")+
   '<button class="btn" type="submit">'+(c?"Salvar":"Adicionar cartão")+'</button>'+
   (c?'<button type="button" class="btn danger" data-action="card-delete" data-id="'+id+'">Excluir cartão</button>':"")+'</form>');
 }
@@ -3931,7 +3977,8 @@ document.addEventListener("submit", async e=>{
     const data={ bank:$("#cdBank").value, nick:$("#cdNick").value.trim()||"Meu cartão", color:cardColor, noLimit,
       limit:noLimit?0:parseMoney($("#cdLimit").value),
       closeDay:noLimit?1:Math.min(31,Math.max(1,parseInt($("#cdClose").value)||1)),
-      dueDay:Math.min(31,Math.max(1,parseInt($("#cdDue").value)||10)) };
+      dueDay:Math.min(31,Math.max(1,parseInt($("#cdDue").value)||10)),
+      accId:($("#cdAcc")&&$("#cdAcc").value)||null };
     if(f.dataset.id){ Object.assign(cardOf(f.dataset.id),data); toast("Cartão atualizado ✓"); }
     else { S.cards.push(Object.assign({id:uid()},data)); toast("Cartão adicionado ✓"); }
     save(); closeModal(); render(); }
