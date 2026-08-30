@@ -2189,11 +2189,6 @@ function renderSettings(){
       '<button class="btn small ghost" data-action="news-open">'+ic("rocket")+' O que mudou na versão '+APP_VERSION+'</button>'+
     '</div></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
-    '<div class="sec-head" style="margin:0 0 12px"><h2>Identidade</h2></div>'+
-    '<form id="fAppName"><label>Nome do app</label>'+
-      '<div style="display:flex;gap:8px"><input id="inAppName" value="'+esc(S.appName)+'" maxlength="14">'+
-      '<button class="btn sm" type="submit">Salvar</button></div></form></div></div>'+
-  '<div class="sec"><div class="surface" style="padding:20px">'+
     '<div class="sec-head" style="margin:0 0 12px"><h2>Categorias de gastos</h2></div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:7px">'+S.expCats.map(c=>'<span class="fchip">'+catIcon(c)+' '+esc(c)+
       ' <b data-action="cat-del" data-t="exp" data-c="'+esc(c)+'" style="color:var(--ink-4);margin-left:2px">✕</b></span>').join("")+'</div>'+
@@ -3958,7 +3953,6 @@ document.addEventListener("submit", async e=>{
     const v=parseMoney($("#mvAmt").value); if(v<=0){ toast("Valor inválido"); return; }
     g.moves=g.moves||[]; g.moves.push({id:uid(),date:$("#mvDate").value||todayISO(),amount:v,kind:f.dataset.kind});
     save(); openGoalDetail(f.dataset.id); render(); toast(f.dataset.kind==="out"?"Retirada registrada ✓":"Depósito registrado ✓"); }
-  else if(f.id==="fAppName"){ S.appName=$("#inAppName").value.trim()||"WIGO"; updateAppName(); save(); toast("Nome salvo ✓"); }
   else if(f.id==="fCdi"){ S.cdiRef=(parseFloat(String($("#inCdi").value).replace(",","."))||14.65)/100; save(); render(); toast("CDI atualizado ✓"); }
   else if(f.id==="fEmail"){ try{ await reauth($("#accPass").value);
       await verifyBeforeUpdateEmail(user,$("#accNewEmail").value.trim()); closeModal(); toast("Confirmação enviada ao novo e-mail"); }
