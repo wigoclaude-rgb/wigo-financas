@@ -1949,6 +1949,23 @@ function renderCards(){
         '<div class="due">Gasto em '+shortMonth(viewMonth)+': '+fmt(spent)+'</div></div></div>';
   }).join("")+'</div>';
   html+='<div class="sec"><button class="btn ghost" data-action="ticket-add">+ Adicionar ticket</button></div>';
+
+  /* pessoas também vivem aqui: no celular não há sidebar, e esta é a aba
+     onde já se procura "de quem é o quê" */
+  const comSaldo=S.people.map(p=>pesFlow(p.id)).filter(f=>f.saldo!==0);
+  const devem=comSaldo.filter(f=>f.saldo>0).reduce((s,f)=>s+f.saldo,0);
+  const devo=comSaldo.filter(f=>f.saldo<0).reduce((s,f)=>s-f.saldo,0);
+  html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Pessoas</h2>'+
+    (S.people.length?'<span class="more" data-action="pes-list">Ver todas ›</span>':"")+'</div>';
+  if(!S.people.length) html+='<div class="empty"><div class="e-ic">'+ic("handshake")+'</div><div class="e-t">Ninguém cadastrado</div>'+
+    'Cadastre pessoas para vincular lançamentos e saber quanto cada uma deve.</div>';
+  else html+='<div class="sec"><div class="grid g2" style="grid-template-columns:1fr 1fr">'+
+      '<div class="metric tap" data-action="pes-list"><div class="k">Te devem</div>'+
+        '<div class="v up">'+fmt(devem)+'</div><div class="s">'+comSaldo.filter(f=>f.saldo>0).length+' pessoa(s)</div></div>'+
+      '<div class="metric tap" data-action="pes-list"><div class="k">Você deve</div>'+
+        '<div class="v down">'+fmt(devo)+'</div><div class="s">'+comSaldo.filter(f=>f.saldo<0).length+' pessoa(s)</div></div>'+
+    '</div></div>';
+  html+='<div class="sec"><button class="btn ghost" data-action="pes-add">'+ic("plus")+' Adicionar pessoa</button></div>';
   return html;
 }
 
@@ -2219,6 +2236,7 @@ function updateSelBar(){
   const lbl=unpaid.length&&unpaid.every(t=>t.type==="inc")?"Receber":"Pagar";
   const html='<div class="si"><div class="n">'+sel.length+' selecionado'+(sel.length>1?"s":"")+'</div>'+
       '<div class="t">'+parts.join(" · ")+'</div></div>'+
+    '<button class="btn sm ghost" data-action="sel-pes" title="Vincular a uma pessoa">'+ic("handshake")+'</button>'+
     (unpaid.length?'<button class="btn sm ok" data-action="sel-pay">✓ '+lbl+' ('+unpaid.length+')</button>':"")+
     '<button class="sh-x" data-action="sel-clear">✕</button>';
   if(!bar){ bar=document.createElement("div"); bar.id="selbar"; document.body.appendChild(bar); }
@@ -2329,9 +2347,13 @@ function openAdd(){
   '<div id="wrapAcc" class="'+(S.accounts.length?"":"hidden")+'" data-tour="f-conta"><label>Conta</label>'+
     '<select id="txAcc">'+S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>'+
     '<div class="help">De qual conta o dinheiro sai ou entra. No cartão de crédito, a conta só é debitada quando você paga a fatura.</div></div>'+
-  '<div id="wrapPes" class="'+(S.people.length?"":"hidden")+'"><label>Pessoa <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label>'+
-    '<select id="txPes"><option value="">—</option>'+S.people.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("")+'</select>'+
-    '<div class="help">Vincule a alguém para acompanhar quanto essa pessoa deve ou é devida.</div></div>'+
+  /* obrigatório de propósito: força decidir de quem é o lançamento em vez de
+     deixar em branco por descuido. "Ninguém" é uma resposta válida. */
+  '<div id="wrapPes" data-tour="f-pessoa"><label>Pessoa</label>'+
+    '<select id="txPes" required><option value="" selected>Ninguém — é meu</option>'+
+    S.people.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("")+
+    '<option value="__new">＋ Cadastrar pessoa…</option></select>'+
+    '<div class="help">Vinculando a alguém, o WIGO acompanha quanto essa pessoa deve ou lhe é devida.</div></div>'+
   '<div id="wrapComp" class="hidden" data-tour="f-comp"><label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="txComp" type="month">'+
     '<div class="help" id="helpComp"></div></div>'+
   '<label class="check-line" id="wrapPaid" data-tour="f-pago"><input type="checkbox" id="txAlready"><span id="lblAlready">Já foi pago</span></label>'+
@@ -2810,12 +2832,57 @@ function openPesDetail(id){
     '<div class="lg"><span>Já recebido</span><b>'+fmt(f.recebido)+'</b></div>'+
     '<div class="lg"><span>Já pago</span><b>'+fmt(f.pago)+'</b></div>'+
   '</div>'+
-  '<div class="act-row" style="margin-top:14px">'+
+  '<div class="act-row" style="margin-top:14px;flex-wrap:wrap">'+
+    '<button class="btn small" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
     '<button class="btn small ghost" data-action="pes-edit" data-id="'+id+'">Editar</button>'+
     '<button class="btn small ghost" data-action="pes-pdf" data-id="'+id+'">'+ic("receipt")+' Gerar PDF</button></div>'+
   '<h3 style="font-size:13.5px;color:var(--v-2);margin:20px 0 8px">Lançamentos</h3>'+
   (lista.length?'<div class="list-plain">'+lista.map(txRow).join("")+'</div>'
     :'<div class="empty">Nenhum lançamento vinculado ainda.</div>'));
+}
+
+/* ----- VINCULAR LANÇAMENTOS EXISTENTES A UMA PESSOA -----
+   Quem já usava o app tem meses de histórico sem vínculo. Esta tela lista os
+   lançamentos e deixa marcar vários de uma vez, com busca para achar rápido. */
+let vincQ="";
+function openVincular(pesId){
+  const p=pesOf(pesId); if(!p)return;
+  vincQ="";
+  openModal(modalHead("Vincular a "+esc(p.name),"Marque os lançamentos que são desta pessoa")+
+  '<input id="vincSearch" data-pes="'+pesId+'" placeholder="Buscar por descrição, categoria ou valor…" autocomplete="off">'+
+  '<div class="help" style="margin:8px 0 12px">Já marcados são os que estão vinculados agora. Desmarcar remove o vínculo.</div>'+
+  '<form id="fVincular" data-id="'+pesId+'">'+
+    '<div id="vincBox">'+vincList(pesId)+'</div>'+
+    '<button class="btn" type="submit">Salvar vínculos</button></form>');
+}
+function vincList(pesId){
+  const q=vincQ.trim().toLowerCase();
+  let lista=aTx().filter(t=>t.type!=="xfer");
+  if(q){
+    const num=q.replace(/[^\d,]/g,"").replace(",",".");
+    lista=lista.filter(t=>{
+      if((t.desc+" "+(t.cat||"")).toLowerCase().includes(q)) return true;
+      return num&&String(val(t)).includes(num);
+    });
+  } else {
+    /* sem busca, mostra os já vinculados primeiro e depois os mais recentes,
+       para não despejar anos de histórico de uma vez */
+    lista=lista.slice().sort((a,b)=>{
+      const av=a.pesId===pesId?0:1, bv=b.pesId===pesId?0:1;
+      if(av!==bv) return av-bv;
+      return a.due<b.due?1:-1;
+    }).slice(0,60);
+  }
+  if(!lista.length) return '<div class="empty">Nada encontrado.</div>';
+  return '<div class="del-list" style="max-height:340px">'+lista.map(t=>{
+    const outra=t.pesId&&t.pesId!==pesId?pesOf(t.pesId):null;
+    return '<label class="check-line pick"><input type="checkbox" name="vinc" value="'+t.id+'"'+
+      (t.pesId===pesId?" checked":"")+'>'+
+      '<span><b>'+esc(t.desc)+'</b><br><span class="faint" style="font-size:11.5px">'+
+        fmtDate(t.due)+" · "+(t.type==="inc"?"+":"−")+fmt(val(t))+" · "+stLabel(t)+
+        (outra?' · <span style="color:var(--warn)">hoje é de '+esc(outra.name)+'</span>':"")+
+      '</span></span></label>';
+  }).join("")+'</div>';
 }
 
 /* ----- SALDO DE ABERTURA -----
@@ -3264,6 +3331,13 @@ function openEdit(id){
       Object.entries(METHODS).filter(([k])=>k!=="ticket"||S.tickets.length).map(([k,v])=>'<option value="'+k+'"'+(t.method===k?" selected":"")+'>'+v+'</option>').join("")+'</select></div>'+
     '<div id="edWrapWallet" class="'+((t.method==="cartao"||t.method==="ticket")?"":"hidden")+'"><label id="edLblWallet">'+(t.method==="ticket"?"Ticket":"Cartão")+'</label>'+walletSelect("edWallet",walletSel)+'</div></div>':"")+
   '<label>Vencimento</label><input id="edDue" type="date" value="'+t.due+'">'+
+  (S.accounts.length?'<label>Conta</label><select id="edAcc">'+
+    S.accounts.map(a=>'<option value="'+a.id+'"'+(t.accId===a.id?" selected":"")+'>'+esc(a.name)+'</option>').join("")+
+    '</select>':"")+
+  '<label>Pessoa</label><select id="edPes">'+
+    '<option value=""'+(!t.pesId?" selected":"")+'>Ninguém — é meu</option>'+
+    S.people.map(p=>'<option value="'+p.id+'"'+(t.pesId===p.id?" selected":"")+'>'+esc(p.name)+'</option>').join("")+
+    '<option value="__new">＋ Cadastrar pessoa…</option></select>'+
   (t.dest==="savings"?"":'<label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="edComp" type="month" value="'+(t.comp||"")+'">'+
     '<div class="help">A que mês '+(t.type==="inc"?"essa renda":"esse gasto")+' pertence. Vazio = mês do '+(t.type==="inc"?"recebimento":"vencimento")+'.</div>')+
   (t.paid?'<div class="row2"><div><label>Data do pagamento</label><input id="edPayDate" type="date" value="'+(t.payDate||t.due)+'"></div>'+
@@ -3536,6 +3610,19 @@ document.addEventListener("click", async e=>{
       S.tx.forEach(t=>{ if(t.pesId===id) t.pesId=null; });
       S.people=S.people.filter(p=>p.id!==id);
       save(); closeModal(); render(); toast("Pessoa excluída"); break; }
+    case "pes-vincular": openVincular(id); break;
+    /* atribuir a pessoa aos lançamentos selecionados na lista */
+    case "sel-pes": { if(!selTx.size)break;
+      if(!S.people.length){ toast("Cadastre uma pessoa primeiro"); openPesForm(); break; }
+      const opts=S.people.map((p,i)=>(i+1)+") "+p.name).join("\n");
+      const r=(prompt("Vincular "+selTx.size+" lançamento(s) a quem?\n\n"+opts+"\n\n0) Ninguém — remover vínculo","1")||"").trim();
+      if(r==="")break;
+      const n=parseInt(r);
+      if(isNaN(n)||n<0||n>S.people.length){ toast("Opção inválida"); break; }
+      const pid=n===0?null:S.people[n-1].id;
+      let c=0; selTx.forEach(sid=>{ const t=S.tx.find(x=>x.id===sid); if(t&&t.type!=="xfer"){ t.pesId=pid; c++; } });
+      selTx.clear(); save(); render();
+      toast(c+" lançamento"+(c>1?"s":"")+(pid?" vinculado"+(c>1?"s":""):" desvinculado"+(c>1?"s":""))); break; }
     case "pes-pdf": { const p=pesOf(id); if(!p)break;
       /* leva o nome para o relatório já filtrado em aberto — o caso de uso é cobrar */
       rep.q=p.name; rep.scope="all"; rep.status="open"; rep.type="all"; rep.group="none"; rep.detail=1;
@@ -3651,6 +3738,9 @@ document.addEventListener("input", e=>{
   if(e.target.id==="cardSearch"){ cardQ=e.target.value;
     const box=$("#cardListBox"); if(box) box.innerHTML=cardFatList(e.target.dataset.card);
     return; }
+  if(e.target.id==="vincSearch"){ vincQ=e.target.value;
+    const box=$("#vincBox"); if(box) box.innerHTML=vincList(e.target.dataset.pes);
+    return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
       // re-render mantendo foco
@@ -3668,6 +3758,19 @@ document.addEventListener("change", e=>{
     if($("#edWrapWallet")) $("#edWrapWallet").classList.toggle("hidden",!on);
     if($("#edLblWallet")) $("#edLblWallet").textContent=t.value==="ticket"?"Ticket":"Cartão"; }
   if(t.id==="txPerp"){ syncAddForm(); }
+  /* cadastrar pessoa sem sair do formulário: o que já foi digitado se mantém */
+  if((t.id==="txPes"||t.id==="edPes")&&t.value==="__new"){
+    const nome=(prompt("Nome da pessoa:")||"").trim();
+    if(nome){
+      const p={id:uid(),name:nome,note:""};
+      S.people.push(p); save();
+      const novo='<option value="'+p.id+'">'+esc(p.name)+'</option>';
+      t.insertAdjacentHTML("beforeend",novo);
+      t.querySelectorAll('option[value="__new"]').forEach(o=>t.appendChild(o)); // mantém por último
+      t.value=p.id;
+      toast("Pessoa cadastrada ✓");
+    } else t.value="";
+  }
   if(t.id==="rpScope"&&$("#rpRange")) $("#rpRange").classList.toggle("hidden",t.value!=="range");
   if(t.id==="edKind"){ const f=$("#fEdit"); const tx=f&&S.tx.find(x=>x.id===f.dataset.id);
     if(tx){ const changed=t.value!==tx.kind;
@@ -3729,6 +3832,18 @@ document.addEventListener("submit", async e=>{
       accId:de, accTo:para, pesId:null, kind:"avista", i:1, n:1, amount:v,
       due:d, comp:null, paid:true, payDate:d, payAmt:v });
     save(); closeModal(); render(); toast("Transferido ✓"); }
+  else if(f.id==="fVincular"){
+    const pesId=f.dataset.id;
+    const marcados=new Set([...document.querySelectorAll('input[name="vinc"]:checked')].map(c=>c.value));
+    const visiveis=[...document.querySelectorAll('input[name="vinc"]')].map(c=>c.value);
+    let add=0,rem=0;
+    visiveis.forEach(id=>{
+      const t=S.tx.find(x=>x.id===id); if(!t)return;
+      if(marcados.has(id)){ if(t.pesId!==pesId){ t.pesId=pesId; add++; } }
+      else if(t.pesId===pesId){ t.pesId=null; rem++; }
+    });
+    save(); closeModal(); render(); openPesDetail(pesId);
+    toast(add||rem?(add?add+" vinculado"+(add>1?"s":""):"")+(add&&rem?" · ":"")+(rem?rem+" removido"+(rem>1?"s":""):""):"Nada mudou"); }
   else if(f.id==="fPes"){
     const id=f.dataset.id;
     const dados={ name:$("#peName").value.trim()||"Sem nome", note:$("#peNote").value.trim() };
@@ -3807,6 +3922,8 @@ document.addEventListener("submit", async e=>{
     t.desc=nDesc; if($("#edCat")) t.cat=nCat; if($("#edVal")) t.amount=nVal; t.due=nDue;
     t.method=nMethod; t.cardId=nCard; t.ticketId=nTicket;
     if($("#edComp")) t.comp=$("#edComp").value||null;
+    if($("#edAcc")) t.accId=$("#edAcc").value||null;
+    if($("#edPes")&&$("#edPes").value!=="__new") t.pesId=$("#edPes").value||null;
     if(t.paid&&$("#edPayDate")){ t.payDate=$("#edPayDate").value; t.payAmt=parseMoney($("#edPayAmt").value)||t.amount;
       if(t.dest==="savings"&&t.goalId){ const g=goalOf(t.goalId); if(g&&g.moves){ const mv=g.moves.find(m=>m.txId===t.id); if(mv){ mv.date=t.payDate; mv.amount=t.payAmt; } } } }
     if($("#edApplyAll")&&$("#edApplyAll").checked){ aTx().forEach(x=>{ if(x.gid===t.gid){ x.desc=t.desc; x.cat=t.cat; x.method=t.method; x.cardId=t.cardId; x.ticketId=t.ticketId; } }); }
