@@ -106,8 +106,6 @@ svg{stroke:currentColor;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .tx .ic .icn,.goal .gi .icn{width:20px;height:20px}
 .cmd-it .ci .icn{width:17px;height:17px}
 .empty .e-ic .icn{width:38px;height:38px;stroke-width:1.25}
-.tut-ic{margin-bottom:10px;line-height:0;display:flex;justify-content:center;color:var(--v-2)}
-.tut-ic .icn{width:46px;height:46px;stroke-width:1.25}
 ::-webkit-scrollbar{width:0;height:0}
 
 /* ========================= TIPOGRAFIA ========================= */
@@ -666,6 +664,104 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   font-size:10px;font-weight:700;display:none;place-items:center;background:var(--s-4);color:var(--ink-2)}
 .side-nav-item .tcount.on{display:grid}
 
+/* --- tour guiado: máscara, recorte e balão --- */
+#tourWrap{position:fixed;inset:0;z-index:400}
+#tourWrap .t-mask{position:absolute;inset:0;background:rgba(0,0,0,.62);
+  backdrop-filter:blur(1.5px);animation:fadeIn var(--dur-2) var(--ease)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* o "buraco" é feito com uma sombra gigante em volta do alvo */
+#tourWrap .t-ring{position:absolute;border-radius:var(--r-md);pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 2px var(--v-2),0 0 26px 4px var(--v-glow);
+  transition:all var(--dur-2) var(--ease)}
+#tourWrap .t-box{position:absolute;z-index:2;background:var(--s-2);
+  border:1px solid var(--line-2);border-radius:var(--r-lg);padding:16px 18px 14px;
+  box-shadow:var(--e-4);animation:tourIn var(--dur-3) var(--ease-out)}
+#tourWrap .t-box.mid{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(360px,calc(100vw - 32px))}
+@keyframes tourIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1}}
+#tourWrap .t-h{font-family:var(--f-display);font-weight:700;font-size:15.5px;margin-bottom:7px}
+#tourWrap .t-b{font-size:var(--t-sm);line-height:1.55;color:var(--ink-2)}
+#tourWrap .t-b b{color:var(--ink)}
+#tourWrap .t-f{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+#tourWrap .t-dots{display:flex;gap:5px}
+#tourWrap .t-dots i{width:6px;height:6px;border-radius:50%;background:var(--s-4);
+  transition:background var(--dur-1)}
+#tourWrap .t-dots i.on{background:var(--v-2);width:16px;border-radius:3px}
+#tourWrap .t-btns{display:flex;gap:7px}
+
+/* --- contas --- */
+.acc-list{display:flex;flex-direction:column;background:var(--s-1);
+  border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.acc{display:flex;align-items:center;gap:12px;padding:13px 16px;
+  border-bottom:1px solid var(--line);cursor:pointer;transition:background var(--dur-1)}
+.acc:hover{background:var(--s-2)}
+.acc:last-child{border-bottom:none}
+.acc .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+.acc .mid{flex:1;min-width:0}
+.acc .nm{font-size:var(--t-sm);font-weight:600}
+.acc .tp{font-size:var(--t-xs);color:var(--ink-3);margin-top:1px}
+.acc .rt{text-align:right}
+.acc .rt .v{font-family:var(--f-display);font-weight:700;font-size:15px;
+  font-variant-numeric:tabular-nums}
+.acc .rt .v.down{color:var(--down)}
+.acc .rt .s{font-size:var(--t-micro);color:var(--ink-3);margin-top:1px}
+.acc.total{background:var(--s-2);cursor:default;border-top:1px solid var(--line-2)}
+.acc.total:hover{background:var(--s-2)}
+.acc.total .nm{color:var(--ink-2);font-weight:550}
+/* extrato dentro de um painel claro, não sobre o gradiente do hero */
+.ledger.dark{border-top-color:var(--line);background:var(--s-2);
+  border:1px solid var(--line);border-radius:var(--r-md);padding:4px 14px}
+.ledger.dark .lg{border-bottom-color:var(--line)}
+.ledger.dark .lg span{color:var(--ink-2)}
+.ledger.dark .lg.now{border-top-color:var(--line-2)}
+.ledger.dark .lg.now span{color:var(--ink)}
+
+/* --- lista de capítulos do tutorial --- */
+.cap-list{display:grid;gap:7px}
+@media (min-width:600px){ .cap-list{grid-template-columns:1fr 1fr} }
+.cap{display:flex;flex-direction:column;gap:2px;text-align:left;padding:11px 13px;
+  background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  transition:border-color var(--dur-1),background var(--dur-1)}
+.cap:hover{border-color:var(--v-1);background:var(--s-3)}
+.cap b{font-size:var(--t-sm);font-weight:650}
+.cap span{font-size:var(--t-xs);color:var(--ink-3)}
+
+/* --- novidades da versão --- */
+.news{display:flex;flex-direction:column;gap:2px;margin-bottom:18px}
+.news .ni{display:flex;flex-direction:column;gap:2px;padding:11px 0;
+  border-bottom:1px solid var(--line)}
+.news .ni:last-child{border-bottom:none}
+.news .ni b{font-size:var(--t-sm);font-weight:650}
+.news .ni span{font-size:var(--t-xs);color:var(--ink-2);line-height:1.5}
+
+/* --- extrato de caixa no hero --- */
+.ledger{margin:16px 0 4px;border-top:1px solid rgba(255,255,255,.1);padding-top:4px}
+.ledger .lg{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:7px 0;font-size:var(--t-sm);border-bottom:1px solid rgba(255,255,255,.055)}
+.ledger .lg:last-child{border-bottom:none}
+.ledger .lg span{color:rgba(255,255,255,.62)}
+.ledger .lg b{font-variant-numeric:tabular-nums;font-weight:650;letter-spacing:-.01em}
+.ledger .lg b.up{color:var(--up)}
+.ledger .lg b.down{color:var(--down)}
+.ledger .lg[data-action]{cursor:pointer;margin-inline:-8px;padding-inline:8px;border-radius:8px;
+  transition:background var(--dur-1)}
+.ledger .lg[data-action]:hover{background:rgba(255,255,255,.055)}
+/* as duas linhas de fechamento se destacam do resto */
+.ledger .lg.now,.ledger .lg.end{border-top:1px solid rgba(255,255,255,.16);border-bottom:none;
+  margin-top:2px;padding-top:9px}
+.ledger .lg.now span,.ledger .lg.end span{color:#fff;font-weight:600}
+.ledger .lg.now b,.ledger .lg.end b{font-family:var(--f-display);font-size:16px;font-weight:800}
+.ledger .lt{font-style:normal;font-size:var(--t-micro);color:var(--warn);
+  background:var(--warn-bg);border-radius:5px;padding:1px 5px;margin-left:5px}
+/* nota de mês encerrado: informa o que ficou pendente sem entrar na conta */
+.ledger .lg.nota{border-bottom:none;padding-top:3px}
+.ledger .lg.nota span{font-size:var(--t-xs);color:rgba(255,255,255,.45)}
+.ledger .lg.nota b{font-size:var(--t-xs);font-weight:600}
+.open-warn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  color:var(--warn);font-weight:600;font-size:var(--t-xs)}
+.open-warn .icn{width:14px;height:14px}
+.open-warn:hover{text-decoration:underline}
+
 /* --- barra de busca da lista --- */
 .srch{display:flex;align-items:center;gap:8px;margin-bottom:10px;
   background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:0 10px}
@@ -818,11 +914,11 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
      como era e a sidebar é puramente aditiva. -->
 <aside id="side" class="hidden">
   <div class="side-brand">WIG<b>O</b></div>
-  <button class="side-add" data-action="open-add">
+  <button class="side-add" data-action="open-add" data-tour="add">
     <svg class="icn" viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>
     <span>Novo lançamento</span>
   </button>
-  <nav class="side-nav" id="sideNav">
+  <nav class="side-nav" id="sideNav" data-tour="nav">
     <button data-action="tab" data-v="home" class="on">
       <svg class="icn" viewBox="0 0 24 24"><path d="M3 10.2 12 3l9 7.2"/><path d="M5.5 9.3V19a1.6 1.6 0 0 0 1.6 1.6H10v-5.3h4v5.3h2.9a1.6 1.6 0 0 0 1.6-1.6V9.3"/></svg>
       <span>Início</span>
@@ -845,7 +941,11 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
       <svg class="icn" viewBox="0 0 24 24"><path d="M12 3.8v11.4M7.6 11l4.4 4.3 4.4-4.3"/><path d="M4.2 19.6h15.6"/></svg>
       <span>Relatório PDF</span>
     </button>
-    <button class="side-nav-item" data-action="trash-open">
+    <button class="side-nav-item" data-action="pes-list" data-tour="pessoas">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M11.4 8.4 9 10.8a1.9 1.9 0 0 0 2.7 2.7l1.2-1.2 3 3a1.9 1.9 0 0 0 2.7-2.7"/><path d="M2.6 8.4 6.4 5.6h4L13 7.4M21.4 8.4 17.6 5.6h-3.2"/><path d="M2.6 8.4v6.2l2.4 2.4M21.4 8.4v6.2L19 17"/></svg>
+      <span>Pessoas</span>
+    </button>
+    <button class="side-nav-item" data-action="trash-open" data-tour="trash">
       <svg class="icn" viewBox="0 0 24 24"><path d="M3.8 6.4h16.4M8.6 6.4V4.8a1.4 1.4 0 0 1 1.4-1.4h4a1.4 1.4 0 0 1 1.4 1.4v1.6"/><path d="M5.8 6.4l1 13a1.6 1.6 0 0 0 1.6 1.5h7.2a1.6 1.6 0 0 0 1.6-1.5l1-13"/><path d="M10.2 10.6v6M13.8 10.6v6"/></svg>
       <span>Lixeira</span><span class="tcount" id="trashCount"></span>
     </button>
@@ -879,7 +979,7 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 </div>
 
 <!-- ══ DOCK ══ -->
-<nav class="dock hidden" id="dock">
+<nav class="dock hidden" id="dock" data-tour="nav">
   <button data-action="tab" data-v="home" class="on">
     <svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 001 1h3.5v-6h5v6H18a1 1 0 001-1V9.5"/></svg>
     <span class="lb">Início</span>
@@ -888,7 +988,7 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
     <svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="3"/><path d="M2.5 10h19"/><path d="M6 14.5h3"/></svg>
     <span class="lb">Carteira</span>
   </button>
-  <button class="plus" data-action="open-add" aria-label="Novo lançamento">
+  <button class="plus" data-action="open-add" aria-label="Novo lançamento" data-tour="add">
     <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
   </button>
   <button data-action="tab" data-v="savings">
@@ -943,6 +1043,8 @@ const BANKS=["Nubank","Inter","C6 Bank","Itaú","Bradesco","Santander","Banco do
 const TICKET_BRANDS=["Alelo","VR","Sodexo/Pluxee","Ticket","Flash","Caju","Ben Visa Vale","iFood Benefícios","Outro"];
 const CARD_COLORS=["#5b21b6","#4338ca","#1e293b","#0f766e","#9d174d","#b45309","#166534","#111827","#7c2d12","#831843"];
 const TICKET_COLORS=["#0f766e","#166534","#b45309","#0e7490"];
+const ACC_COLORS=["#6C3BFF","#0f766e","#b45309","#1e293b","#9d174d","#0e7490","#166534","#7c2d12"];
+const ACC_TYPES={corrente:"Conta corrente",poupanca:"Poupança",dinheiro:"Dinheiro em espécie",investimento:"Investimento",outro:"Outra"};
 const DONUT_COLORS=["#8b5cf6","#34d399","#fbbf24","#fb7185","#60a5fa","#f472b6","#a3e635","#c4b5fd"];
 const EXP_CATS=["Alimentação","Mercado","Restaurantes/Delivery","Transporte","Combustível","Moradia","Aluguel","Contas de Casa","Internet/Telefone","Assinaturas","Saúde","Farmácia","Educação","Cursos","Lazer","Viagens","Vestuário","Beleza/Cuidados","Pets","Presentes/Doações","Impostos/Taxas","Tarifas Bancárias","Empréstimos/Dívidas","Investimentos","Manutenção/Reparos","Tecnologia","Academia/Esportes","Outros"];
 const INC_CATS=["Salário","Aulas","Freelance","Vendas","Comissões","Rendimentos","Reembolso","Aluguel Recebido","Presente","Outros"];
@@ -1029,11 +1131,23 @@ const CDI_ANUAL=0.1465; // taxa CDI anual de referência (~14,65% a.a. em 2026) 
 /* ============ ESTADO ============ */
 function defaultState(){
   return { appName:"WIGO", expCats:[...EXP_CATS], incCats:[...INC_CATS],
-    cards:[], tickets:[], tx:[], goals:[], cdiRef:CDI_ANUAL };
+    cards:[], tickets:[], tx:[], goals:[], cdiRef:CDI_ANUAL,
+    /* contas de verdade — banco, poupança, dinheiro em espécie. Cada uma tem
+       o próprio saldo de abertura; o saldo geral é a soma delas. */
+    accounts:[],
+    /* pessoas para vincular a lançamentos: quanto alguém deve, ou é devido */
+    people:[],
+    /* saldo de abertura antigo, de quando havia um caixa só. Mantido apenas
+       para contas que ainda não migraram para accounts (ver migraContas). */
+    opening:null };
 }
 let S=defaultState();
 let user=null, tab="home", viewMonth=new Date().toISOString().slice(0,7), saveTimer=null;
-let filters={ q:"", type:"all", cat:"all", card:"all", status:"all" };
+/* o estado inicial sai de resetFilters(), e não de um objeto repetido aqui:
+   quando os filtros avançados foram criados, esta linha ficou para trás e os
+   campos novos nasciam undefined — como undefined !== "all", passFilter
+   rejeitava todos os lançamentos e a lista abria vazia. */
+let filters; resetFilters();
 let homeFlt=null; // atalho do dashboard: 'atraso'|'proximo'|'recebido'|'pago'|'guardado'|null
 let selTx=new Set(); // ids dos lançamentos selecionados (soma + ação em lote)
 let curListIds=[]; // ids da lista filtrada atualmente exibida (p/ selecionar todos)
@@ -1077,6 +1191,7 @@ async function load(){
     if(snap.exists()&&snap.data().data){ const p=JSON.parse(snap.data().data);
       S=Object.assign(defaultState(),p);
       S.cards=p.cards||[]; S.tickets=p.tickets||[]; S.goals=p.goals||[]; S.tx=p.tx||[];
+      S.accounts=p.accounts||[]; S.people=p.people||[];
       // migração v1 → v2: poupança antiga vira uma meta
       if(p.savings&&(p.savings.saved&&p.savings.saved.length||p.savings.goal)&&!S.goals.length){
         const g={id:uid(),name:"Minha poupança",bank:"",color:"#0f766e",goal:p.savings.goal||0,
@@ -1088,9 +1203,9 @@ async function load(){
     } else S=defaultState();
   }catch(e){ console.error(e); toast("Não foi possível carregar seus dados"); }
   // estica os fixos "sempre" para cobrir os próximos meses
-  if(extendPerpetual()) save();
+  if(migraContas()||extendPerpetual()) save();
   updateAppName(); render();
-  if(S&&!S.tutorialSeen&&!window.__tutShown){ window.__tutShown=true; setTimeout(openTutorial,400); }
+  if(!window.__onboarded){ window.__onboarded=true; setTimeout(decidirOnboarding,500); }
 }
 
 /* ============ AUTENTICAÇÃO ============ */
@@ -1118,7 +1233,8 @@ function cardFirstDue(card,purchaseISO){
 function createTx(o){
   const gid=uid(); const out=[];
   const base=t=>({id:uid(),gid,type:o.type,dest:o.dest||null,desc:o.desc,cat:o.cat,
-    method:o.method,cardId:o.cardId||null,ticketId:o.ticketId||null,goalId:o.goalId||null});
+    method:o.method,cardId:o.cardId||null,ticketId:o.ticketId||null,goalId:o.goalId||null,
+    accId:o.accId||null,pesId:o.pesId||null});
   /* competência vale para gasto e receita. Quem não preenche fica com null,
      que é exatamente o comportamento anterior. */
   const compAt=i=>o.comp?addMonthsISO(o.comp+"-01",i).slice(0,7):null;
@@ -1197,9 +1313,163 @@ function effMonth(t){ if(t.comp) return t.comp; return t.paid?mkey(t.payDate||t.
 function txEffMonth(mk){ return aTx().filter(t=>effMonth(t)===mk); }
 function sum(list,f){ return list.reduce((a,t)=>a+(f?f(t):t.amount),0); }
 
+/* ══════════════════ SALDO DE CAIXA ══════════════════
+   Regime de caixa, para bater com o extrato do banco. Difere de effMonth()
+   de propósito: effMonth respeita a COMPETÊNCIA (a que mês o valor pertence),
+   enquanto o caixa segue a data em que o dinheiro realmente se moveu.
+
+   Um adiantamento recebido em julho com competência de agosto é de agosto
+   na Análise, mas entrou no banco em julho — e é julho que o extrato mostra.
+
+   Poupança sai do caixa (vira Patrimônio), então entra aqui como saída.  */
+
+/* mês em que o dinheiro se moveu; null enquanto não foi baixado */
+function cashMonth(t){ return t.paid?mkey(t.payDate||t.due):null; }
+/* +entrada / −saída */
+function signed(t){ return (t.type==="inc"?1:-1)*val(t); }
+
+/* efeito de um lançamento no saldo — do total, ou de uma conta específica.
+
+   Transferência entre contas é neutra no total: o dinheiro trocou de lugar,
+   o patrimônio não mudou. Dentro das contas ela sai de uma e entra na outra. */
+function signedFor(t,acc){
+  if(t.type==="xfer"){
+    if(!acc) return 0;
+    if(t.accTo===acc) return val(t);
+    if(t.accId===acc) return -val(t);
+    return 0;
+  }
+  if(acc&&t.accId!==acc) return 0;
+  return (t.type==="inc"?1:-1)*val(t);
+}
+function accOf(id){ return S.accounts.find(a=>a.id===id); }
+function pesOf(id){ return S.people.find(p=>p.id===id); }
+
+/* mês a partir do qual os movimentos passam a contar. Antes dele, o valor já
+   está embutido no saldo de abertura informado. */
+function aberturaMes(acc){
+  if(acc){ const a=accOf(acc); return a&&a.opening?a.opening.month:null; }
+  if(S.accounts.length) return S.accounts.reduce((m,a)=>
+    (a.opening&&(!m||a.opening.month<m))?a.opening.month:m,null);
+  return S.opening?S.opening.month:null;
+}
+function aberturaValor(acc){
+  if(acc){ const a=accOf(acc); return a&&a.opening?(a.opening.amount||0):0; }
+  if(S.accounts.length) return S.accounts.reduce((s,a)=>s+(a.opening?(a.opening.amount||0):0),0);
+  return S.opening?(S.opening.amount||0):0;
+}
+function temAbertura(acc){
+  if(acc){ const a=accOf(acc); return !!(a&&a.opening); }
+  return S.accounts.some(a=>a.opening)||!!S.opening;
+}
+
+/* soma de tudo que já se moveu, do início da abertura até o fim de mk */
+function cashRealized(mk,acc){
+  let saldo=aberturaValor(acc);
+  aTx().forEach(t=>{
+    const m=cashMonth(t); if(!m) return;
+    if(m>mk) return;            // ainda não aconteceu na data de corte
+    /* cada conta tem seu próprio ponto de partida; o que é anterior a ele já
+       está dentro do valor de abertura daquela conta */
+    const ini=aberturaMes(acc||t.accId||null);
+    if(ini&&m<ini) return;
+    saldo+=signedFor(t,acc);
+  });
+  return saldo;
+}
+/* o que ainda não foi baixado e vence até o fim de mk.
+   Inclui atrasado de mês anterior de propósito: dívida vencida continua
+   pendente e tem que aparecer na frente até ser paga. */
+function cashPending(mk,acc){
+  return aTx().filter(t=>!t.paid&&mkey(t.due)<=mk&&(!acc||t.accId===acc||t.accTo===acc));
+}
+/* a linha de saldo de um mês: abre, movimenta, fecha.
+
+   O saldo inicial é o REALIZADO até o fim do mês anterior — o dinheiro que
+   de fato estava na conta —, não o final previsto. Assim a coluna fecha na
+   tela: inicial + recebido − pago = atual.
+
+   Quando tudo que estava previsto é pago, o final de um mês é igual à
+   abertura do seguinte. Se algo não for pago, os dois diferem exatamente
+   pelo valor em aberto — que reaparece em "a pagar" do mês seguinte e
+   continua na frente até ser baixado. */
+function cashFlow(mk,acc){
+  const ant=addMonthsISO(mk+"-01",-1).slice(0,7);
+  const ini=aberturaMes(acc);
+  const inicial=(ini&&mk===ini)
+    ? aberturaValor(acc)                           // o próprio mês da abertura
+    : cashRealized(ant,acc);                       // o que sobrou de fato
+  const movidos=aTx().filter(t=>cashMonth(t)===mk);
+  /* entrada e saída olham o efeito na conta, não o tipo do lançamento: uma
+     transferência é saída na origem e entrada no destino. */
+  let entrou=0,saiu=0;
+  movidos.forEach(t=>{ const v=signedFor(t,acc);
+    if(v>0) entrou+=v; else if(v<0) saiu+=-v; });
+  const atual=cashRealized(mk,acc);
+  const pend=cashPending(mk,acc);
+  let aReceber=0,aPagar=0;
+  pend.forEach(t=>{ const v=signedFor(t,acc);
+    if(v>0) aReceber+=v; else if(v<0) aPagar+=-v; });
+
+  /* Mês encerrado não tem previsão: ele já aconteceu. O saldo final de um mês
+     passado é o realizado — e é justamente isso que faz o fechamento de um mês
+     ser sempre igual à abertura do seguinte, fechando a conciliação.
+
+     O que ficou pendente não some: continua aparecendo em "a pagar" do mês
+     corrente até ser baixado. Só deixa de ser descontado de um mês que já
+     terminou, onde ele nunca chegou a sair do caixa. */
+  const fechado=mk<mkey(todayISO());
+  const final=fechado?atual:atual+aReceber-aPagar;
+
+  return { mk, acc:acc||null, inicial, entrou, saiu, atual, aReceber, aPagar, final, fechado,
+    /* quanto do pendente já venceu — o que explica saldo final menor que o atual */
+    atrasado:sum(pend.filter(t=>statusOf(t)==="atrasado"&&signedFor(t,acc)<0),val),
+    semAbertura:!temAbertura(acc) };
+}
+/* saldo dos pendentes até mk, usado para encadear os meses */
+function pendSaldo(mk,acc){ return cashPending(mk,acc).reduce((a,t)=>a+signedFor(t,acc),0); }
+
+/* ---------- migração para contas ----------
+   Antes existia um caixa único (S.opening). Ao introduzir contas, esse valor
+   vira a abertura de uma conta "Principal" e todo o histórico é atribuído a
+   ela — assim o saldo por conta já nasce com passado e nenhum número muda no
+   momento da atualização. Roda uma vez. */
+function migraContas(){
+  if(S.accounts.length) return 0;
+  const temHistorico=S.tx.length>0;
+  if(!S.opening&&!temHistorico) return 0;
+  const conta={ id:uid(), name:"Principal", bank:"", type:"corrente",
+    color:ACC_COLORS[0], opening:S.opening?{...S.opening}:null };
+  S.accounts.push(conta);
+  let n=0;
+  S.tx.forEach(t=>{ if(!t.accId&&t.type!=="xfer"){ t.accId=conta.id; n++; } });
+  S.opening=null;   // o valor agora vive na conta
+  return n;
+}
+
+/* ---------- saldo por pessoa ----------
+   Positivo = a pessoa te deve. Negativo = você deve a ela. */
+function pesFlow(id){
+  const todos=aTx().filter(t=>t.pesId===id&&t.type!=="xfer");
+  const aberto=todos.filter(t=>!t.paid);
+  const quitado=todos.filter(t=>t.paid);
+  return {
+    id, lancamentos:todos.length,
+    aReceber:sum(aberto.filter(t=>t.type==="inc"),val),
+    aPagar:sum(aberto.filter(t=>t.type!=="inc"),val),
+    recebido:sum(quitado.filter(t=>t.type==="inc"),val),
+    pago:sum(quitado.filter(t=>t.type!=="inc"),val),
+    get saldo(){ return this.aReceber-this.aPagar; }
+  };
+}
+
 /* quando marca/desmarca pago, sincroniza movimento de poupança */
 function applyPaid(t,date,amt){
   t.paid=true; t.payDate=date||todayISO(); t.payAmt=amt!=null?amt:t.amount;
+  /* a compra no cartão nasce sem conta — o dinheiro não saiu no dia da compra.
+     Ao pagar a fatura ela ganha a conta de débito do cartão, e é aí que o
+     valor sai do saldo daquela conta. */
+  if(!t.accId&&t.cardId){ const c=cardOf(t.cardId); if(c&&c.accId) t.accId=c.accId; }
   if(t.dest==="savings"&&t.goalId){ const g=goalOf(t.goalId);
     if(g){ g.moves=g.moves||[]; if(!g.moves.some(mv=>mv.txId===t.id))
       g.moves.push({id:uid(),txId:t.id,date:t.payDate,amount:t.payAmt,kind:"in"}); } }
@@ -1306,7 +1576,7 @@ function markSaving(on){ const d=$("#syncDot"); if(d) d.classList.toggle("busy",
 /* ---------- seletor de mês ---------- */
 function mpick(){
   const isNow=viewMonth===mkey(todayISO());
-  return '<div class="mpick">'+
+  return '<div class="mpick" data-tour="month">'+
     '<button data-action="month-prev" aria-label="Mês anterior"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg></button>'+
     '<div class="cur" data-action="month-today">'+monthLabel(viewMonth)+
       '<small>'+(isNow?"mês atual":"toque para voltar a hoje")+'</small></div>'+
@@ -1315,30 +1585,40 @@ function mpick(){
 
 /* ---------- linha de lançamento ---------- */
 function txRow(t){
-  const isPop=t.dest==="savings", st=statusOf(t);
+  const isPop=t.dest==="savings", isXfer=t.type==="xfer";
   const meta=[fmtDate(t.due)];
   if(t.kind==="parcelado") meta.push(t.i+"/"+t.n);
   if(t.kind==="fixo") meta.push(t.perp?"fixo · sempre":"fixo "+t.i+"/"+t.n);
-  meta.push(walletLabel(t));
+  /* transferência mostra o trajeto; os demais, a carteira usada */
+  if(isXfer) meta.push((accOf(t.accId)?esc(accOf(t.accId).name):"?")+" → "+
+    (accOf(t.accTo)?esc(accOf(t.accTo).name):"?"));
+  else {
+    meta.push(walletLabel(t));
+    if(t.accId&&accOf(t.accId)) meta.push(ic("bank")+" "+esc(accOf(t.accId).name));
+  }
+  if(t.pesId&&pesOf(t.pesId)) meta.push(ic("handshake")+" "+esc(pesOf(t.pesId).name));
   if(t.comp&&t.comp!==mkey(t.due)) meta.push(ic("calendar")+" ref. "+shortMonth(t.comp));
   else if(t.paid&&t.payDate&&mkey(t.payDate)!==mkey(t.due)) meta.push(ic("outflow")+" pago em "+shortMonth(mkey(t.payDate)));
-  const sign=t.type==="inc"?"+":"−";
-  const col=isPop?"info":(t.type==="inc"?"up":"down");
-  return '<div class="row">'+
-    '<div class="sel'+(selTx.has(t.id)?" on":"")+'" data-action="tx-sel" data-id="'+t.id+'"></div>'+
-    '<div class="av" data-action="tx-edit" data-id="'+t.id+'">'+(isPop?ic("piggy"):catIcon(t.cat))+'</div>'+
+  const sign=isXfer?"":(t.type==="inc"?"+":"−");
+  const col=isXfer?"":(isPop?"info":(t.type==="inc"?"up":"down"));
+  return '<div class="row" data-tour="linha">'+
+    '<div class="sel'+(selTx.has(t.id)?" on":"")+'" data-tour="marcar" data-action="tx-sel" data-id="'+t.id+'"></div>'+
+    '<div class="av" data-action="tx-edit" data-id="'+t.id+'">'+
+      (isXfer?ic("swap"):isPop?ic("piggy"):catIcon(t.cat))+'</div>'+
     '<div class="mid" data-action="tx-edit" data-id="'+t.id+'">'+
       '<div class="ttl">'+esc(t.desc)+'</div>'+
       '<div class="meta">'+meta.join(" · ")+'</div></div>'+
     '<div class="rt"><div class="amt '+col+'">'+sign+fmt(val(t)).replace("R$","R$ ")+'</div>'+
-      '<div class="act">'+(t.paid
+      '<div class="act">'+(isXfer
+        ? '<span class="chip">Transferido</span>'
+        : t.paid
         ? '<span class="chip '+(isPop?"pop":"pago")+'">'+(isPop?"Guardado":(t.type==="inc"?"Recebido":"Pago"))+'</span>'
         : '<button class="btn xs" data-action="tx-paid" data-id="'+t.id+'">'+(t.type==="inc"?"Receber":"Pagar")+'</button>')+
       '</div></div></div>';
 }
 function rowsList(list,emptyMsg){
   if(!list.length) return '<div class="empty"><div class="e-ic">'+ic("leaf")+'</div><div class="e-t">Nada por aqui</div>'+(emptyMsg||"")+'</div>';
-  return '<div class="rows">'+list.map(txRow).join("")+'</div>';
+  return '<div class="rows" data-tour="lista">'+list.map(txRow).join("")+'</div>';
 }
 
 /* ---------- barra de filtros ---------- */
@@ -1350,7 +1630,7 @@ function filterBar(list){
     ["pago","Pagos",list.filter(x=>x.paid).length]];
   const cats=[...new Set(list.map(x=>x.cat).filter(Boolean))].sort();
   const adv=advCount();
-  return '<div class="srch">'+
+  return '<div class="srch" data-tour="search">'+
       '<span class="si">'+ic("search")+'</span>'+
       '<input id="fltQ" placeholder="Buscar por descrição, categoria, cartão ou valor…" value="'+esc(filters.q)+'" autocomplete="off">'+
       (filters.q?'<button class="sx" data-action="flt-q-clear">'+ic("x")+'</button>':"")+
@@ -1465,21 +1745,47 @@ function renderHome(){
   const prev=monthAgg(addMonthsISO(viewMonth+"-01",-1).slice(0,7));
   const patr=S.goals.reduce((a,g)=>a+goalBalance(g),0);
 
-  /* --- HERO --- */
+  /* --- HERO: extrato de caixa do mês ---
+     O número em destaque é o SALDO ATUAL, o que existe em caixa agora — é ele
+     que se compara com o app do banco. Acima dele, de onde partiu; abaixo, o
+     que ainda falta acontecer até fechar o mês. */
+  const cx=cashFlow(viewMonth);
   const tot=Math.max(1,incT+expT);
-  const hero='<div class="hero">'+
-    '<div class="cap">Saldo previsto · <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
-    '<div class="big '+(saldo>=0?"":"down")+'">'+fmt(saldo)+'</div>'+
-    '<div class="sub">'+deltaChip(pctDelta(incT-expT,prev.inc-prev.exp))+
-      '<span>Disponível agora: <b style="color:#fff">'+fmt(disp)+'</b></span></div>'+
+  const hero='<div class="hero" data-tour="ledger">'+
+    '<div class="cap">'+(cx.fechado?"Saldo ao fim de":"Saldo atual ·")+
+      ' <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
+    '<div class="big '+(cx.atual>=0?"":"down")+'">'+fmt(cx.atual)+'</div>'+
+    (cx.semAbertura
+      ? '<div class="sub"><span class="open-warn" data-action="open-set">'+ic("alert")+
+        ' Informe seu saldo de abertura para bater com o banco</span></div>'
+      : '<div class="sub">'+deltaChip(pctDelta(incT-expT,prev.inc-prev.exp))+
+        '<span>'+(cx.fechado
+          ? 'Foi com isso que '+shortMonth(addMonthsISO(viewMonth+"-01",1).slice(0,7))+' começou'
+          : 'Fecha o mês em <b style="color:#fff">'+fmt(cx.final)+'</b>')+'</span></div>')+
+
+    /* mês encerrado mostra o que de fato aconteceu; o pendente aparece como
+       nota, não somado, porque aquele dinheiro nunca saiu naquele mês */
+    '<div class="ledger">'+
+      '<div class="lg"><span>Saldo inicial</span><b>'+fmt(cx.inicial)+'</b></div>'+
+      '<div class="lg" data-action="home-filter" data-mode="recebido"><span>+ Recebido</span><b class="up">'+fmt(cx.entrou)+'</b></div>'+
+      '<div class="lg" data-action="home-filter" data-mode="pago"><span>− Pago</span><b class="down">'+fmt(cx.saiu)+'</b></div>'+
+      (cx.fechado
+        ? '<div class="lg end"><span>= Saldo final</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>'+
+          ((cx.aReceber||cx.aPagar)
+            ? '<div class="lg nota"><span>Ficou pendente</span><b>'+
+              (cx.aReceber?'<span class="up">+'+fmt(cx.aReceber)+'</span> ':"")+
+              (cx.aPagar?'<span class="down">−'+fmt(cx.aPagar)+'</span>':"")+'</b></div>'
+            : "")
+        : '<div class="lg now"><span>= Saldo atual</span><b>'+fmt(cx.atual)+'</b></div>'+
+          (cx.aReceber?'<div class="lg" data-action="home-filter" data-mode="areceber"><span>+ A receber</span><b class="up">'+fmt(cx.aReceber)+'</b></div>':"")+
+          (cx.aPagar?'<div class="lg" data-action="home-filter" data-mode="apagar"><span>− A pagar'+
+            (cx.atrasado?' <i class="lt">'+fmt(cx.atrasado)+' vencido</i>':"")+'</span><b class="down">'+fmt(cx.aPagar)+'</b></div>':"")+
+          '<div class="lg end"><span>= Saldo final previsto</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>')+
+    '</div>'+
+
     '<div class="flowbar"><i style="width:'+(incT/tot*100)+'%;background:linear-gradient(90deg,#00E5A8,#00b98a)"></i>'+
       '<i style="width:'+(expT/tot*100)+'%;background:linear-gradient(90deg,#FF5C7A,#e0405f)"></i></div>'+
-    '<div class="hero-split">'+
-      '<div data-action="home-filter" data-mode="recebido"><div class="k"><i class="dot-i" style="background:#00E5A8"></i>Entradas</div>'+
-        '<div class="v" style="color:#00E5A8">'+fmt(incPaid)+'</div><div class="s">a receber '+fmt(incOpen)+'</div></div>'+
-      '<div data-action="home-filter" data-mode="pago"><div class="k"><i class="dot-i" style="background:#FF5C7A"></i>Saídas</div>'+
-        '<div class="v" style="color:#FF5C7A">'+fmt(expPaid)+'</div><div class="s">a pagar '+fmt(expOpen)+'</div></div>'+
-    '</div></div>';
+    '</div>';
 
   /* --- alertas --- */
   let alerts="";
@@ -1515,12 +1821,18 @@ function renderHome(){
   if(homeFlt){
     let src,lbl;
     const L={atraso:"Em atraso · todos os meses",proximo:"Vencendo em até 3 dias",
-      recebido:"Entradas de "+shortMonth(viewMonth),pago:"Saídas de "+shortMonth(viewMonth),
-      guardado:"Guardado em "+shortMonth(viewMonth)};
+      recebido:"Recebido em "+shortMonth(viewMonth),pago:"Pago em "+shortMonth(viewMonth),
+      guardado:"Guardado em "+shortMonth(viewMonth),
+      areceber:"A receber até o fim de "+shortMonth(viewMonth),
+      apagar:"A pagar até o fim de "+shortMonth(viewMonth)};
     if(homeFlt==="atraso") src=aTx().filter(t=>!t.paid&&statusOf(t)==="atrasado");
     else if(homeFlt==="proximo") src=aTx().filter(t=>!t.paid&&statusOf(t)==="proximo"&&daysTo(t.due)<=3);
-    else if(homeFlt==="recebido") src=m.filter(t=>t.type==="inc"&&t.paid);
-    else if(homeFlt==="pago") src=expL.filter(t=>t.paid);
+    /* recebido/pago seguem o CAIXA: o que se moveu neste mês, pela data de
+       pagamento — por isso cashMonth e não o mês de competência */
+    else if(homeFlt==="recebido") src=aTx().filter(t=>t.type==="inc"&&cashMonth(t)===viewMonth);
+    else if(homeFlt==="pago") src=aTx().filter(t=>t.type!=="inc"&&cashMonth(t)===viewMonth);
+    else if(homeFlt==="areceber") src=cashPending(viewMonth).filter(t=>t.type==="inc");
+    else if(homeFlt==="apagar") src=cashPending(viewMonth).filter(t=>t.type!=="inc");
     else if(homeFlt==="guardado") src=popL;
     else src=m;
     src=src.slice().sort((a,b)=>a.due<b.due?-1:1); curListIds=src.map(t=>t.id);
@@ -1627,11 +1939,34 @@ function renderCards(){
       '<div class="metric"><div class="k">'+ic("chart")+' Disponível</div><div class="v '+(totLim-totUsed>0?"up":"down")+'">'+fmt(Math.max(0,totLim-totUsed))+'</div>'+
         '<div class="s">usado '+fmt(totUsed)+'</div></div></div></div>';
 
-  html+='<div class="sec-head" style="margin:0 20px 10px"><h2>Cartões de crédito</h2>'+
+  /* --- contas: onde o dinheiro de fato está --- */
+  html+='<div class="sec-head" style="margin:0 20px 10px"><h2>Contas</h2>'+
+    (S.accounts.length>1?'<span class="more" data-action="xfer-open">'+ic("swap")+' Transferir</span>':"")+'</div>';
+  if(!S.accounts.length) html+='<div class="empty"><div class="e-ic">'+ic("bank")+'</div><div class="e-t">Nenhuma conta</div>'+
+    'Cadastre suas contas para saber quanto há em cada uma, e não só o total.</div>';
+  else {
+    const total=cashRealized(viewMonth);
+    html+='<div class="sec"><div class="acc-list" data-tour="contas">'+S.accounts.map(a=>{
+      const f=cashFlow(viewMonth,a.id);
+      const prev=f.final!==f.atual;
+      return '<div class="acc" data-action="acc-open" data-id="'+a.id+'">'+
+        '<i class="dot" style="background:'+a.color+'"></i>'+
+        '<div class="mid"><div class="nm">'+esc(a.name)+'</div>'+
+          '<div class="tp">'+(a.bank?esc(a.bank)+" · ":"")+ACC_TYPES[a.type||"corrente"]+'</div></div>'+
+        '<div class="rt"><div class="v '+(f.atual>=0?"":"down")+'">'+fmt(f.atual)+'</div>'+
+          (prev?'<div class="s">prev. '+fmt(f.final)+'</div>':"")+'</div></div>';
+    }).join("")+
+    '<div class="acc total"><div class="mid"><div class="nm">Total em contas</div></div>'+
+      '<div class="rt"><div class="v">'+fmt(total)+'</div></div></div>'+
+    '</div></div>';
+  }
+  html+='<div class="sec"><button class="btn ghost" data-action="acc-add">'+ic("plus")+' Adicionar conta</button></div>';
+
+  html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Cartões de crédito</h2>'+
     (S.cards.length>1?'<span class="more" data-action="card-pick-all">'+
       (S.cards.every(c=>selCards.has(c.id))?"Limpar seleção":"Selecionar todas")+'</span>':"")+'</div>';
   if(!S.cards.length) html+='<div class="empty"><div class="e-ic">'+ic("card")+'</div><div class="e-t">Nenhum cartão</div>Adicione seu primeiro cartão para acompanhar limite e faturas.</div>';
-  else html+='<div class="cstack">'+S.cards.map(cardFace).join("")+'</div>'+cardPickSum();
+  else html+='<div class="cstack" data-tour="cards">'+S.cards.map(cardFace).join("")+'</div>'+cardPickSum();
   html+='<div class="sec"><button class="btn ghost" data-action="card-add">+ Adicionar cartão</button></div>';
 
   html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Tickets e benefícios</h2></div>';
@@ -1648,6 +1983,23 @@ function renderCards(){
         '<div class="due">Gasto em '+shortMonth(viewMonth)+': '+fmt(spent)+'</div></div></div>';
   }).join("")+'</div>';
   html+='<div class="sec"><button class="btn ghost" data-action="ticket-add">+ Adicionar ticket</button></div>';
+
+  /* pessoas também vivem aqui: no celular não há sidebar, e esta é a aba
+     onde já se procura "de quem é o quê" */
+  const comSaldo=S.people.map(p=>pesFlow(p.id)).filter(f=>f.saldo!==0);
+  const devem=comSaldo.filter(f=>f.saldo>0).reduce((s,f)=>s+f.saldo,0);
+  const devo=comSaldo.filter(f=>f.saldo<0).reduce((s,f)=>s-f.saldo,0);
+  html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Pessoas</h2>'+
+    (S.people.length?'<span class="more" data-action="pes-list">Ver todas ›</span>':"")+'</div>';
+  if(!S.people.length) html+='<div class="empty"><div class="e-ic">'+ic("handshake")+'</div><div class="e-t">Ninguém cadastrado</div>'+
+    'Cadastre pessoas para vincular lançamentos e saber quanto cada uma deve.</div>';
+  else html+='<div class="sec"><div class="grid g2" style="grid-template-columns:1fr 1fr">'+
+      '<div class="metric tap" data-action="pes-list"><div class="k">Te devem</div>'+
+        '<div class="v up">'+fmt(devem)+'</div><div class="s">'+comSaldo.filter(f=>f.saldo>0).length+' pessoa(s)</div></div>'+
+      '<div class="metric tap" data-action="pes-list"><div class="k">Você deve</div>'+
+        '<div class="v down">'+fmt(devo)+'</div><div class="s">'+comSaldo.filter(f=>f.saldo<0).length+' pessoa(s)</div></div>'+
+    '</div></div>';
+  html+='<div class="sec"><button class="btn ghost" data-action="pes-add">'+ic("plus")+' Adicionar pessoa</button></div>';
   return html;
 }
 
@@ -1827,18 +2179,45 @@ function renderSettings(){
   return '<div class="sec" style="margin-top:4px"><div class="sec-head"><h2 class="t-h2">Ajustes</h2></div>'+
     '<div class="help" style="margin:0 0 16px">'+esc(user?user.email:"")+'</div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
+    '<div class="sec-head" style="margin:0 0 12px"><h2>Contas e pessoas</h2>'+
+      '<span class="faint" style="font-size:11.5px">'+S.accounts.length+' conta(s) · '+S.people.length+' pessoa(s)</span></div>'+
+    '<div class="help" style="margin:0 0 12px">'+(S.accounts.length
+      ? "O saldo de abertura de cada conta fica na própria conta, em Carteira. O total é a soma delas."
+      : "Cadastre suas contas em Carteira para saber quanto há em cada uma. O saldo de abertura passa a ser por conta.")+'</div>'+
+    '<div class="act-row" style="flex-direction:column;align-items:stretch;gap:8px">'+
+      '<button class="btn ghost" data-action="acc-add">'+ic("bank")+' Adicionar conta</button>'+
+      '<button class="btn ghost" data-action="pes-list">'+ic("handshake")+' Pessoas</button>'+
+      (S.accounts.length?"":'<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button>')+
+    '</div></div></div>'+
+  '<div class="sec"><div class="surface" style="padding:20px">'+
     '<div class="sec-head" style="margin:0 0 12px"><h2>Lixeira</h2>'+
       '<span class="faint" style="font-size:11.5px">'+delTx().length+' item(ns)</span></div>'+
     '<div class="help" style="margin:0 0 12px">Lançamentos excluídos ficam guardados aqui, fora de qualquer saldo, e podem voltar.</div>'+
     '<button class="btn ghost" data-action="trash-open">'+ic("trash")+' Abrir lixeira</button></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
-    '<div class="sec-head" style="margin:0 0 12px"><h2>Tutorial</h2></div>'+
-    '<button class="btn ghost" data-action="tut-open">'+ic("book")+' Rever o tutorial do app</button></div></div>'+
+    '<div class="sec-head" style="margin:0 0 12px"><h2>Saldo de abertura</h2></div>'+
+    '<div class="help" style="margin:0 0 12px">'+(S.opening
+      ? 'Definido: <b>'+fmt(S.opening.amount)+'</b> a partir de '+monthLabel(S.opening.month)+'.'
+      : 'Não definido — o saldo mostra a variação, não o valor real em conta.')+'</div>'+
+    '<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
-    '<div class="sec-head" style="margin:0 0 12px"><h2>Identidade</h2></div>'+
-    '<form id="fAppName"><label>Nome do app</label>'+
-      '<div style="display:flex;gap:8px"><input id="inAppName" value="'+esc(S.appName)+'" maxlength="14">'+
-      '<button class="btn sm" type="submit">Salvar</button></div></form></div></div>'+
+    '<div class="sec-head" style="margin:0 0 4px"><h2>Ajuda</h2></div>'+
+    '<div class="help" style="margin:0 0 14px">Tutoriais em balões, apontando direto na tela. Dá para sair no meio e voltar depois.</div>'+
+    '<button class="btn" data-action="tut-open">'+ic("book")+' Tutorial completo</button>'+
+    '<div class="help" style="margin:8px 0 14px">Ou escolha só o que precisa:</div>'+
+    '<div class="cap-list">'+
+      [["intro","Primeiros passos","como a tela é organizada"],
+       ["lancar","Como lançar","campo a campo, com o formulário aberto"],
+       ["conferir","Conferir e dar baixa","saldo, listas e pagamento em lote"],
+       ["cartoes","Cartões e vales","limite, fatura e soma de faturas"],
+       ["analise","Análise e PDF","gráficos, médias e relatório"],
+       ["avancado","Recursos avançados","abertura, competência e lixeira"]
+      ].map(([v,t,s])=>'<button class="cap" data-action="tour-cap" data-v="'+v+'">'+
+        '<b>'+t+'</b><span>'+s+'</span></button>').join("")+
+    '</div>'+
+    '<div class="act-row" style="margin-top:14px">'+
+      '<button class="btn small ghost" data-action="news-open">'+ic("rocket")+' O que mudou na versão '+APP_VERSION+'</button>'+
+    '</div></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
     '<div class="sec-head" style="margin:0 0 12px"><h2>Categorias de gastos</h2></div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:7px">'+S.expCats.map(c=>'<span class="fchip">'+catIcon(c)+' '+esc(c)+
@@ -1886,6 +2265,7 @@ function updateSelBar(){
   const lbl=unpaid.length&&unpaid.every(t=>t.type==="inc")?"Receber":"Pagar";
   const html='<div class="si"><div class="n">'+sel.length+' selecionado'+(sel.length>1?"s":"")+'</div>'+
       '<div class="t">'+parts.join(" · ")+'</div></div>'+
+    '<button class="btn sm ghost" data-action="sel-pes" title="Vincular a uma pessoa">'+ic("handshake")+'</button>'+
     (unpaid.length?'<button class="btn sm ok" data-action="sel-pay">✓ '+lbl+' ('+unpaid.length+')</button>':"")+
     '<button class="sh-x" data-action="sel-clear">✕</button>';
   if(!bar){ bar=document.createElement("div"); bar.id="selbar"; document.body.appendChild(bar); }
@@ -1904,6 +2284,10 @@ const CMD_ACTIONS=[
   {ic:ic("piggy"),t:"Ir para Metas",s:"objetivos",a:"tab",v:"savings"},
   {ic:ic("alert"),t:"Ver atrasados",s:"todos os meses",a:"home-filter",mode:"atraso"},
   {ic:ic("download"),t:"Exportar planilha",s:"CSV / Excel",a:"csv-export"},
+  {ic:ic("bank"),t:"Adicionar conta",s:"banco, poupança ou dinheiro",a:"acc-add"},
+  {ic:ic("swap"),t:"Transferir entre contas",s:"mover dinheiro de lugar",a:"xfer-open"},
+  {ic:ic("handshake"),t:"Pessoas",s:"quem te deve e a quem você deve",a:"pes-list"},
+  {ic:ic("coin"),t:"Saldo de abertura",s:"ponto de partida do caixa",a:"open-set"},
   {ic:ic("receipt"),t:"Relatório em PDF",s:"filtrar e imprimir",a:"rep-pdf"},
   {ic:ic("trash"),t:"Abrir lixeira",s:"lançamentos excluídos",a:"trash-open"},
   {ic:ic("book"),t:"Rever tutorial",s:"como usar o app",a:"tut-open"},
@@ -1962,16 +2346,16 @@ function openAdd(){
   addType="exp"; addKind="avista"; addDest="normal";
   const hasWallet=S.cards.length||S.tickets.length;
   openModal(modalHead("Novo lançamento")+
-  '<div class="seg" id="segType">'+
+  '<div class="seg" id="segType" data-tour="f-tipo">'+
     '<button data-action="seg-type" data-v="exp" class="on">'+ic("outflow")+' Gasto</button>'+
     '<button data-action="seg-type" data-v="inc">'+ic("inflow")+' Receita</button>'+
     '<button data-action="seg-type" data-v="savings">'+ic("piggy")+' Guardar</button></div>'+
   '<form id="fTx">'+
-  '<label>Descrição</label><input id="txDesc" placeholder="Ex.: Mercado do mês" required>'+
-  '<div class="row2"><div><label id="lblValor">Valor</label><input id="txVal" inputmode="decimal" placeholder="0,00" required></div>'+
-  '<div id="wrapCat"><label>Categoria</label><select id="txCat">'+catOptions("exp")+'</select></div>'+
+  '<label>Descrição</label><input id="txDesc" data-tour="f-desc" placeholder="Ex.: Mercado do mês" required>'+
+  '<div class="row2"><div data-tour="f-valor"><label id="lblValor">Valor</label><input id="txVal" inputmode="decimal" placeholder="0,00" required></div>'+
+  '<div id="wrapCat" data-tour="f-cat"><label>Categoria</label><select id="txCat">'+catOptions("exp")+'</select></div>'+
   '<div id="wrapGoal" class="hidden"><label>Poupança</label><select id="txGoal">'+S.goals.map(g=>'<option value="'+g.id+'">'+esc(g.name)+'</option>').join("")+'</select></div></div>'+
-  '<label>Tipo</label><div class="seg small" id="segKind">'+
+  '<label>Tipo</label><div class="seg small" id="segKind" data-tour="f-kind">'+
     '<button type="button" data-action="seg-kind" data-v="avista" class="on">À vista</button>'+
     '<button type="button" data-action="seg-kind" data-v="parcelado">Parcelado</button>'+
     '<button type="button" data-action="seg-kind" data-v="fixo">Fixo mensal</button></div>'+
@@ -1983,17 +2367,27 @@ function openAdd(){
     '<label class="check-line" style="margin-bottom:10px"><input type="checkbox" id="txPerp"><span>Repetir <b>sempre</b>, sem data para acabar</span></label>'+
     '<div id="wrapMonths"><label>Repetir por quantos meses?</label><input id="txMonths" type="number" min="2" max="600" value="12"></div>'+
     '<div class="help">Cria nos próximos meses; você confirma quando pagar/receber. A categoria é mantida em todos.</div></div>'+
-  '<div id="wrapMethod" class="row2"><div><label>Forma</label><select id="txMethod">'+
+  '<div id="wrapMethod" class="row2" data-tour="f-forma"><div><label>Forma</label><select id="txMethod">'+
     Object.entries(METHODS).filter(([k])=>k!=="ticket"||S.tickets.length).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join("")+'</select></div>'+
   '<div id="wrapWallet" class="hidden"><label id="lblWallet">Cartão</label>'+walletSelect("txWallet","")+'</div></div>'+
   '<div id="wrapBuy" class="hidden"><label>Data da compra</label><input id="txBuy" type="date" value="'+todayISO()+'">'+
     '<div class="help">Uso o fechamento do cartão para calcular o vencimento da fatura.</div></div>'+
-  '<label id="lblDue">Vencimento</label><input id="txDue" type="date" value="'+todayISO()+'" required>'+
-  '<div id="wrapComp" class="hidden"><label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="txComp" type="month">'+
+  '<label id="lblDue">Vencimento</label><input id="txDue" data-tour="f-venc" type="date" value="'+todayISO()+'" required>'+
+  '<div id="wrapAcc" class="'+(S.accounts.length?"":"hidden")+'" data-tour="f-conta"><label>Conta</label>'+
+    '<select id="txAcc">'+S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>'+
+    '<div class="help">De qual conta o dinheiro sai ou entra. No cartão de crédito, a conta só é debitada quando você paga a fatura.</div></div>'+
+  /* obrigatório de propósito: força decidir de quem é o lançamento em vez de
+     deixar em branco por descuido. "Ninguém" é uma resposta válida. */
+  '<div id="wrapPes" data-tour="f-pessoa"><label>Pessoa</label>'+
+    '<select id="txPes" required><option value="" selected>Ninguém — é meu</option>'+
+    S.people.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("")+
+    '<option value="__new">＋ Cadastrar pessoa…</option></select>'+
+    '<div class="help">Vinculando a alguém, o WIGO acompanha quanto essa pessoa deve ou lhe é devida.</div></div>'+
+  '<div id="wrapComp" class="hidden" data-tour="f-comp"><label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="txComp" type="month">'+
     '<div class="help" id="helpComp"></div></div>'+
-  '<label class="check-line" id="wrapPaid"><input type="checkbox" id="txAlready"><span id="lblAlready">Já foi pago</span></label>'+
+  '<label class="check-line" id="wrapPaid" data-tour="f-pago"><input type="checkbox" id="txAlready"><span id="lblAlready">Já foi pago</span></label>'+
   (!hasWallet?'':'')+
-  '<button class="btn" type="submit">Salvar lançamento</button></form>');
+  '<button class="btn" type="submit" data-tour="f-salvar">Salvar lançamento</button></form>');
   syncAddForm();
 }
 function syncAddForm(){
@@ -2028,6 +2422,14 @@ function syncAddForm(){
   /* "Data da compra" fora do if: antes ele só era escondido dentro do ramo de
      gasto, então ao trocar para Receita o campo ficava preso visível. */
   $("#wrapBuy").classList.toggle("hidden",!(showMethod&&$("#txMethod").value==="cartao"));
+  /* cartão e vale não debitam conta na hora da compra: o cartão debita quando
+     a fatura é paga, e o vale tem saldo próprio. Pedir a conta aqui daria a
+     entender que o dinheiro já saiu. */
+  if($("#wrapAcc")){
+    const forma=showMethod?$("#txMethod").value:"";
+    const semConta=forma==="cartao"||forma==="ticket";
+    $("#wrapAcc").classList.toggle("hidden",!S.accounts.length||semConta);
+  }
   if(showMethod){ const mv=$("#txMethod").value;
     const isCard=mv==="cartao", isTicket=mv==="ticket";
     $("#wrapWallet").classList.toggle("hidden",!(isCard||isTicket));
@@ -2058,6 +2460,10 @@ function submitTx(){
   createTx({ type:addType==="inc"?"inc":"exp", dest:addType==="savings"?"savings":null,
     desc:$("#txDesc").value.trim()||"Sem descrição", cat, method, cardId, ticketId, goalId,
     comp:(addType!=="savings"&&$("#txComp")&&$("#txComp").value)?$("#txComp").value:null,
+    /* compra no cartão ou no vale nasce sem conta: ela só ganha uma quando a
+       fatura for paga, e aí é a conta de débito do cartão */
+    accId:(method==="cartao"||method==="ticket")?null:(($("#txAcc")&&$("#txAcc").value)||null),
+    pesId:($("#txPes")&&$("#txPes").value)||null,
     kind:addKind, total:val, n:Math.max(2,parseInt($("#txN").value)||2),
     perp:addKind==="fixo"&&$("#txPerp")&&$("#txPerp").checked,
     paidCount:Math.max(0,parseInt($("#txPaidN").value)||0), months:Math.max(2,parseInt($("#txMonths").value)||12),
@@ -2350,6 +2756,197 @@ function printReport(){
   else f.onload=()=>setTimeout(disparar,120);
 }
 
+/* ══════════════════ CONTAS ══════════════════ */
+let accColor=ACC_COLORS[0];
+function openAccForm(id){
+  const a=id?accOf(id):null; accColor=a?a.color:ACC_COLORS[0];
+  const o=a&&a.opening?a.opening:{};
+  openModal(modalHead(a?"Editar conta":"Nova conta",a?"":"Banco, poupança ou dinheiro em espécie")+
+  '<form id="fAcc" data-id="'+(id||"")+'">'+
+  '<label>Nome</label><input id="acName" placeholder="Ex.: Nubank, Carteira" value="'+(a?esc(a.name):"")+'" required>'+
+  '<div class="row2"><div><label>Banco</label>'+
+    '<select id="acBank"><option value="">—</option>'+
+      BANKS.map(b=>'<option'+(a&&a.bank===b?" selected":"")+'>'+b+'</option>').join("")+'</select></div>'+
+  '<div><label>Tipo</label><select id="acType">'+
+      Object.entries(ACC_TYPES).map(([k,v])=>'<option value="'+k+'"'+(a&&a.type===k?" selected":"")+'>'+v+'</option>').join("")+
+    '</select></div></div>'+
+  '<label>Cor</label><div class="swatches">'+ACC_COLORS.map(c=>
+    '<button type="button" data-action="pick-acolor" data-c="'+c+'" style="background:'+c+'" class="'+(c===accColor?"on":"")+'"></button>').join("")+'</div>'+
+  '<div class="sec-head" style="margin:20px 0 8px"><h2 style="font-size:13.5px">Saldo de abertura</h2></div>'+
+  '<div class="help" style="margin-bottom:10px">Quanto havia nesta conta no primeiro dia do mês escolhido. É o ponto de partida — daí em diante o WIGO encadeia sozinho.</div>'+
+  '<div class="row2"><div><label>Valor</label>'+
+    '<input id="acAmt" inputmode="decimal" placeholder="0,00" value="'+(o.amount!=null?String(o.amount).replace(".",","):"")+'"></div>'+
+  '<div><label>A partir de</label><input id="acMonth" type="month" value="'+(o.month||viewMonth)+'"></div></div>'+
+  '<button class="btn" type="submit">'+(a?"Salvar":"Adicionar conta")+'</button>'+
+  (a?'<div class="act-row"><button type="button" class="btn small danger" data-action="acc-delete" data-id="'+id+'">Excluir conta</button></div>':"")+
+  '</form>');
+}
+function openAccDetail(id){
+  const a=accOf(id); if(!a)return;
+  const f=cashFlow(viewMonth,id);
+  const mov=aTx().filter(t=>(t.accId===id||t.accTo===id)&&cashMonth(t)===viewMonth)
+    .sort((x,y)=>x.due<y.due?-1:1);
+  openModal(modalHead(esc(a.name),(a.bank?esc(a.bank)+" · ":"")+ACC_TYPES[a.type||"corrente"])+
+  '<div class="stat" style="margin-top:14px"><div class="k">Saldo em '+shortMonth(viewMonth)+'</div>'+
+    '<div class="v '+(f.atual>=0?"violet":"down")+'">'+fmt(f.atual)+'</div>'+
+    '<div class="s">'+(f.aPagar||f.aReceber?"previsto para o fim do mês "+fmt(f.final):"nada pendente")+'</div></div>'+
+  '<div class="ledger dark" style="margin-top:12px">'+
+    '<div class="lg"><span>Saldo inicial</span><b>'+fmt(f.inicial)+'</b></div>'+
+    '<div class="lg"><span>+ Entrou</span><b class="up">'+fmt(f.entrou)+'</b></div>'+
+    '<div class="lg"><span>− Saiu</span><b class="down">'+fmt(f.saiu)+'</b></div>'+
+    '<div class="lg now"><span>= Saldo atual</span><b>'+fmt(f.atual)+'</b></div>'+
+  '</div>'+
+  '<div class="act-row" style="margin-top:14px">'+
+    '<button class="btn small ghost" data-action="acc-edit" data-id="'+id+'">Editar</button>'+
+    '<button class="btn small ghost" data-action="xfer-open" data-id="'+id+'">'+ic("swap")+' Transferir</button></div>'+
+  '<h3 style="font-size:13.5px;color:var(--v-2);margin:20px 0 8px">Movimentos de '+shortMonth(viewMonth)+'</h3>'+
+  (mov.length?'<div class="list-plain">'+mov.map(txRow).join("")+'</div>'
+    :'<div class="empty">Nenhum movimento neste mês.</div>'));
+}
+/* ----- TRANSFERÊNCIA ENTRE CONTAS -----
+   Não é receita nem despesa: o dinheiro troca de lugar e o patrimônio total
+   fica igual. Por isso vira type "xfer", neutro no saldo geral. */
+function openXfer(deId){
+  if(S.accounts.length<2){ toast("Cadastre ao menos duas contas"); return; }
+  const opt=(sel)=>S.accounts.map(a=>'<option value="'+a.id+'"'+(a.id===sel?" selected":"")+'>'+esc(a.name)+'</option>').join("");
+  const outra=S.accounts.find(a=>a.id!==deId);
+  openModal(modalHead("Transferir entre contas","O total não muda — o dinheiro só troca de lugar")+
+  '<form id="fXfer">'+
+  '<div class="row2"><div><label>De</label><select id="xfDe">'+opt(deId||S.accounts[0].id)+'</select></div>'+
+  '<div><label>Para</label><select id="xfPara">'+opt(outra?outra.id:"")+'</select></div></div>'+
+  '<label>Valor</label><input id="xfVal" inputmode="decimal" placeholder="0,00" required>'+
+  '<label>Data</label><input id="xfData" type="date" value="'+todayISO()+'">'+
+  '<label>Descrição <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label>'+
+    '<input id="xfDesc" placeholder="Transferência">'+
+  '<button class="btn" type="submit">Transferir</button></form>');
+}
+
+/* ══════════════════ PESSOAS ══════════════════ */
+function openPeople(){
+  const lista=S.people.map(p=>({p,f:pesFlow(p.id)}))
+    .sort((a,b)=>Math.abs(b.f.saldo)-Math.abs(a.f.saldo));
+  const devem=lista.filter(x=>x.f.saldo>0).reduce((s,x)=>s+x.f.saldo,0);
+  const devo=lista.filter(x=>x.f.saldo<0).reduce((s,x)=>s-x.f.saldo,0);
+  openModal(modalHead("Pessoas","Quem te deve e a quem você deve")+
+  (S.people.length?'<div class="grid g2" style="grid-template-columns:1fr 1fr;margin-bottom:16px">'+
+    '<div class="metric"><div class="k">Te devem</div><div class="v up">'+fmt(devem)+'</div></div>'+
+    '<div class="metric"><div class="k">Você deve</div><div class="v down">'+fmt(devo)+'</div></div></div>':"")+
+  (lista.length?'<div class="list-plain">'+lista.map(({p,f})=>
+    '<div class="tx" data-action="pes-open" data-id="'+p.id+'" style="cursor:pointer">'+
+      '<div class="ic">'+ic("handshake")+'</div>'+
+      '<div class="mid"><div class="ttl">'+esc(p.name)+'</div>'+
+        '<div class="meta">'+f.lancamentos+' lançamento'+(f.lancamentos===1?"":"s")+
+          (f.recebido||f.pago?' · já movimentado '+fmt(f.recebido+f.pago):"")+'</div></div>'+
+      '<div class="rt"><div class="amt '+(f.saldo>0?"up":f.saldo<0?"down":"")+'">'+
+        (f.saldo>0?"+":f.saldo<0?"−":"")+fmt(Math.abs(f.saldo))+'</div>'+
+        '<div class="act"><span class="faint" style="font-size:11px">'+
+          (f.saldo>0?"te deve":f.saldo<0?"você deve":"quitado")+'</span></div></div></div>').join("")+'</div>'
+    :'<div class="empty"><div class="e-ic">'+ic("handshake")+'</div><div class="e-t">Ninguém cadastrado</div>'+
+     'Cadastre pessoas para vincular lançamentos e acompanhar quanto cada uma deve.</div>')+
+  '<div class="act-row" style="margin-top:14px"><button class="btn ghost" data-action="pes-add">'+ic("plus")+' Nova pessoa</button></div>');
+}
+function openPesForm(id){
+  const p=id?pesOf(id):null;
+  openModal(modalHead(p?"Editar pessoa":"Nova pessoa")+
+  '<form id="fPes" data-id="'+(id||"")+'">'+
+  '<label>Nome</label><input id="peName" value="'+(p?esc(p.name):"")+'" placeholder="Ex.: Carlos" required>'+
+  '<label>Observação <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label>'+
+    '<input id="peNote" value="'+(p&&p.note?esc(p.note):"")+'" placeholder="Ex.: telefone, como conheceu">'+
+  '<button class="btn" type="submit">'+(p?"Salvar":"Adicionar")+'</button>'+
+  (p?'<div class="act-row"><button type="button" class="btn small danger" data-action="pes-delete" data-id="'+id+'">Excluir pessoa</button></div>':"")+
+  '</form>');
+}
+function openPesDetail(id){
+  const p=pesOf(id); if(!p)return;
+  const f=pesFlow(id);
+  const lista=aTx().filter(t=>t.pesId===id).sort((a,b)=>a.due<b.due?1:-1);
+  openModal(modalHead(esc(p.name),p.note?esc(p.note):(f.lancamentos+" lançamento"+(f.lancamentos===1?"":"s")))+
+  '<div class="stat" style="margin-top:14px"><div class="k">'+
+    (f.saldo>0?"Esta pessoa te deve":f.saldo<0?"Você deve a esta pessoa":"Situação")+'</div>'+
+    '<div class="v '+(f.saldo>0?"up":f.saldo<0?"down":"")+'">'+fmt(Math.abs(f.saldo))+'</div>'+
+    '<div class="s">'+(f.saldo===0?"tudo quitado":"em aberto")+'</div></div>'+
+  '<div class="ledger dark" style="margin-top:12px">'+
+    '<div class="lg"><span>A receber</span><b class="up">'+fmt(f.aReceber)+'</b></div>'+
+    '<div class="lg"><span>A pagar</span><b class="down">'+fmt(f.aPagar)+'</b></div>'+
+    '<div class="lg"><span>Já recebido</span><b>'+fmt(f.recebido)+'</b></div>'+
+    '<div class="lg"><span>Já pago</span><b>'+fmt(f.pago)+'</b></div>'+
+  '</div>'+
+  '<div class="act-row" style="margin-top:14px;flex-wrap:wrap">'+
+    '<button class="btn small" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
+    '<button class="btn small ghost" data-action="pes-edit" data-id="'+id+'">Editar</button>'+
+    '<button class="btn small ghost" data-action="pes-pdf" data-id="'+id+'">'+ic("receipt")+' Gerar PDF</button></div>'+
+  '<h3 style="font-size:13.5px;color:var(--v-2);margin:20px 0 8px">Lançamentos</h3>'+
+  (lista.length?'<div class="list-plain">'+lista.map(txRow).join("")+'</div>'
+    :'<div class="empty">Nenhum lançamento vinculado ainda.</div>'));
+}
+
+/* ----- VINCULAR LANÇAMENTOS EXISTENTES A UMA PESSOA -----
+   Quem já usava o app tem meses de histórico sem vínculo. Esta tela lista os
+   lançamentos e deixa marcar vários de uma vez, com busca para achar rápido. */
+let vincQ="";
+function openVincular(pesId){
+  const p=pesOf(pesId); if(!p)return;
+  vincQ="";
+  openModal(modalHead("Vincular a "+esc(p.name),"Marque os lançamentos que são desta pessoa")+
+  '<input id="vincSearch" data-pes="'+pesId+'" placeholder="Buscar por descrição, categoria ou valor…" autocomplete="off">'+
+  '<div class="help" style="margin:8px 0 12px">Já marcados são os que estão vinculados agora. Desmarcar remove o vínculo.</div>'+
+  '<form id="fVincular" data-id="'+pesId+'">'+
+    '<div id="vincBox">'+vincList(pesId)+'</div>'+
+    '<button class="btn" type="submit">Salvar vínculos</button></form>');
+}
+function vincList(pesId){
+  const q=vincQ.trim().toLowerCase();
+  let lista=aTx().filter(t=>t.type!=="xfer");
+  if(q){
+    const num=q.replace(/[^\d,]/g,"").replace(",",".");
+    lista=lista.filter(t=>{
+      if((t.desc+" "+(t.cat||"")).toLowerCase().includes(q)) return true;
+      return num&&String(val(t)).includes(num);
+    });
+  } else {
+    /* sem busca, mostra os já vinculados primeiro e depois os mais recentes,
+       para não despejar anos de histórico de uma vez */
+    lista=lista.slice().sort((a,b)=>{
+      const av=a.pesId===pesId?0:1, bv=b.pesId===pesId?0:1;
+      if(av!==bv) return av-bv;
+      return a.due<b.due?1:-1;
+    }).slice(0,60);
+  }
+  if(!lista.length) return '<div class="empty">Nada encontrado.</div>';
+  return '<div class="del-list" style="max-height:340px">'+lista.map(t=>{
+    const outra=t.pesId&&t.pesId!==pesId?pesOf(t.pesId):null;
+    return '<label class="check-line pick"><input type="checkbox" name="vinc" value="'+t.id+'"'+
+      (t.pesId===pesId?" checked":"")+'>'+
+      '<span><b>'+esc(t.desc)+'</b><br><span class="faint" style="font-size:11.5px">'+
+        fmtDate(t.due)+" · "+(t.type==="inc"?"+":"−")+fmt(val(t))+" · "+stLabel(t)+
+        (outra?' · <span style="color:var(--warn)">hoje é de '+esc(outra.name)+'</span>':"")+
+      '</span></span></label>';
+  }).join("")+'</div>';
+}
+
+/* ----- SALDO DE ABERTURA -----
+   Ponto de partida do encadeamento. Preenchido uma vez: informa-se quanto
+   havia em caixa no primeiro dia daquele mês, e daí em diante cada mês puxa
+   o fechamento do anterior. */
+function openOpening(){
+  const o=S.opening||{};
+  const primeiro=aTx().reduce((a,t)=>(!a||t.due<a)?t.due:a,null);
+  openModal(modalHead("Saldo de abertura","O ponto de partida do seu saldo")+
+  '<div class="help" style="margin-bottom:14px">Informe quanto você tinha em conta no <b>primeiro dia</b> '+
+    'do mês escolhido. A partir daí o WIGO encadeia os meses sozinho — o saldo final de um vira o inicial do seguinte.'+
+    (primeiro?'<br><br>Seu lançamento mais antigo é de <b>'+fmtDate(primeiro)+'</b>; '+
+      'usar o mês dele (ou um anterior) faz todo o histórico ser considerado.':"")+'</div>'+
+  '<form id="fOpening">'+
+  '<label>Saldo em caixa</label><input id="opAmt" inputmode="decimal" placeholder="0,00" value="'+
+    (o.amount!=null?String(o.amount).replace(".",","):"")+'">'+
+  '<div class="help">Some as contas que você usa no dia a dia. Pode ser negativo, se estiver no vermelho.</div>'+
+  '<label style="margin-top:14px">A partir de qual mês</label>'+
+    '<input id="opMonth" type="month" value="'+(o.month||(primeiro?mkey(primeiro):viewMonth))+'">'+
+  '<button class="btn" type="submit">Salvar saldo de abertura</button>'+
+  (S.opening?'<div class="act-row"><button type="button" class="btn small ghost" data-action="open-clear">Remover abertura</button></div>':"")+
+  '</form>');
+}
+
 /* ----- LIXEIRA ----- */
 function openTrash(){
   const lixo=delTx().sort((a,b)=>(b.deletedAt||"")<(a.deletedAt||"")?-1:1);
@@ -2428,33 +3025,260 @@ function openMirror(id){
   '<button class="btn" type="submit">Criar '+rot+'</button></form>');
 }
 
-/* ----- TUTORIAL DE PRIMEIRO ACESSO ----- */
-const TUT=[
- {ic:ic("wave","xl"),t:"Bem-vindo ao WIGO",b:"Seu controle financeiro inteligente. Em 1 minuto você aprende tudo. Vamos lá?"},
- {ic:ic("home","xl"),t:"Início",b:"Seu painel do mês: quanto recebeu, quanto pagou, o que está em atraso e o saldo previsto.<br><br><b>Dica:</b> toque nos cards (Recebido, Pago, atraso) para ver os lançamentos de cada um na hora."},
- {ic:ic("plus","xl"),t:"Adicionar lançamento",b:"Toque no botão roxo <b>+</b> no centro do menu.<br><br>Escolha: <b>Gasto</b>, <b>Receita</b> ou <b>Guardar</b> (poupança). Depois o tipo: <b>À vista</b>, <b>Parcelado</b> ou <b>Fixo mensal</b> (repete todo mês)."},
- {ic:ic("card","xl"),t:"Carteira (cartões)",b:"Cadastre seus cartões e acompanhe o <b>limite usado</b> em tempo real.<br><br>Ao abrir um cartão, toque em <b>“Marcar fatura como paga”</b> — todos os lançamentos do mês são baixados de uma vez e o limite é liberado."},
- {ic:ic("checkSquare","xl"),t:"Seleção múltipla",b:"Toque no <b>círculo</b> ao lado de qualquer lançamento para selecionar. A soma aparece na barra flutuante.<br><br>Use <b>“Selecionar todos”</b> na lista e depois <b>“Marcar pagos”</b> para baixar tudo em um toque."},
- {ic:ic("calendar","xl"),t:"Competência (receitas)",b:"Recebe adiantamento? Ao criar uma receita, defina o <b>Mês de competência</b> — o mês a que aquele dinheiro pertence.<br><br>Ex.: adiantamento recebido em julho que é do salário de agosto → conta em agosto."},
- {ic:ic("piggy","xl"),t:"Poupança",b:"Crie metas (viagem, reserva…), registre aportes e acompanhe o progresso.<br><br>O WIGO ainda estima o rendimento pelo <b>CDI</b>."},
- {ic:ic("chart","xl"),t:"Relatório",b:"Tendência de 12 meses, comparação mês a mês, média por categoria e projeção até o fim do mês.<br><br><b>Toque em um mês ou categoria</b> para abrir o detalhamento completo."},
- {ic:ic("rocket","xl"),t:"Pronto!",b:"Agora é com você. Lance seus gastos e receitas e deixe o WIGO organizar o resto.<br><br>Reveja este tutorial quando quiser em <b>Ajustes</b>."}
+/* ══════════════════ TOUR GUIADO ══════════════════
+   Balões ancorados em elementos reais da tela, com o resto escurecido.
+
+   Cada passo aponta para um [data-tour]. Se o alvo não existir na tela
+   naquele momento, o passo é pulado — é o que permite o mesmo roteiro
+   funcionar no celular e no computador, onde a navegação é diferente.
+
+   O passo pode pedir uma aba (tab) e o tour troca sozinho antes de medir a
+   posição do alvo. O primeiro passo, sem alvo, aparece centralizado. */
+
+const TOUR_BASIC=[
+ {t:"Bem-vindo ao WIGO",
+  b:"Vou te mostrar o essencial em menos de um minuto. Você pode sair quando quiser."},
+ {sel:"nav",tab:"home",place:"right",t:"Por aqui você navega",
+  b:"<b>Início</b> é o painel do mês. <b>Carteira</b> guarda cartões e vales, <b>Metas</b> é a poupança e <b>Análise</b> mostra a evolução."},
+ {sel:"add",tab:"home",place:"right",t:"Tudo começa aqui",
+  b:"O botão de <b>novo lançamento</b>. Você escolhe <b>Gasto</b>, <b>Receita</b> ou <b>Guardar</b>, e se é à vista, parcelado ou fixo mensal — que pode repetir para sempre, sem data para acabar."},
+ {sel:"month",tab:"home",place:"bottom",t:"O mês que você está vendo",
+  b:"Use as setas para andar no tempo. Tudo na tela — saldo, faturas, listas — acompanha esse mês."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Seu saldo, como num extrato",
+  b:"Começa com o que sobrou do mês passado, soma o que entrou, tira o que saiu. O <b>saldo atual</b> é o que você tem agora — dá para comparar com o app do banco.<br><br>Abaixo dele, o que ainda falta acontecer até fechar o mês."},
+ {sel:"search",tab:"home",place:"top",t:"Achar qualquer lançamento",
+  b:"Busque por descrição, categoria, cartão ou <b>valor</b> — digitar <i>90</i> encontra R$ 90,00 e R$ 190,00.<br><br>No ícone de filtro dá para limitar por faixa de valor, período e forma de pagamento."},
+ {tab:"report",t:"Análise",b:"Aqui ficam a tendência dos últimos 12 meses, a comparação com o mês anterior, a média por categoria e o mapa de gastos por dia. Toque em qualquer mês ou categoria para abrir o detalhe."},
+ {t:"É só isso para começar",
+  b:"Cadastre seus cartões e lance seus gastos. Quando tiver alguns lançamentos, eu volto para mostrar os recursos mais avançados.<br><br>Este tour fica salvo em <b>Ajustes</b>."}
 ];
-let tutStep=0;
-function openTutorial(){ tutStep=0; renderTutorial(); }
-function renderTutorial(){
-  const s=TUT[tutStep], last=tutStep===TUT.length-1;
-  openModal('<div style="text-align:center;padding:6px 2px 2px">'+
-    '<div class="tut-ic">'+s.ic+'</div>'+
-    '<h2 style="margin-bottom:10px">'+s.t+'</h2>'+
-    '<div class="help" style="font-size:13.5px;line-height:1.55;text-align:center">'+s.b+'</div>'+
-    '<div style="display:flex;gap:6px;justify-content:center;margin:18px 0 14px">'+
-      TUT.map((_,i)=>'<span style="width:7px;height:7px;border-radius:50%;background:'+(i===tutStep?"var(--violet)":"var(--line)")+'"></span>').join("")+'</div>'+
-    '<div style="display:flex;gap:10px">'+
-      (tutStep>0?'<button class="btn small ghost" data-action="tut-prev" style="flex:1">‹ Voltar</button>':"")+
-      '<button class="btn small" data-action="'+(last?"tut-done":"tut-next")+'" style="flex:2">'+(last?"Começar a usar":"Próximo ›")+'</button></div>'+
-    (last?"":'<a data-action="tut-done" style="display:inline-block;margin-top:12px;font-size:12px;color:var(--muted);cursor:pointer">Pular tutorial</a>')+
-  '</div>');
+
+/* Como lançar — abre o formulário de verdade e explica campo a campo.
+   Nada é salvo: o passo final fecha a tela sem submeter. */
+const TOUR_LANCAR=[
+ {t:"Como lançar",b:"Vou abrir o formulário e explicar cada campo. <b>Nada será salvo</b> — é só demonstração."},
+ {abre:()=>openAdd(),sel:"f-tipo",place:"bottom",t:"1. O que você está lançando",
+  b:"<b>Gasto</b> é dinheiro saindo. <b>Receita</b> é dinheiro entrando. <b>Guardar</b> move para uma meta de poupança — sai do caixa, mas continua sendo seu."},
+ {sel:"f-desc",place:"bottom",t:"2. Descrição",
+  b:"Escreva de um jeito que você reconheça depois. Vale colocar o nome de alguém: <i>“Empréstimo Carlos”</i> — assim você acha tudo dele numa busca e gera um PDF para cobrar."},
+ {sel:"f-valor",place:"bottom",t:"3. Valor",
+  b:"Digite só os números: <b>1250</b> vira R$ 1.250,00. Para centavos, use vírgula: <b>89,90</b>."},
+ {sel:"f-cat",place:"bottom",t:"4. Categoria",
+  b:"É por ela que a Análise agrupa seus gastos. Se faltar alguma, escolha <b>Criar nova categoria</b> no fim da lista."},
+ {sel:"f-kind",place:"bottom",t:"5. À vista, parcelado ou fixo",
+  b:"<b>À vista</b> é uma vez só.<br><b>Parcelado</b>: informe o valor <b>total</b> e o número de parcelas — o WIGO divide e agenda cada uma.<br><b>Fixo mensal</b>: repete todo mês, e marcando <i>repetir sempre</i> ele nunca acaba."},
+ {sel:"f-forma",place:"bottom",t:"6. Como foi pago",
+  b:"Escolhendo <b>Cartão</b>, aparece a data da compra e o WIGO calcula sozinho em qual fatura ela cai, usando o dia de fechamento.<br><br>Escolhendo <b>Ticket</b>, o valor sai do saldo do vale."},
+ {sel:"f-venc",place:"top",t:"7. Vencimento",
+  b:"A data em que a conta vence, ou em que você espera receber. É ela que define se o lançamento aparece <i>no prazo</i>, <i>a vencer</i> ou <i>em atraso</i>."},
+ {sel:"f-pago",place:"top",t:"8. Já aconteceu?",
+  b:"Marque se o dinheiro <b>já saiu ou já entrou</b>. Marcado, entra no saldo atual na hora. Desmarcado, fica como previsto até você confirmar."},
+ {sel:"f-salvar",place:"top",t:"9. Salvar",
+  b:"Pronto — ele aparece na lista do mês correspondente."},
+ {fecha:true,t:"Depois de lançar",
+  b:"Na lista, cada linha tem o botão <b>Pagar</b> (ou <b>Receber</b>). Ao confirmar dá para ajustar data e valor — útil quando veio juros ou desconto.<br><br>Tocar na linha abre a edição, onde ficam duplicar e excluir."}
+];
+
+/* Conferir e dar baixa */
+const TOUR_CONFERIR=[
+ {tab:"home",t:"Conferir e dar baixa",b:"Como acompanhar o que está pago, o que falta e o que venceu."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"O extrato do mês",
+  b:"<b>Saldo inicial</b> é o que sobrou do mês passado. Somando o recebido e tirando o pago, chega no <b>saldo atual</b> — esse é o número para comparar com o app do banco.<br><br>Abaixo dele fica o que ainda deve acontecer até o mês fechar."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Cada linha é um atalho",
+  b:"Toque em <b>Recebido</b>, <b>Pago</b>, <b>A receber</b> ou <b>A pagar</b> e a lista passa a mostrar exatamente aqueles lançamentos."},
+ {sel:"lista",tab:"home",place:"top",t:"A lista do mês",
+  b:"Cada linha traz vencimento, forma de pagamento e situação. O que está vencido aparece destacado."},
+ {sel:"linha",tab:"home",place:"bottom",t:"Dar baixa",
+  b:"O botão <b>Pagar</b> (ou <b>Receber</b>) confirma que o dinheiro se moveu. Na confirmação dá para ajustar a <b>data</b> e o <b>valor</b> — é assim que juros, desconto ou pagamento parcial ficam registrados certo.<br><br>Tocar no resto da linha abre a edição."},
+ {sel:"marcar",tab:"home",place:"right",t:"Marcar vários de uma vez",
+  b:"Toque no círculo ao lado de qualquer lançamento. Aparece uma barra com a <b>soma dos selecionados</b> e um botão para baixar todos juntos — serve para fechar o mês em poucos toques."},
+ {sel:"search",tab:"home",place:"top",t:"Procurar",
+  b:"Busque por descrição, categoria, cartão ou valor. No ícone de filtro dá para limitar por faixa de valor, período, forma e tipo.<br><br>Nos chips acima, alterne entre <b>o mês atual</b> e <b>todos os meses</b>."}
+];
+
+/* Cartões e vales */
+const TOUR_CARTOES=[
+ {tab:"cards",t:"Cartões e vales",b:"Como acompanhar limite e fatura."},
+ {sel:"cards",tab:"cards",place:"bottom",t:"Seus cartões",
+  b:"Cada cartão mostra o <b>limite usado</b>, o disponível e a fatura do mês exibido.<br><br>Cadastre com o dia de fechamento e o de vencimento — é assim que o WIGO sabe em qual fatura cai cada compra."},
+ {sel:"cards",tab:"cards",place:"bottom",t:"Somar faturas",
+  b:"O círculo no canto de cada cartão marca a fatura. Marcando vários, aparece o <b>total das faturas do mês</b>, com quanto está em aberto e quanto já foi pago."},
+ {sel:"cards",tab:"cards",place:"bottom",t:"Dentro do cartão",
+  b:"Tocando no cartão você vê todas as compras daquele mês e pode <b>buscar por nome ou valor</b> dentro da fatura.<br><br>O botão <b>Marcar fatura como paga</b> baixa tudo de uma vez e libera o limite."},
+ {tab:"cards",t:"Vales e benefícios",
+  b:"Vale-alimentação e afins entram como <b>Ticket</b>: você informa quanto recarrega por mês e o WIGO acompanha o saldo, separado do seu dinheiro."}
+];
+
+/* Análise e relatórios */
+const TOUR_ANALISE=[
+ {tab:"report",t:"Análise",b:"Onde você enxerga o padrão, não só o mês."},
+ {tab:"report",t:"Tendência de 12 meses",
+  b:"O gráfico compara entradas e saídas mês a mês. Serve para ver se a linha de gasto vem subindo ao longo do ano."},
+ {tab:"report",t:"Comparação e médias",
+  b:"Mostra quanto subiu ou caiu em relação ao mês anterior, e a <b>média dos últimos 6 meses</b> por categoria — o número que revela para onde o dinheiro realmente vai."},
+ {tab:"report",t:"Projeção do mês",
+  b:"A partir do ritmo de gasto até aqui, estima como o mês deve fechar. O mapa de calor mostra os dias de maior gasto; toque num dia para ver o que foi."},
+ {tab:"report",t:"Detalhar",
+  b:"Toque em qualquer <b>mês</b> ou <b>categoria</b> para abrir o detalhamento com todos os lançamentos daquele recorte."},
+ {t:"Relatório em PDF",
+  b:"Em <b>Ajustes</b>, o botão <b>Relatório em PDF</b> gera um documento filtrado.<br><br>Para cobrar alguém: busque o nome da pessoa, escolha <i>todos os meses</i> e <i>somente em aberto</i>. Sai pronto para enviar."}
+];
+
+/* Recursos avançados */
+const TOUR_ADV=[
+ {t:"Recursos avançados",b:"O que economiza tempo depois que o app já faz parte da rotina."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Saldo de abertura",
+  b:"Em <b>Ajustes</b>, informe uma vez quanto você tem em conta. A partir daí o saldo passa a bater com o extrato do banco, e o fechamento de um mês vira a abertura do seguinte."},
+ {abre:()=>openAdd(),sel:"f-comp",place:"top",t:"Competência",
+  b:"Recebeu em julho um adiantamento que é do salário de agosto? Preencha aqui o <b>mês de competência</b>: ele conta em agosto na Análise, mas entra no caixa em julho — como no banco.<br><br>Vale para gastos também. Em branco, funciona como sempre."},
+ {sel:"trash",tab:"home",place:"right",t:"Nada se perde",
+  b:"Ao excluir você escolhe: só aquele, o grupo inteiro, apenas os que ainda não foram pagos, ou marcando um a um.<br><br>O que sai vai para a <b>Lixeira</b>: some de todos os saldos, mas pode voltar."},
+ {t:"Duplicar invertido",
+  b:"Emprestou dinheiro e vai receber de volta? Abra o lançamento e use <b>Duplicar como receita</b> — mesmos dados, sinal trocado, sem redigitar."},
+ {t:"Metas de poupança",
+  b:"Na aba <b>Metas</b> você cria objetivos com valor alvo e aporte mensal. O WIGO acompanha o progresso e estima o rendimento pelo CDI."},
+ {t:"Pronto",b:"Todos os tutoriais ficam em <b>Ajustes → Ajuda</b> para rever quando quiser."}
+];
+
+/* Primeiro acesso: tudo em sequência, na ordem em que se aprende. */
+const TOUR_COMPLETO=[...TOUR_BASIC.slice(0,-1),...TOUR_LANCAR,...TOUR_CONFERIR,
+  ...TOUR_CARTOES,...TOUR_ANALISE,
+  {t:"Terminamos",b:"Comece cadastrando seus cartões e lançando o mês atual.<br><br>Para rever qualquer parte, tudo está em <b>Ajustes → Ajuda</b>."}];
+
+let tour=null, tourStep=0;
+const tourEl=s=>[...document.querySelectorAll('[data-tour="'+s+'"]')]
+  .find(e=>e.offsetParent!==null&&e.getBoundingClientRect().width>0);
+
+function startTour(lista,marca){
+  tour={ passos:lista, marca }; tourStep=0;
+  closeModal();
+  renderTour();
+}
+function endTour(){
+  if(tour&&tour.marca){ S[tour.marca]=true; save(); }
+  tour=null;
+  const w=document.getElementById("tourWrap"); if(w) w.remove();
+}
+function renderTour(){
+  if(!tour) return;
+  // pula passos cujo alvo não existe nesta tela
+  while(tourStep<tour.passos.length){
+    const p=tour.passos[tourStep];
+    if(p.tab&&tab!==p.tab){ tab=p.tab; homeFlt=null; render(); }
+    /* abre (ou fecha) a tela que o passo precisa mostrar — é o que permite
+       explicar os campos do formulário de lançamento por dentro.
+       Passos cujo alvo não é campo de formulário fecham o que estiver aberto,
+       para não deixar a tela presa ao voltar um passo. */
+    if(p.abre){ try{ p.abre(); }catch(e){} }
+    else if(p.fecha||!(p.sel||"").startsWith("f-")) closeModal();
+    if(!p.sel||tourEl(p.sel)) break;
+    tourStep++;
+  }
+  if(tourStep>=tour.passos.length){ endTour(); toast("Tutorial concluído ✓"); return; }
+
+  const p=tour.passos[tourStep];
+  const alvo=p.sel?tourEl(p.sel):null;
+  let w=document.getElementById("tourWrap");
+  if(!w){ w=document.createElement("div"); w.id="tourWrap"; document.body.appendChild(w); }
+
+  const ultimo=tourStep===tour.passos.length-1;
+  const dots=tour.passos.map((_,i)=>'<i class="'+(i===tourStep?"on":"")+'"></i>').join("");
+  w.innerHTML='<div class="t-mask"></div>'+
+    (alvo?'<div class="t-ring"></div>':"")+
+    '<div class="t-box'+(alvo?"":" mid")+'">'+
+      '<div class="t-h">'+esc(p.t)+'</div>'+
+      '<div class="t-b">'+p.b+'</div>'+
+      '<div class="t-f"><div class="t-dots">'+dots+'</div>'+
+        '<div class="t-btns">'+
+          (tourStep>0?'<button class="btn xs ghost" data-action="tour-prev">Voltar</button>':
+            '<button class="btn xs ghost" data-action="tour-end">Pular</button>')+
+          '<button class="btn xs" data-action="'+(ultimo?"tour-end":"tour-next")+'">'+
+            (ultimo?"Concluir":"Próximo")+'</button>'+
+        '</div></div></div>';
+
+  if(alvo){
+    alvo.scrollIntoView({block:"center",behavior:"instant"});
+    requestAnimationFrame(()=>posicionaTour(alvo,p.place||"bottom"));
+  }
+}
+/* Coloca o recorte sobre o alvo e o balão no lado que couber. */
+function posicionaTour(alvo,lado){
+  const w=document.getElementById("tourWrap"); if(!w) return;
+  const ring=w.querySelector(".t-ring"), box=w.querySelector(".t-box");
+  if(!ring||!box) return;
+  const r=alvo.getBoundingClientRect(), pad=6;
+  ring.style.cssText="top:"+(r.top-pad)+"px;left:"+(r.left-pad)+"px;"+
+    "width:"+(r.width+pad*2)+"px;height:"+(r.height+pad*2)+"px";
+
+  const bw=Math.min(340,innerWidth-24), gap=14;
+  box.style.width=bw+"px";
+  const bh=box.offsetHeight;
+  let top,left;
+  const cabeDireita=r.right+gap+bw<innerWidth;
+  const cabeAbaixo=r.bottom+gap+bh<innerHeight;
+  if(lado==="right"&&cabeDireita){ left=r.right+gap; top=Math.max(12,r.top); }
+  else if(lado==="top"&&r.top-gap-bh>0){ left=r.left; top=r.top-gap-bh; }
+  else if(cabeAbaixo){ left=r.left; top=r.bottom+gap; }
+  else if(r.top-gap-bh>0){ left=r.left; top=r.top-gap-bh; }
+  else { left=(innerWidth-bw)/2; top=innerHeight-bh-20; }
+  left=Math.max(12,Math.min(left,innerWidth-bw-12));
+  top=Math.max(12,Math.min(top,innerHeight-bh-12));
+  box.style.top=top+"px"; box.style.left=left+"px";
+}
+/* Compatibilidade: o botão antigo de tutorial abre o tour básico. */
+function openTutorial(){ startTour(TOUR_BASIC,"tutorialSeen"); }
+
+/* ══════════════════ NOVIDADES DA VERSÃO ══════════════════
+   S.seenVersion guarda a última versão que o usuário já viu. Quando publico
+   algo novo, subo APP_VERSION e escrevo os itens aqui — não dá para deduzir
+   isso do código sozinho. */
+const APP_VERSION="2.1";
+const WHATS_NEW=[
+ {v:"2.1",d:"Agosto de 2026",itens:[
+   ["Contas","Cadastre banco, poupança e dinheiro em espécie. Cada conta tem saldo próprio e o total é a soma delas."],
+   ["Transferência entre contas","Mover dinheiro de uma conta para outra sem virar receita nem despesa — o total não muda."],
+   ["Cartão ligado à conta","Diga em qual conta cada fatura é debitada. A compra no crédito só sai da conta quando a fatura é paga."],
+   ["Pessoas","Vincule lançamentos a alguém e acompanhe quanto essa pessoa deve, ou quanto você deve a ela. Com PDF de cobrança em um toque."],
+   ["Vincular o que já existe","Marque vários lançamentos antigos de uma vez e ligue todos a uma pessoa."],
+   ["Saldo que concilia","O saldo final de um mês encerrado é exatamente a abertura do mês seguinte — dá para conferir contra o extrato do banco."],
+   ["Tutorial refeito","Balões apontando direto na tela, com um capítulo que abre o formulário e explica campo a campo."]
+ ]},
+ {v:"2.0",d:"Agosto de 2026",itens:[
+   ["Visual novo","Menu lateral no computador, ícones redesenhados e telas mais largas."],
+   ["Saldo como extrato","Saldo inicial, o que entrou, o que saiu e o saldo atual — encadeado de um mês para o outro."],
+   ["Saldo de abertura","Informe uma vez quanto tem em conta e o saldo passa a bater com o banco."],
+   ["Busca detalhada","Procure por texto ou valor, com filtros de faixa, período, forma e tipo. Dá para ver todos os meses de uma vez."],
+   ["Competência em gastos","Antes só valia para receitas. Continua opcional."],
+   ["Duplicar invertido","Transforme um gasto em receita (ou o contrário) sem redigitar."],
+   ["Fixo sem fim","Lançamento mensal que se repete para sempre, sem precisar dizer por quantos meses."],
+   ["Lixeira","Excluir não apaga: o lançamento sai das contas mas pode ser restaurado."],
+   ["Faturas somadas","Marque vários cartões e veja o total das faturas do mês."],
+   ["Relatório em PDF","Filtre por pessoa, período e situação e gere um PDF pronto para enviar."]
+ ]}
+];
+/* Decide o que mostrar ao abrir o app. Uma coisa de cada vez: quem acabou de
+   chegar não precisa saber o que mudou numa versão que nunca usou. */
+function decidirOnboarding(){
+  if(!S) return;
+  // 1) primeiro acesso: tutorial completo
+  if(!S.tutorialSeen){
+    // quem já chega com dados (conta antiga) não precisa do tour de boas-vindas
+    if(!aTx().length){ startTour(TOUR_COMPLETO,"tutorialSeen"); return; }
+    S.tutorialSeen=true; S.seenVersion=S.seenVersion||null; save();
+  }
+  // 2) já usa o app e ainda não viu as novidades desta versão
+  if(S.seenVersion!==APP_VERSION){ openWhatsNew(true); return; }
+  // 3) já tem dados suficientes para o tour avançado fazer sentido
+  if(!S.tourAdvSeen&&aTx().length>=3&&(S.cards.length||S.tickets.length)){
+    startTour(TOUR_ADV,"tourAdvSeen");
+  }
+}
+function openWhatsNew(marcar){
+  const r=WHATS_NEW[0];
+  openModal(modalHead("O que mudou","Versão "+r.v+" · "+r.d)+
+    '<div class="news">'+r.itens.map(([t,b])=>
+      '<div class="ni"><b>'+esc(t)+'</b><span>'+esc(b)+'</span></div>').join("")+'</div>'+
+    '<button class="btn" data-action="'+(marcar?"news-done":"close-modal")+'">Entendi</button>');
 }
 
 /* ----- SUB-TELAS DO RELATÓRIO: categoria e mês ----- */
@@ -2518,6 +3342,19 @@ function openFatura(id){
 /* ----- EDITAR (bug corrigido: checkbox funciona + categoria mantida) ----- */
 function openEdit(id){
   const t=S.tx.find(x=>x.id===id); if(!t)return;
+  /* transferência não tem categoria, forma nem competência para editar —
+     só faz sentido conferir o trajeto ou desfazer */
+  if(t.type==="xfer"){
+    openModal(modalHead("Transferência",fmtDate(t.due))+
+    '<div class="ledger dark" style="margin-top:4px">'+
+      '<div class="lg"><span>De</span><b>'+(accOf(t.accId)?esc(accOf(t.accId).name):"conta removida")+'</b></div>'+
+      '<div class="lg"><span>Para</span><b>'+(accOf(t.accTo)?esc(accOf(t.accTo).name):"conta removida")+'</b></div>'+
+      '<div class="lg now"><span>Valor</span><b>'+fmt(val(t))+'</b></div></div>'+
+    '<div class="help" style="margin-top:12px">Uma transferência não altera o total: o dinheiro apenas mudou de conta.</div>'+
+    '<div class="act-row" style="margin-top:14px">'+
+      '<button class="btn small danger" data-action="tx-delete" data-id="'+id+'">'+ic("trash")+' Excluir…</button></div>');
+    return;
+  }
   const grp=aTx().filter(x=>x.gid===t.gid);
   const isExp=t.type==="exp"&&t.dest!=="savings";
   const walletSel=t.method==="ticket"?("ticket:"+t.ticketId):(t.cardId?("card:"+t.cardId):"");
@@ -2542,6 +3379,13 @@ function openEdit(id){
       Object.entries(METHODS).filter(([k])=>k!=="ticket"||S.tickets.length).map(([k,v])=>'<option value="'+k+'"'+(t.method===k?" selected":"")+'>'+v+'</option>').join("")+'</select></div>'+
     '<div id="edWrapWallet" class="'+((t.method==="cartao"||t.method==="ticket")?"":"hidden")+'"><label id="edLblWallet">'+(t.method==="ticket"?"Ticket":"Cartão")+'</label>'+walletSelect("edWallet",walletSel)+'</div></div>':"")+
   '<label>Vencimento</label><input id="edDue" type="date" value="'+t.due+'">'+
+  (S.accounts.length?'<label>Conta</label><select id="edAcc">'+
+    S.accounts.map(a=>'<option value="'+a.id+'"'+(t.accId===a.id?" selected":"")+'>'+esc(a.name)+'</option>').join("")+
+    '</select>':"")+
+  '<label>Pessoa</label><select id="edPes">'+
+    '<option value=""'+(!t.pesId?" selected":"")+'>Ninguém — é meu</option>'+
+    S.people.map(p=>'<option value="'+p.id+'"'+(t.pesId===p.id?" selected":"")+'>'+esc(p.name)+'</option>').join("")+
+    '<option value="__new">＋ Cadastrar pessoa…</option></select>'+
   (t.dest==="savings"?"":'<label>Mês de competência <span style="color:var(--ink-3);font-weight:400">(opcional)</span></label><input id="edComp" type="month" value="'+(t.comp||"")+'">'+
     '<div class="help">A que mês '+(t.type==="inc"?"essa renda":"esse gasto")+' pertence. Vazio = mês do '+(t.type==="inc"?"recebimento":"vencimento")+'.</div>')+
   (t.paid?'<div class="row2"><div><label>Data do pagamento</label><input id="edPayDate" type="date" value="'+(t.payDate||t.due)+'"></div>'+
@@ -2569,6 +3413,12 @@ function openCardForm(id){
   '<div id="cdLimitWrap" class="'+(cardNoLimit?"hidden":"")+'"><label>Limite (R$)</label><input id="cdLimit" inputmode="decimal" value="'+(c?c.limit:"")+'" placeholder="0,00"></div>'+
   '<div class="row2"><div id="cdCloseWrap" class="'+(cardNoLimit?"hidden":"")+'"><label>Fecha dia</label><input id="cdClose" type="number" min="1" max="31" value="'+(c?c.closeDay:1)+'"></div>'+
   '<div><label>Vence dia</label><input id="cdDue" type="number" min="1" max="31" value="'+(c?c.dueDay:10)+'"></div></div>'+
+  /* a compra no cartão não sai de conta nenhuma; quem debita é o pagamento da
+     fatura, e é sempre a mesma conta — por isso ela pertence ao cartão */
+  (S.accounts.length?'<label>Fatura debitada em</label><select id="cdAcc">'+
+    '<option value="">— escolher na hora de pagar</option>'+
+    S.accounts.map(a=>'<option value="'+a.id+'"'+(c&&c.accId===a.id?" selected":"")+'>'+esc(a.name)+'</option>').join("")+
+    '</select><div class="help">Ao marcar a fatura como paga, o valor sai desta conta. Ex.: cartão Nubank debitando na conta Nubank.</div>':"")+
   '<button class="btn" type="submit">'+(c?"Salvar":"Adicionar cartão")+'</button>'+
   (c?'<button type="button" class="btn danger" data-action="card-delete" data-id="'+id+'">Excluir cartão</button>':"")+'</form>');
 }
@@ -2780,10 +3630,60 @@ document.addEventListener("click", async e=>{
       if(all) curListIds.forEach(x=>selTx.delete(x)); else curListIds.forEach(x=>selTx.add(x));
       render(); break; }
     case "cat-detail": openCatDetail(el.dataset.cat); break;
-    case "tut-next": tutStep=Math.min(TUT.length-1,tutStep+1); renderTutorial(); break;
-    case "tut-prev": tutStep=Math.max(0,tutStep-1); renderTutorial(); break;
-    case "tut-done": S.tutorialSeen=true; save(); closeModal(); break;
-    case "tut-open": openTutorial(); break;
+    // tour guiado
+    case "tour-next": tourStep++; renderTour(); break;
+    case "tour-prev": tourStep=Math.max(0,tourStep-1); renderTour(); break;
+    case "tour-end": endTour(); break;
+    case "tut-open": startTour(TOUR_COMPLETO,"tutorialSeen"); break;
+    case "tour-adv": startTour(TOUR_ADV,"tourAdvSeen"); break;
+    case "tour-cap": { const caps={intro:TOUR_BASIC,lancar:TOUR_LANCAR,conferir:TOUR_CONFERIR,
+        cartoes:TOUR_CARTOES,analise:TOUR_ANALISE,avancado:TOUR_ADV};
+      const c=caps[el.dataset.v]; if(c) startTour(c,el.dataset.v==="avancado"?"tourAdvSeen":null); break; }
+    // novidades da versão
+    case "news-open": openWhatsNew(false); break;
+    case "news-done": S.seenVersion=APP_VERSION; save(); closeModal(); break;
+    // contas
+    case "acc-add": openAccForm(); break;
+    case "acc-open": openAccDetail(id); break;
+    case "acc-edit": openAccForm(id); break;
+    case "pick-acolor": { accColor=el.dataset.c;
+      document.querySelectorAll('[data-action="pick-acolor"]').forEach(b=>b.classList.toggle("on",b.dataset.c===accColor)); break; }
+    case "acc-delete": { const emUso=aTx().some(t=>t.accId===id||t.accTo===id);
+      if(!confirm(emUso?"Esta conta tem lançamentos. Excluir mesmo? Os lançamentos ficam sem conta.":"Excluir esta conta?"))break;
+      S.tx.forEach(t=>{ if(t.accId===id) t.accId=null; if(t.accTo===id) t.accTo=null; });
+      S.accounts=S.accounts.filter(a=>a.id!==id);
+      save(); closeModal(); render(); toast("Conta excluída"); break; }
+    case "xfer-open": openXfer(id); break;
+    // pessoas
+    case "pes-list": openPeople(); break;
+    case "pes-add": openPesForm(); break;
+    case "pes-open": openPesDetail(id); break;
+    case "pes-edit": openPesForm(id); break;
+    case "pes-delete": { const emUso=aTx().some(t=>t.pesId===id);
+      if(!confirm(emUso?"Esta pessoa tem lançamentos vinculados. Excluir mesmo? Os lançamentos ficam sem pessoa.":"Excluir esta pessoa?"))break;
+      S.tx.forEach(t=>{ if(t.pesId===id) t.pesId=null; });
+      S.people=S.people.filter(p=>p.id!==id);
+      save(); closeModal(); render(); toast("Pessoa excluída"); break; }
+    case "pes-vincular": openVincular(id); break;
+    /* atribuir a pessoa aos lançamentos selecionados na lista */
+    case "sel-pes": { if(!selTx.size)break;
+      if(!S.people.length){ toast("Cadastre uma pessoa primeiro"); openPesForm(); break; }
+      const opts=S.people.map((p,i)=>(i+1)+") "+p.name).join("\n");
+      const r=(prompt("Vincular "+selTx.size+" lançamento(s) a quem?\n\n"+opts+"\n\n0) Ninguém — remover vínculo","1")||"").trim();
+      if(r==="")break;
+      const n=parseInt(r);
+      if(isNaN(n)||n<0||n>S.people.length){ toast("Opção inválida"); break; }
+      const pid=n===0?null:S.people[n-1].id;
+      let c=0; selTx.forEach(sid=>{ const t=S.tx.find(x=>x.id===sid); if(t&&t.type!=="xfer"){ t.pesId=pid; c++; } });
+      selTx.clear(); save(); render();
+      toast(c+" lançamento"+(c>1?"s":"")+(pid?" vinculado"+(c>1?"s":""):" desvinculado"+(c>1?"s":""))); break; }
+    case "pes-pdf": { const p=pesOf(id); if(!p)break;
+      /* leva o nome para o relatório já filtrado em aberto — o caso de uso é cobrar */
+      rep.q=p.name; rep.scope="all"; rep.status="open"; rep.type="all"; rep.group="none"; rep.detail=1;
+      closeModal(); setTimeout(printReport,220); break; }
+    // saldo de abertura
+    case "open-set": openOpening(); break;
+    case "open-clear": { S.opening=null; save(); closeModal(); render(); toast("Abertura removida"); break; }
     case "month-detail": openMonthDetail(el.dataset.mk); break;
     case "sel-pay": { let n=0; const today=todayISO();
       selTx.forEach(sid=>{ const t=S.tx.find(x=>x.id===sid); if(t&&!t.paid){ applyPaid(t,today,t.amount); n++; } });
@@ -2814,6 +3714,8 @@ document.addEventListener("click", async e=>{
       el.textContent=todos?"Marcar todos":"Desmarcar todos"; break; }
     // lixeira
     case "rep-pdf": openReportPdf(); break;
+    case "open-set": openOpening(); break;
+    case "open-clear": { S.opening=null; save(); closeModal(); render(); toast("Abertura removida"); break; }
     case "trash-open": openTrash(); break;
     case "trash-restore": { const t=S.tx.find(x=>x.id===id); if(!t)break;
       restoreTx([t]); save(); render(); openTrash(); toast("Restaurado ✓"); break; }
@@ -2890,6 +3792,9 @@ document.addEventListener("input", e=>{
   if(e.target.id==="cardSearch"){ cardQ=e.target.value;
     const box=$("#cardListBox"); if(box) box.innerHTML=cardFatList(e.target.dataset.card);
     return; }
+  if(e.target.id==="vincSearch"){ vincQ=e.target.value;
+    const box=$("#vincBox"); if(box) box.innerHTML=vincList(e.target.dataset.pes);
+    return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
       // re-render mantendo foco
@@ -2907,6 +3812,19 @@ document.addEventListener("change", e=>{
     if($("#edWrapWallet")) $("#edWrapWallet").classList.toggle("hidden",!on);
     if($("#edLblWallet")) $("#edLblWallet").textContent=t.value==="ticket"?"Ticket":"Cartão"; }
   if(t.id==="txPerp"){ syncAddForm(); }
+  /* cadastrar pessoa sem sair do formulário: o que já foi digitado se mantém */
+  if((t.id==="txPes"||t.id==="edPes")&&t.value==="__new"){
+    const nome=(prompt("Nome da pessoa:")||"").trim();
+    if(nome){
+      const p={id:uid(),name:nome,note:""};
+      S.people.push(p); save();
+      const novo='<option value="'+p.id+'">'+esc(p.name)+'</option>';
+      t.insertAdjacentHTML("beforeend",novo);
+      t.querySelectorAll('option[value="__new"]').forEach(o=>t.appendChild(o)); // mantém por último
+      t.value=p.id;
+      toast("Pessoa cadastrada ✓");
+    } else t.value="";
+  }
   if(t.id==="rpScope"&&$("#rpRange")) $("#rpRange").classList.toggle("hidden",t.value!=="range");
   if(t.id==="edKind"){ const f=$("#fEdit"); const tx=f&&S.tx.find(x=>x.id===f.dataset.id);
     if(tx){ const changed=t.value!==tx.kind;
@@ -2930,6 +3848,7 @@ document.addEventListener("change", e=>{
     r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p.tx)throw 0;
         if(!confirm("Importar backup? Substitui os dados atuais."))return;
         S=Object.assign(defaultState(),p); S.cards=p.cards||[]; S.tickets=p.tickets||[]; S.goals=p.goals||[]; S.tx=p.tx||[];
+      S.accounts=p.accounts||[]; S.people=p.people||[];
         save(); updateAppName(); render(); toast("Backup importado ✓");
       }catch{ toast("Arquivo inválido"); } };
     r.readAsText(f); t.value=""; }
@@ -2944,6 +3863,53 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fAcc"){
+    const id=f.dataset.id;
+    const v=$("#acAmt").value.trim();
+    const abertura=v?{ amount:(v.startsWith("-")?-1:1)*parseMoney(v.replace("-","")),
+      month:$("#acMonth").value||viewMonth }:null;
+    const dados={ name:$("#acName").value.trim()||"Conta", bank:$("#acBank").value,
+      type:$("#acType").value, color:accColor, opening:abertura };
+    if(id){ Object.assign(accOf(id),dados); }
+    else { S.accounts.push(Object.assign({id:uid()},dados)); }
+    save(); closeModal(); render(); toast(id?"Conta salva ✓":"Conta adicionada ✓"); }
+  else if(f.id==="fXfer"){
+    const de=$("#xfDe").value, para=$("#xfPara").value;
+    if(de===para){ toast("Escolha contas diferentes"); return; }
+    const v=parseMoney($("#xfVal").value);
+    if(!v){ toast("Informe um valor válido"); return; }
+    const d=$("#xfData").value||todayISO();
+    /* transferência nasce já concluída: o dinheiro trocou de lugar na hora */
+    S.tx.push({ id:uid(), gid:uid(), type:"xfer", dest:null,
+      desc:$("#xfDesc").value.trim()||("Transferência "+accOf(de).name+" → "+accOf(para).name),
+      cat:"Transferência", method:"transferencia", cardId:null, ticketId:null, goalId:null,
+      accId:de, accTo:para, pesId:null, kind:"avista", i:1, n:1, amount:v,
+      due:d, comp:null, paid:true, payDate:d, payAmt:v });
+    save(); closeModal(); render(); toast("Transferido ✓"); }
+  else if(f.id==="fVincular"){
+    const pesId=f.dataset.id;
+    const marcados=new Set([...document.querySelectorAll('input[name="vinc"]:checked')].map(c=>c.value));
+    const visiveis=[...document.querySelectorAll('input[name="vinc"]')].map(c=>c.value);
+    let add=0,rem=0;
+    visiveis.forEach(id=>{
+      const t=S.tx.find(x=>x.id===id); if(!t)return;
+      if(marcados.has(id)){ if(t.pesId!==pesId){ t.pesId=pesId; add++; } }
+      else if(t.pesId===pesId){ t.pesId=null; rem++; }
+    });
+    save(); closeModal(); render(); openPesDetail(pesId);
+    toast(add||rem?(add?add+" vinculado"+(add>1?"s":""):"")+(add&&rem?" · ":"")+(rem?rem+" removido"+(rem>1?"s":""):""):"Nada mudou"); }
+  else if(f.id==="fPes"){
+    const id=f.dataset.id;
+    const dados={ name:$("#peName").value.trim()||"Sem nome", note:$("#peNote").value.trim() };
+    if(id){ Object.assign(pesOf(id),dados); }
+    else { S.people.push(Object.assign({id:uid()},dados)); }
+    save(); closeModal(); render(); openPeople(); toast(id?"Pessoa salva ✓":"Pessoa adicionada ✓"); }
+  else if(f.id==="fOpening"){
+    const v=$("#opAmt").value.trim();
+    const neg=v.startsWith("-");
+    const amt=(neg?-1:1)*parseMoney(v.replace("-",""));
+    S.opening={ amount:amt||0, month:$("#opMonth").value||viewMonth };
+    save(); closeModal(); render(); toast("Saldo de abertura salvo ✓"); }
   else if(f.id==="fRep"){
     rep.q=$("#rpQ").value.trim(); rep.scope=$("#rpScope").value;
     rep.from=$("#rpFrom")?$("#rpFrom").value:""; rep.to=$("#rpTo")?$("#rpTo").value:"";
@@ -3010,6 +3976,8 @@ document.addEventListener("submit", async e=>{
     t.desc=nDesc; if($("#edCat")) t.cat=nCat; if($("#edVal")) t.amount=nVal; t.due=nDue;
     t.method=nMethod; t.cardId=nCard; t.ticketId=nTicket;
     if($("#edComp")) t.comp=$("#edComp").value||null;
+    if($("#edAcc")) t.accId=$("#edAcc").value||null;
+    if($("#edPes")&&$("#edPes").value!=="__new") t.pesId=$("#edPes").value||null;
     if(t.paid&&$("#edPayDate")){ t.payDate=$("#edPayDate").value; t.payAmt=parseMoney($("#edPayAmt").value)||t.amount;
       if(t.dest==="savings"&&t.goalId){ const g=goalOf(t.goalId); if(g&&g.moves){ const mv=g.moves.find(m=>m.txId===t.id); if(mv){ mv.date=t.payDate; mv.amount=t.payAmt; } } } }
     if($("#edApplyAll")&&$("#edApplyAll").checked){ aTx().forEach(x=>{ if(x.gid===t.gid){ x.desc=t.desc; x.cat=t.cat; x.method=t.method; x.cardId=t.cardId; x.ticketId=t.ticketId; } }); }
@@ -3018,7 +3986,8 @@ document.addEventListener("submit", async e=>{
     const data={ bank:$("#cdBank").value, nick:$("#cdNick").value.trim()||"Meu cartão", color:cardColor, noLimit,
       limit:noLimit?0:parseMoney($("#cdLimit").value),
       closeDay:noLimit?1:Math.min(31,Math.max(1,parseInt($("#cdClose").value)||1)),
-      dueDay:Math.min(31,Math.max(1,parseInt($("#cdDue").value)||10)) };
+      dueDay:Math.min(31,Math.max(1,parseInt($("#cdDue").value)||10)),
+      accId:($("#cdAcc")&&$("#cdAcc").value)||null };
     if(f.dataset.id){ Object.assign(cardOf(f.dataset.id),data); toast("Cartão atualizado ✓"); }
     else { S.cards.push(Object.assign({id:uid()},data)); toast("Cartão adicionado ✓"); }
     save(); closeModal(); render(); }
@@ -3040,7 +4009,6 @@ document.addEventListener("submit", async e=>{
     const v=parseMoney($("#mvAmt").value); if(v<=0){ toast("Valor inválido"); return; }
     g.moves=g.moves||[]; g.moves.push({id:uid(),date:$("#mvDate").value||todayISO(),amount:v,kind:f.dataset.kind});
     save(); openGoalDetail(f.dataset.id); render(); toast(f.dataset.kind==="out"?"Retirada registrada ✓":"Depósito registrado ✓"); }
-  else if(f.id==="fAppName"){ S.appName=$("#inAppName").value.trim()||"WIGO"; updateAppName(); save(); toast("Nome salvo ✓"); }
   else if(f.id==="fCdi"){ S.cdiRef=(parseFloat(String($("#inCdi").value).replace(",","."))||14.65)/100; save(); render(); toast("CDI atualizado ✓"); }
   else if(f.id==="fEmail"){ try{ await reauth($("#accPass").value);
       await verifyBeforeUpdateEmail(user,$("#accNewEmail").value.trim()); closeModal(); toast("Confirmação enviada ao novo e-mail"); }
