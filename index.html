@@ -716,6 +716,22 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .ledger.dark .lg.now{border-top-color:var(--line-2)}
 .ledger.dark .lg.now span{color:var(--ink)}
 
+/* --- seleção dentro da tela de uma pessoa --- */
+.det-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:10px 0 4px}
+.det-sel{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--grad-v-soft);border:1px solid var(--v-1);border-radius:var(--r-sm);
+  padding:8px 12px;margin-bottom:8px}
+.det-sel span{font-size:var(--t-sm);font-weight:600}
+.det-item{display:flex;align-items:center;gap:10px;cursor:pointer;
+  border-radius:var(--r-sm);padding-left:4px;transition:background var(--dur-1)}
+.det-item:hover{background:var(--s-2)}
+.det-item.on{background:var(--grad-v-soft)}
+.det-item input{width:17px;height:17px;flex:0 0 17px;accent-color:var(--v-1);cursor:pointer}
+.det-item .det-row{flex:1;min-width:0}
+/* o círculo de seleção da lista principal não faz sentido aqui */
+.det-item .det-row .sel{display:none}
+
 /* --- lista de capítulos do tutorial --- */
 .cap-list{display:grid;gap:7px}
 @media (min-width:600px){ .cap-list{grid-template-columns:1fr 1fr} }
@@ -2822,15 +2838,45 @@ function openXfer(deId){
 }
 
 /* ══════════════════ PESSOAS ══════════════════ */
+/* filtros da lista de pessoas e da tela de cada pessoa */
+let pesQ="", pesFlt="all";
 function openPeople(){
-  const lista=S.people.map(p=>({p,f:pesFlow(p.id)}))
-    .sort((a,b)=>Math.abs(b.f.saldo)-Math.abs(a.f.saldo));
-  const devem=lista.filter(x=>x.f.saldo>0).reduce((s,x)=>s+x.f.saldo,0);
-  const devo=lista.filter(x=>x.f.saldo<0).reduce((s,x)=>s-x.f.saldo,0);
+  pesQ=""; pesFlt="all";
   openModal(modalHead("Pessoas","Quem te deve e a quem você deve")+
-  (S.people.length?'<div class="grid g2" style="grid-template-columns:1fr 1fr;margin-bottom:16px">'+
+    '<div id="pesBox">'+peopleBody()+'</div>');
+}
+function peopleBody(){
+  const todas=S.people.map(p=>({p,f:pesFlow(p.id)}));
+  const devem=todas.filter(x=>x.f.saldo>0).reduce((s,x)=>s+x.f.saldo,0);
+  const devo=todas.filter(x=>x.f.saldo<0).reduce((s,x)=>s-x.f.saldo,0);
+
+  let lista=todas;
+  const q=pesQ.trim().toLowerCase();
+  if(q) lista=lista.filter(x=>(x.p.name+" "+(x.p.note||"")).toLowerCase().includes(q));
+  if(pesFlt==="devem") lista=lista.filter(x=>x.f.saldo>0);
+  else if(pesFlt==="devo") lista=lista.filter(x=>x.f.saldo<0);
+  else if(pesFlt==="quitado") lista=lista.filter(x=>x.f.saldo===0);
+  lista.sort((a,b)=>Math.abs(b.f.saldo)-Math.abs(a.f.saldo));
+
+  const chip=(v,rot,n)=>'<button class="fchip'+(pesFlt===v?" on":"")+'" data-action="pes-flt" data-v="'+v+'">'+
+    rot+(n!=null?'<span class="n">'+n+'</span>':"")+'</button>';
+
+  if(!S.people.length) return '<div class="empty"><div class="e-ic">'+ic("handshake")+'</div>'+
+    '<div class="e-t">Ninguém cadastrado</div>Cadastre pessoas para vincular lançamentos e acompanhar quanto cada uma deve.</div>'+
+    '<div class="act-row" style="margin-top:14px"><button class="btn ghost" data-action="pes-add">'+ic("plus")+' Nova pessoa</button></div>';
+
+  return '<div class="grid g2" style="grid-template-columns:1fr 1fr;margin-bottom:14px">'+
     '<div class="metric"><div class="k">Te devem</div><div class="v up">'+fmt(devem)+'</div></div>'+
-    '<div class="metric"><div class="k">Você deve</div><div class="v down">'+fmt(devo)+'</div></div></div>':"")+
+    '<div class="metric"><div class="k">Você deve</div><div class="v down">'+fmt(devo)+'</div></div></div>'+
+  '<div class="srch" style="margin-bottom:10px"><span class="si">'+ic("search")+'</span>'+
+    '<input id="pesSearch" placeholder="Buscar por nome…" value="'+esc(pesQ)+'" autocomplete="off">'+
+    (pesQ?'<button class="sx" data-action="pes-q-clear">'+ic("x")+'</button>':"")+'</div>'+
+  '<div class="chips">'+
+    chip("all","Todas",todas.length)+
+    chip("devem","Te devem",todas.filter(x=>x.f.saldo>0).length)+
+    chip("devo","Você deve",todas.filter(x=>x.f.saldo<0).length)+
+    chip("quitado","Quitados",todas.filter(x=>x.f.saldo===0).length)+
+  '</div>'+
   (lista.length?'<div class="list-plain">'+lista.map(({p,f})=>
     '<div class="tx" data-action="pes-open" data-id="'+p.id+'" style="cursor:pointer">'+
       '<div class="ic">'+ic("handshake")+'</div>'+
@@ -2841,9 +2887,8 @@ function openPeople(){
         (f.saldo>0?"+":f.saldo<0?"−":"")+fmt(Math.abs(f.saldo))+'</div>'+
         '<div class="act"><span class="faint" style="font-size:11px">'+
           (f.saldo>0?"te deve":f.saldo<0?"você deve":"quitado")+'</span></div></div></div>').join("")+'</div>'
-    :'<div class="empty"><div class="e-ic">'+ic("handshake")+'</div><div class="e-t">Ninguém cadastrado</div>'+
-     'Cadastre pessoas para vincular lançamentos e acompanhar quanto cada uma deve.</div>')+
-  '<div class="act-row" style="margin-top:14px"><button class="btn ghost" data-action="pes-add">'+ic("plus")+' Nova pessoa</button></div>');
+    :'<div class="empty">Ninguém encontrado com esse filtro.</div>')+
+  '<div class="act-row" style="margin-top:14px"><button class="btn ghost" data-action="pes-add">'+ic("plus")+' Nova pessoa</button></div>';
 }
 function openPesForm(id){
   const p=id?pesOf(id):null;
@@ -2856,10 +2901,14 @@ function openPesForm(id){
   (p?'<div class="act-row"><button type="button" class="btn small danger" data-action="pes-delete" data-id="'+id+'">Excluir pessoa</button></div>':"")+
   '</form>');
 }
+/* filtros e seleção dentro da tela de uma pessoa. A seleção é local, e não a
+   da lista principal, para não misturar duas coisas diferentes na mesma
+   barra flutuante. */
+let detQ="", detFlt="all", detSel=new Set();
 function openPesDetail(id){
   const p=pesOf(id); if(!p)return;
+  detQ=""; detFlt="all"; detSel.clear();
   const f=pesFlow(id);
-  const lista=aTx().filter(t=>t.pesId===id).sort((a,b)=>a.due<b.due?1:-1);
   openModal(modalHead(esc(p.name),p.note?esc(p.note):(f.lancamentos+" lançamento"+(f.lancamentos===1?"":"s")))+
   '<div class="stat" style="margin-top:14px"><div class="k">'+
     (f.saldo>0?"Esta pessoa te deve":f.saldo<0?"Você deve a esta pessoa":"Situação")+'</div>'+
@@ -2875,9 +2924,68 @@ function openPesDetail(id){
     '<button class="btn small" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
     '<button class="btn small ghost" data-action="pes-edit" data-id="'+id+'">Editar</button>'+
     '<button class="btn small ghost" data-action="pes-pdf" data-id="'+id+'">'+ic("receipt")+' Gerar PDF</button></div>'+
-  '<h3 style="font-size:13.5px;color:var(--v-2);margin:20px 0 8px">Lançamentos</h3>'+
-  (lista.length?'<div class="list-plain">'+lista.map(txRow).join("")+'</div>'
-    :'<div class="empty">Nenhum lançamento vinculado ainda.</div>'));
+  '<div id="detBox" data-pes="'+id+'">'+pesDetBody(id)+'</div>');
+}
+/* redesenha só o miolo da tela da pessoa, preservando a rolagem */
+function redesenhaDet(box){
+  box=box||$("#detBox"); if(!box) return;
+  const sheet=$("#sheet"), y=sheet?sheet.scrollTop:0;
+  box.innerHTML=pesDetBody(box.dataset.pes);
+  if(sheet) sheet.scrollTop=y;
+}
+function pesDetLista(id){
+  let l=aTx().filter(t=>t.pesId===id);
+  const q=detQ.trim().toLowerCase();
+  if(q){
+    const num=q.replace(/[^\d,]/g,"").replace(",",".");
+    l=l.filter(t=>(t.desc+" "+(t.cat||"")).toLowerCase().includes(q)||
+      (num&&String(val(t)).includes(num)));
+  }
+  if(detFlt==="areceber") l=l.filter(t=>!t.paid&&t.type==="inc");
+  else if(detFlt==="apagar") l=l.filter(t=>!t.paid&&t.type!=="inc");
+  else if(detFlt==="aberto") l=l.filter(t=>!t.paid);
+  else if(detFlt==="pago") l=l.filter(t=>t.paid);
+  else if(detFlt==="atraso") l=l.filter(t=>!t.paid&&statusOf(t)==="atrasado");
+  return l.sort((a,b)=>a.due<b.due?1:-1);
+}
+function pesDetBody(id){
+  const todos=aTx().filter(t=>t.pesId===id);
+  const lista=pesDetLista(id);
+  const chip=(v,rot,n)=>'<button class="fchip'+(detFlt===v?" on":"")+'" data-action="det-flt" data-v="'+v+'">'+
+    rot+(n?'<span class="n">'+n+'</span>':"")+'</button>';
+  const marcados=lista.filter(t=>detSel.has(t.id)).length;
+  const todosMarcados=lista.length&&marcados===lista.length;
+
+  return '<h3 style="font-size:13.5px;color:var(--v-2);margin:20px 0 8px">Lançamentos</h3>'+
+  (todos.length?
+    '<div class="srch" style="margin-bottom:10px"><span class="si">'+ic("search")+'</span>'+
+      '<input id="detSearch" data-pes="'+id+'" placeholder="Buscar por descrição, categoria ou valor…" value="'+esc(detQ)+'" autocomplete="off">'+
+      (detQ?'<button class="sx" data-action="det-q-clear">'+ic("x")+'</button>':"")+'</div>'+
+    '<div class="chips">'+
+      chip("all","Tudo",todos.length)+
+      chip("areceber","A receber",todos.filter(t=>!t.paid&&t.type==="inc").length)+
+      chip("apagar","A pagar",todos.filter(t=>!t.paid&&t.type!=="inc").length)+
+      chip("atraso","Vencidos",todos.filter(t=>!t.paid&&statusOf(t)==="atrasado").length)+
+      chip("pago","Baixados",todos.filter(t=>t.paid).length)+
+    '</div>'
+  :"")+
+  (lista.length?
+    '<div class="det-bar">'+
+      '<button class="btn xs ghost" data-action="det-all" data-id="'+id+'">'+
+        (todosMarcados?ic("x")+" Desmarcar":ic("checkSquare")+" Marcar todos")+'</button>'+
+      '<span class="faint" style="font-size:11.5px">'+lista.length+' de '+todos.length+
+        (lista.length!==todos.length?' · soma '+fmt(sum(lista,val)):"")+'</span>'+
+    '</div>'+
+    (marcados?'<div class="det-sel">'+
+      '<span>'+marcados+' selecionado'+(marcados>1?"s":"")+'</span>'+
+      '<button class="btn xs danger" data-action="det-unlink" data-id="'+id+'">'+
+        ic("swap")+' Tirar desta pessoa</button></div>':"")+
+    '<div class="list-plain">'+lista.map(t=>
+      '<label class="det-item'+(detSel.has(t.id)?" on":"")+'">'+
+        '<input type="checkbox" data-action="det-pick" data-id="'+t.id+'" data-pes="'+id+'"'+
+          (detSel.has(t.id)?" checked":"")+'>'+
+        '<div class="det-row">'+txRow(t)+'</div></label>').join("")+'</div>'
+    :'<div class="empty">'+(todos.length?"Nada com esse filtro.":"Nenhum lançamento vinculado ainda.")+'</div>');
 }
 
 /* ----- VINCULAR LANÇAMENTOS EXISTENTES A UMA PESSOA -----
@@ -3665,6 +3773,23 @@ document.addEventListener("click", async e=>{
       S.people=S.people.filter(p=>p.id!==id);
       save(); closeModal(); render(); toast("Pessoa excluída"); break; }
     case "pes-vincular": openVincular(id); break;
+    // filtros da lista de pessoas
+    case "pes-flt": { pesFlt=el.dataset.v; const b=$("#pesBox"); if(b) b.innerHTML=peopleBody(); break; }
+    case "pes-q-clear": { pesQ=""; const b=$("#pesBox"); if(b) b.innerHTML=peopleBody(); break; }
+    // filtros e seleção dentro de uma pessoa
+    case "det-flt": { detFlt=el.dataset.v; redesenhaDet(el.closest("#detBox")); break; }
+    case "det-q-clear": { detQ=""; redesenhaDet(el.closest("#detBox")); break; }
+    case "det-pick": { detSel.has(id)?detSel.delete(id):detSel.add(id);
+      redesenhaDet($("#detBox")); break; }
+    case "det-all": { const l=pesDetLista(id);
+      if(l.every(t=>detSel.has(t.id))) l.forEach(t=>detSel.delete(t.id));
+      else l.forEach(t=>detSel.add(t.id));
+      redesenhaDet($("#detBox")); break; }
+    case "det-unlink": { const n=detSel.size; if(!n)break;
+      if(!confirm("Tirar "+n+" lançamento"+(n>1?"s":"")+" desta pessoa?\n\nOs lançamentos continuam existindo — só deixam de ser dela."))break;
+      detSel.forEach(tid=>{ const t=S.tx.find(x=>x.id===tid); if(t) t.pesId=null; });
+      detSel.clear(); save(); render(); openPesDetail(id);
+      toast(n+" lançamento"+(n>1?"s":"")+" desvinculado"+(n>1?"s":"")); break; }
     /* atribuir a pessoa aos lançamentos selecionados na lista */
     case "sel-pes": { if(!selTx.size)break;
       if(!S.people.length){ toast("Cadastre uma pessoa primeiro"); openPesForm(); break; }
@@ -3794,6 +3919,14 @@ document.addEventListener("input", e=>{
     return; }
   if(e.target.id==="vincSearch"){ vincQ=e.target.value;
     const box=$("#vincBox"); if(box) box.innerHTML=vincList(e.target.dataset.pes);
+    return; }
+  if(e.target.id==="pesSearch"){ pesQ=e.target.value;
+    const box=$("#pesBox"); if(box){ box.innerHTML=peopleBody();
+      const i=$("#pesSearch"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
+    return; }
+  if(e.target.id==="detSearch"){ detQ=e.target.value;
+    redesenhaDet($("#detBox"));
+    const i=$("#detSearch"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
     return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
