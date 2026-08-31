@@ -666,13 +666,15 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 
 /* --- tour guiado: máscara, recorte e balão --- */
 #tourWrap{position:fixed;inset:0;z-index:400}
-#tourWrap .t-mask{position:absolute;inset:0;background:rgba(0,0,0,.62);
-  backdrop-filter:blur(1.5px);animation:fadeIn var(--dur-2) var(--ease)}
+/* máscara só nos passos sem alvo, onde não há nada a destacar */
+#tourWrap .t-mask{position:absolute;inset:0;background:rgba(0,0,0,.66);
+  animation:fadeIn var(--dur-2) var(--ease)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-/* o "buraco" é feito com uma sombra gigante em volta do alvo */
+/* o "buraco" é feito com uma sombra gigante em volta do alvo: dentro dele a
+   tela aparece limpa, sem escurecer nem desfocar */
 #tourWrap .t-ring{position:absolute;border-radius:var(--r-md);pointer-events:none;
-  box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 2px var(--v-2),0 0 26px 4px var(--v-glow);
-  transition:all var(--dur-2) var(--ease)}
+  box-shadow:0 0 0 9999px rgba(0,0,0,.72),0 0 0 2px var(--v-2),0 0 22px 3px var(--v-glow);
+  transition:all var(--dur-2) var(--ease);animation:fadeIn var(--dur-2) var(--ease)}
 #tourWrap .t-box{position:absolute;z-index:2;background:var(--s-2);
   border:1px solid var(--line-2);border-radius:var(--r-lg);padding:16px 18px 14px;
   box-shadow:var(--e-4);animation:tourIn var(--dur-3) var(--ease-out)}
@@ -3291,8 +3293,10 @@ function renderTour(){
 
   const ultimo=tourStep===tour.passos.length-1;
   const dots=tour.passos.map((_,i)=>'<i class="'+(i===tourStep?"on":"")+'"></i>').join("");
-  w.innerHTML='<div class="t-mask"></div>'+
-    (alvo?'<div class="t-ring"></div>':"")+
+  /* com alvo, quem escurece é o próprio recorte — sua sombra abre um buraco
+     real sobre o elemento. Somar a máscara por cima escureceria justamente o
+     que se quer mostrar. */
+  w.innerHTML=(alvo?'<div class="t-ring"></div>':'<div class="t-mask"></div>')+
     '<div class="t-box'+(alvo?"":" mid")+'">'+
       '<div class="t-h">'+esc(p.t)+'</div>'+
       '<div class="t-b">'+p.b+'</div>'+
@@ -3306,7 +3310,12 @@ function renderTour(){
 
   if(alvo){
     alvo.scrollIntoView({block:"center",behavior:"instant"});
-    requestAnimationFrame(()=>posicionaTour(alvo,p.place||"bottom"));
+    /* posiciona já, e reajusta no quadro seguinte para pegar a rolagem que
+       acabou de acontecer. A chamada direta importa porque requestAnimationFrame
+       não dispara com a aba em segundo plano, e o recorte ficaria sem posição. */
+    posicionaTour(alvo,p.place||"bottom");
+    requestAnimationFrame(()=>{ const a=p.sel?tourEl(p.sel):null;
+      if(a) posicionaTour(a,p.place||"bottom"); });
   }
 }
 /* Coloca o recorte sobre o alvo e o balão no lado que couber. */
