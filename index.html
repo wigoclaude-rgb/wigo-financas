@@ -817,6 +817,28 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   font-size:var(--t-sm);color:var(--ink-2)}
 .picked-list b{color:var(--ink);font-variant-numeric:tabular-nums}
 
+/* ---------- importar extrato ---------- */
+.imp-stats{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin:0 0 var(--sp-3)}
+.imp-stats div{flex:1;min-width:74px;background:var(--s-2);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:9px 10px;display:flex;flex-direction:column;gap:1px}
+.imp-stats b{font-family:var(--f-display);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.imp-stats span{font-size:10.5px;color:var(--ink-3);line-height:1.2}
+.imp-list{max-height:46vh}
+.imp-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.imp-item:last-child{border-bottom:none}
+.imp-item.erro{opacity:.62}
+.imp-pick{flex:0 0 19px;padding-top:2px}
+.imp-pick input{width:19px;height:19px;accent-color:var(--v-1)}
+.imp-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.imp-mid b{font-size:var(--t-sm);font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-mid .faint{font-size:var(--t-xs)}
+.imp-mid .chip{align-self:flex-start;margin-top:2px}
+.imp-rt{flex:0 0 auto;text-align:right;display:flex;flex-direction:column;gap:1px}
+.imp-rt b{font-family:var(--f-display);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.imp-rt b.up{color:var(--up)}
+.imp-rt b.down{color:var(--down)}
+.imp-rt .faint{font-size:10px}
+
 /* ==========================================================================
    SIDEBAR + LAYOUT DESKTOP
    Tudo abaixo vive dentro de @media (min-width:1024px). Abaixo desse ponto
@@ -1089,6 +1111,7 @@ trash:'<path d="M3.8 6.4h16.4M8.6 6.4V4.8a1.4 1.4 0 0 1 1.4-1.4h4a1.4 1.4 0 0 1 
 restore:'<path d="M3.5 9.5a9 9 0 1 1 .6 5.4"/><path d="M3.2 4.2v5.5h5.5"/>',
 filter:'<path d="M3.5 5.2h17l-6.6 7.8v5.9l-3.8 1.9v-7.8z"/>',
 download:'<path d="M12 3.8v11.4M7.6 11l4.4 4.3 4.4-4.3"/><path d="M4.2 19.6h15.6"/>',
+upload:'<path d="M12 20.2V8.8M7.6 13l4.4-4.3 4.4 4.3"/><path d="M4.2 4.4h15.6"/>',
 copy:'<rect x="8.5" y="8.5" width="12" height="12" rx="2.4"/><path d="M15.5 8.5v-2a2.4 2.4 0 0 0-2.4-2.4H5.9A2.4 2.4 0 0 0 3.5 6.5v7.2a2.4 2.4 0 0 0 2.4 2.4h2"/>',
 swap:'<path d="M4 8.2h13.4M13.6 4.4l3.8 3.8-3.8 3.8"/><path d="M20 15.8H6.6M10.4 12l-3.8 3.8 3.8 3.8"/>',
 calendar:'<rect x="3.5" y="5.2" width="17" height="15.3" rx="2.6"/><path d="M3.5 10h17M8.2 3v4.2M15.8 3v4.2"/>',
@@ -1978,7 +2001,8 @@ function renderCards(){
       '<div class="rt"><div class="v">'+fmt(total)+'</div></div></div>'+
     '</div></div>';
   }
-  html+='<div class="sec"><button class="btn ghost" data-action="acc-add">'+ic("plus")+' Adicionar conta</button></div>';
+  html+='<div class="sec"><div class="btn-row"><button class="btn ghost" data-action="acc-add">'+ic("plus")+' Adicionar conta</button>'+
+    (S.accounts.length?'<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button>':"")+'</div></div>';
 
   html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Cartões de crédito</h2>'+
     (S.cards.length>1?'<span class="more" data-action="card-pick-all">'+
@@ -2205,6 +2229,7 @@ function renderSettings(){
     '<div class="act-row" style="flex-direction:column;align-items:stretch;gap:8px">'+
       '<button class="btn ghost" data-action="acc-add">'+ic("bank")+' Adicionar conta</button>'+
       '<button class="btn ghost" data-action="pes-list">'+ic("handshake")+' Pessoas</button>'+
+      '<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button>'+
       (S.accounts.length?"":'<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button>')+
     '</div></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
@@ -2304,6 +2329,7 @@ const CMD_ACTIONS=[
   {ic:ic("download"),t:"Exportar planilha",s:"CSV / Excel",a:"csv-export"},
   {ic:ic("bank"),t:"Adicionar conta",s:"banco, poupança ou dinheiro",a:"acc-add"},
   {ic:ic("swap"),t:"Transferir entre contas",s:"mover dinheiro de lugar",a:"xfer-open"},
+  {ic:ic("upload"),t:"Importar extrato",s:"CSV ou OFX do banco",a:"abrir-importacao"},
   {ic:ic("handshake"),t:"Pessoas",s:"quem te deve e a quem você deve",a:"pes-list"},
   {ic:ic("coin"),t:"Saldo de abertura",s:"ponto de partida do caixa",a:"open-set"},
   {ic:ic("receipt"),t:"Relatório em PDF",s:"filtrar e imprimir",a:"rep-pdf"},
@@ -3135,6 +3161,654 @@ function openMirror(id){
   '<button class="btn" type="submit">Criar '+rot+'</button></form>');
 }
 
+/* ══════════════════ IMPORTAR EXTRATO ══════════════════
+   Lê um extrato do banco (CSV ou OFX) e transforma cada movimentação em um
+   PRÉ-LANÇAMENTO revisável. Nada entra em S.tx antes de o usuário confirmar —
+   é essa a diferença entre importar e deixar o banco escrever no seu financeiro.
+
+   Quatro camadas, nesta ordem: LEITURA (arquivo → texto), PARSING (texto →
+   movimentações), INTELIGÊNCIA (tipo, método, categoria, duplicidade) e UI.
+   Nenhuma delas conhece a de cima: o parser não monta HTML e a tela não lê
+   arquivo. É o que permite mexer no OFX sem quebrar a revisão.
+
+   O extrato é dinheiro que JÁ se moveu. Todo lançamento nasce paid:true, com
+   due e payDate na data do extrato e kind "avista". A importação nunca cria
+   previsão, nunca infere transferência (type "xfer"), nunca atribui cartão e
+   nunca infere poupança — as três dependem de intenção, que o arquivo não tem.
+
+   O estado da importação vive FORA de S, como filters, rep e selCards: é tela,
+   não dado, e não tem por que viajar para o Firestore a cada save(). */
+
+let imp=null;
+const IMP_MAX_BYTES=10*1024*1024;   // 10 MB: acima disso o navegador engasga
+const IMP_MAX_MOVS=2000;            // teto de movimentações processadas
+const IMP_MAX_LISTA=300;            // teto de itens desenhados de uma vez
+
+/* ---------- camada 1: LEITURA ---------- */
+
+function detectarFormatoArquivo(nome,texto){
+  const ext=(nome||"").toLowerCase().split(".").pop();
+  if(ext==="ofx"||ext==="qfx") return "ofx";
+  if(/OFXHEADER|<OFX>|<STMTTRN/i.test(texto||"")) return "ofx";
+  if(ext==="csv"||ext==="txt") return "csv";
+  return null;
+}
+/* Extrato brasileiro sai em UTF-8 ou Windows-1252 e o arquivo não diz qual é.
+   TextDecoder com fatal:true recusa a sequência inválida — é isso que separa os
+   dois casos sem depender de procurar acento quebrado no meio do texto. */
+function detectarEncodingCSV(buf){
+  try{ return {texto:new TextDecoder("utf-8",{fatal:true}).decode(buf),encoding:"UTF-8"}; }
+  catch{ return {texto:new TextDecoder("windows-1252").decode(buf),encoding:"Windows-1252"}; }
+}
+function lerArquivoImportacao(file){
+  return new Promise((ok,falha)=>{
+    const r=new FileReader();
+    r.onerror=()=>falha(new Error("leitura"));
+    r.onload=()=>{ try{ ok(detectarEncodingCSV(r.result)); }catch(e){ falha(e); } };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+/* ---------- camada 2: PARSING ---------- */
+
+function normalizarTextoImportacao(s){
+  return String(s??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+/* 1.234,56 · 1234,56 · 1234.56 · -1.234,56 · R$ 1.234,56 · (150,00) · 150,00 D
+   O separador decimal é o ÚLTIMO que aparece. Com três dígitos depois dele e
+   nenhum outro separador no número, é milhar — 1.234 é mil duzentos e trinta e
+   quatro, que é como o extrato brasileiro escreve. */
+function normalizarValorImportacao(v){
+  if(typeof v==="number") return isFinite(v)?Math.round(v*100)/100:NaN;
+  let s=String(v??"").trim();
+  if(!s) return NaN;
+  let sinal=1;
+  if(/^\(.*\)$/.test(s)){ sinal=-1; s=s.slice(1,-1); }
+  s=s.replace(/R\$/ig,"").replace(/[\s\u00a0]/g,"");
+  const suf=s.match(/([DC])$/i);
+  if(suf&&/[\d)]/.test(s.charAt(s.length-2))){
+    if(suf[1].toUpperCase()==="D") sinal=-1;
+    s=s.slice(0,-1);
+  }
+  if(s.indexOf("-")>=0){ sinal=-1; s=s.replace(/-/g,""); }
+  s=s.replace(/\+/g,"");
+  if(!/^[\d.,]+$/.test(s)||!/\d/.test(s)) return NaN;
+  const ult=Math.max(s.lastIndexOf(","),s.lastIndexOf("."));
+  if(ult>=0){
+    const casas=s.length-ult-1, seps=(s.match(/[.,]/g)||[]).length;
+    if(casas===3&&seps===1) s=s.replace(/[.,]/g,"");
+    else s=s.slice(0,ult).replace(/[.,]/g,"")+"."+s.slice(ult+1);
+  }
+  const n=parseFloat(s);
+  return isNaN(n)?NaN:sinal*Math.round(n*100)/100;
+}
+/* 20260908120000[-03:BRT] · 08/09/2026 · 2026-09-08 · 08/09/26 · 20260908
+   Horário e fuso são descartados: lançamento financeiro tem dia, não hora.
+   Data com barra é lida como dd/mm — é extrato brasileiro. */
+function normalizarDataImportacao(v){
+  const s=String(v??"").trim();
+  if(!s) return null;
+  let y,m,d,mm;
+  if((mm=s.match(/^(\d{4})(\d{2})(\d{2})/))){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
+  else if((mm=s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
+  else if((mm=s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/))){
+    d=+mm[1]; m=+mm[2]; y=+mm[3];
+    if(y<100) y+=y<70?2000:1900;
+    if(d>12&&m>12) return null;
+    if(d<=12&&m>12){ const t=d; d=m; m=t; }   // veio mm/dd
+  }
+  else return null;
+  if(!(y>=1900&&y<=2200)||!(m>=1&&m<=12)||!(d>=1&&d<=31)) return null;
+  const t=new Date(y,m-1,d);
+  if(t.getFullYear()!==y||t.getMonth()!==m-1||t.getDate()!==d) return null;  // 31/02
+  return toISO(t);
+}
+
+/* OFX vem em duas roupas: SGML (tag sem fechamento) e XML. Ler "do <TAG> até o
+   próximo <" atende as duas sem precisar de parser de verdade. */
+function tagOFX(bloco,tag){
+  const m=bloco.match(new RegExp("<"+tag+">([^<]*)","i"));
+  return m?m[1].trim():"";
+}
+/* MEMO costuma trazer o histórico completo e NAME a contraparte. Juntar os dois
+   só ajuda quando um não está contido no outro — senão vira repetição. */
+function descOFX(name,memo,tipo){
+  const n=(name||"").trim(), m=(memo||"").trim();
+  if(n&&m){
+    const nn=normalizarTextoImportacao(n), mn=normalizarTextoImportacao(m);
+    if(nn&&mn&&!mn.includes(nn)&&!nn.includes(mn)) return n+" · "+m;
+    return m.length>=n.length?m:n;
+  }
+  return m||n||(tipo||"").trim()||"Movimentação";
+}
+function parseOFX(texto){
+  const t=String(texto||"");
+  if(!/<STMTTRN>/i.test(t)) return {movs:[],erro:"ofx"};
+  const movs=[];
+  t.split(/<STMTTRN>/i).slice(1).forEach(b=>{
+    if(movs.length>=IMP_MAX_MOVS) return;
+    const fim=b.search(/<\/STMTTRN>/i);
+    const bloco=fim>=0?b.slice(0,fim):b;
+    movs.push({
+      data:normalizarDataImportacao(tagOFX(bloco,"DTPOSTED")),
+      amount:normalizarValorImportacao(tagOFX(bloco,"TRNAMT")),
+      desc:descOFX(tagOFX(bloco,"NAME"),tagOFX(bloco,"MEMO"),tagOFX(bloco,"TRNTYPE")),
+      fitid:tagOFX(bloco,"FITID")||null
+    });
+  });
+  return {movs,erro:movs.length?null:"vazio"};
+}
+
+/* Conta separadores fora de aspas nas primeiras linhas. Empate vai para o ";",
+   que é o que sai da maioria dos bancos brasileiros. */
+function detectarSeparadorCSV(texto){
+  const linhas=String(texto||"").split(/\r?\n/).filter(l=>l.trim()).slice(0,8);
+  if(!linhas.length) return ";";
+  let melhor=";", pontos=0;
+  [";","\t",","].forEach(sep=>{
+    const cont=linhas.map(l=>{ let n=0,asp=false;
+      for(const c of l){ if(c==='"') asp=!asp; else if(c===sep&&!asp) n++; }
+      return n; });
+    const min=Math.min(...cont);
+    const p=min>0?min*10+(cont.every(x=>x===cont[0])?5:0):0;
+    if(p>pontos){ pontos=p; melhor=sep; }
+  });
+  return melhor;
+}
+/* Tokenizer próprio: aspas duplas, "" escapado e quebra de linha dentro do
+   campo. split(";") quebraria em qualquer histórico com ponto e vírgula. */
+function parseCSV(texto,sep){
+  const t=String(texto||"").replace(/^\uFEFF/,"");
+  const out=[]; let linha=[], campo="", asp=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(asp){
+      if(c==='"'){ if(t[i+1]==='"'){ campo+='"'; i++; } else asp=false; }
+      else campo+=c;
+    }
+    else if(c==='"') asp=true;
+    else if(c===sep){ linha.push(campo); campo=""; }
+    else if(c==="\n"){ linha.push(campo); out.push(linha); linha=[]; campo=""; }
+    else if(c!=="\r") campo+=c;
+  }
+  if(campo!==""||linha.length){ linha.push(campo); out.push(linha); }
+  return out.filter(l=>l.some(c=>String(c).trim()));
+}
+
+const IMP_COLS={
+  data:["data","dt","date","data lancamento","data movimento","data movimentacao",
+        "data da compra","data operacao","data balancete"],
+  desc:["descricao","historico","lancamento","memo","nome","detalhe","estabelecimento",
+        "descricao lancamento","historico lancamento","transacao"],
+  valor:["valor","amount","valor movimentado","valor lancamento","montante","valor r"],
+  debito:["debito","saida","retirada","valor debito","debitos"],
+  credito:["credito","entrada","receita","valor credito","creditos"],
+  tipo:["tipo","tipo lancamento","natureza","tipo movimento","d c","dc"]
+};
+/* Casa o cabeçalho por igualdade, depois por prefixo, depois por conteúdo —
+   nessa ordem, para "valor" não roubar a coluna "valor debito". */
+function detectarColunasCSV(cab){
+  const norm=(cab||[]).map(normalizarTextoImportacao);
+  const acha=lista=>{
+    let i=norm.findIndex(n=>n&&lista.includes(n));
+    if(i<0) i=norm.findIndex(n=>n&&lista.some(l=>n.startsWith(l)));
+    if(i<0) i=norm.findIndex(n=>n&&lista.some(l=>n.includes(l)));
+    return i<0?null:i;
+  };
+  const c={ data:acha(IMP_COLS.data), desc:acha(IMP_COLS.desc),
+    debito:acha(IMP_COLS.debito), credito:acha(IMP_COLS.credito), tipo:acha(IMP_COLS.tipo) };
+  c.valor=acha(IMP_COLS.valor);
+  if(c.valor!=null&&(c.valor===c.debito||c.valor===c.credito)) c.valor=null;
+  if(c.desc!=null&&c.desc===c.data) c.desc=null;
+  c.confiavel=c.data!=null&&c.desc!=null&&(c.valor!=null||c.debito!=null||c.credito!=null);
+  return c;
+}
+function mapearCSV(linhas,cols){
+  const movs=[];
+  linhas.forEach(l=>{
+    if(movs.length>=IMP_MAX_MOVS) return;
+    let amount=NaN;
+    if(cols.valor!=null) amount=normalizarValorImportacao(l[cols.valor]);
+    if(isNaN(amount)&&(cols.debito!=null||cols.credito!=null)){
+      const d=cols.debito!=null?normalizarValorImportacao(l[cols.debito]):NaN;
+      const c=cols.credito!=null?normalizarValorImportacao(l[cols.credito]):NaN;
+      const dd=isNaN(d)?0:Math.abs(d), cc=isNaN(c)?0:Math.abs(c);
+      if(dd||cc) amount=cc-dd;
+    }
+    /* coluna D/C manda no sinal: muito banco exporta o valor sempre positivo */
+    if(cols.tipo!=null&&!isNaN(amount)){
+      const s=normalizarTextoImportacao(l[cols.tipo]);
+      if(/^(d|debito|debit|saida)$/.test(s)) amount=-Math.abs(amount);
+      else if(/^(c|credito|credit|entrada)$/.test(s)) amount=Math.abs(amount);
+    }
+    movs.push({ data:normalizarDataImportacao(l[cols.data]), amount,
+      desc:String(l[cols.desc]??"").trim()||"Movimentação", fitid:null });
+  });
+  return movs;
+}
+
+/* ---------- camada 3: INTELIGÊNCIA ---------- */
+
+/* FNV-1a de 32 bits: determinística, curta e sem dependência. É a identidade do
+   CSV, que quase nunca traz um id próprio como o FITID do OFX. */
+function gerarHashImportacao(s){
+  let h=0x811c9dc5;
+  const t=String(s||"");
+  for(let i=0;i<t.length;i++){ h^=t.charCodeAt(i); h=Math.imul(h,0x01000193); }
+  return (h>>>0).toString(16).padStart(8,"0");
+}
+/* Duas descrições são a mesma quando uma contém a outra ou quando compartilham
+   a maior parte das palavras longas: "PIX ENVIADO MERCADO X" e "PIX MERCADO X"
+   são o mesmo lançamento visto por dois canais. */
+function compararDescricoesImportacao(a,b){
+  const x=normalizarTextoImportacao(a), y=normalizarTextoImportacao(b);
+  if(!x||!y) return false;
+  if(x===y||x.includes(y)||y.includes(x)) return true;
+  const tx=x.split(" ").filter(p=>p.length>=4), ty=y.split(" ").filter(p=>p.length>=4);
+  if(!tx.length||!ty.length) return false;
+  const comuns=tx.filter(p=>ty.includes(p)).length;
+  return comuns/Math.min(tx.length,ty.length)>=0.6;
+}
+/* Duas camadas de proteção, e nenhuma sozinha basta: a marca de origem (FITID
+   no OFX, assinatura no CSV) não existe no que foi digitado à mão, e a
+   comparação por valor+data+descrição não sobrevive a uma edição posterior.
+
+   Data com folga de um dia porque o banco lança no dia seguinte com frequência.
+   Valor igual sozinho NÃO é duplicata: dois cafés de R$ 15 no mesmo dia são
+   duas compras, e a descrição é o que separa. */
+function ehDuplicadoImportacao(mov,accId,marcas){
+  const chave=mov.fitid||gerarHashImportacao(
+    accId+"|"+mov.data+"|"+Math.abs(mov.amount).toFixed(2)+"|"+normalizarTextoImportacao(mov.desc));
+  if(marcas&&marcas.has(chave)) return {dup:true,chave};
+  const alvo=Math.abs(mov.amount);
+  const dup=aTx().some(t=>{
+    if(t.accId!==accId&&t.accTo!==accId) return false;
+    if(Math.abs(Math.abs(val(t))-alvo)>0.005) return false;
+    const dt=t.paid?(t.payDate||t.due):t.due;
+    if(Math.abs(daysTo(dt)-daysTo(mov.data))>1) return false;
+    return compararDescricoesImportacao(t.desc,mov.desc);
+  });
+  return {dup,chave};
+}
+
+function sugerirTipoImportacao(mov){ return mov.amount<0?"exp":"inc"; }
+
+/* nunca "cartao" nem "ticket": o extrato é da conta, e a fatura do cartão é
+   outro lugar do app — atribuir aqui faria o valor sair duas vezes */
+const IMP_METODO=[
+  [/\bpix\b/,"pix"],
+  [/\b(ted|doc)\b|transferenc/,"transferencia"],
+  [/boleto|titulo de cobranca|cobranca bancaria/,"boleto"],
+  [/saque|em especie|dinheiro/,"dinheiro"]
+];
+function sugerirMetodoImportacao(desc){
+  const d=normalizarTextoImportacao(desc);
+  for(const [re,m] of IMP_METODO) if(re.test(d)) return m;
+  return "debito";
+}
+/* Palavras → categoria. A sugestão só vale se a categoria existir na lista do
+   usuário: a importação nunca cria categoria. Sem correspondência fica vazia —
+   em branco é honesto, chutar não. Chaves curtas ficaram de fora de propósito
+   ("gol", "oi", "max"): o falso positivo custa mais caro que o campo vazio. */
+const IMP_CATS=[
+  [["ifood","uber eats","rappi","restaurante","lanchonete","padaria","pizzaria","hamburgueria","cafeteria"],["Restaurantes/Delivery","Alimentação"]],
+  [["mercado","supermercado","atacadao","hortifruti","acougue","carrefour","assai","pao de acucar"],["Mercado","Alimentação"]],
+  [["posto","combustivel","gasolina","shell","ipiranga","petrobras"],["Combustível","Transporte"]],
+  [["uber","99app","taxi","onibus","metro","bilhete unico","estacionamento","pedagio"],["Transporte"]],
+  [["farmacia","drogaria","droga raia","drogasil","panvel"],["Farmácia","Saúde"]],
+  [["hospital","clinica","laboratorio","dentista","unimed","amil","plano de saude"],["Saúde"]],
+  [["netflix","spotify","prime video","disney","hbo","youtube premium","deezer","globoplay"],["Assinaturas"]],
+  [["vivo","claro","telefonica","internet","banda larga","telefone"],["Internet/Telefone"]],
+  [["energia","cemig","enel","copel","light","sabesp","saneamento","conta de agua"],["Contas de Casa"]],
+  [["aluguel","condominio","imobiliaria"],["Aluguel","Moradia"]],
+  [["academia","smart fit","smartfit","gympass","crossfit","pilates"],["Academia/Esportes"]],
+  [["escola","faculdade","universidade","mensalidade","udemy","alura"],["Educação","Cursos"]],
+  [["petshop","pet shop","veterinar","petz","cobasi"],["Pets"]],
+  [["cinema","teatro","ingresso","steam","playstation","xbox","nintendo"],["Lazer"]],
+  [["hotel","pousada","airbnb","passagem aerea","latam","decolar"],["Viagens"]],
+  [["tarifa","iof","anuidade","manutencao de conta","cesta de servicos"],["Tarifas Bancárias"]],
+  [["imposto","darf","iptu","ipva","tributo","receita federal"],["Impostos/Taxas"]],
+  [["emprestimo","financiamento","consignado"],["Empréstimos/Dívidas"]],
+  [["salario","folha de pagamento","proventos","remuneracao"],["Salário"]],
+  [["rendimento","dividendo","juros sobre","cdb","tesouro direto","aplicacao"],["Rendimentos"]],
+  [["reembolso","estorno","devolucao"],["Reembolso"]]
+];
+function sugerirCategoriaImportacao(desc,tipo){
+  const d=" "+normalizarTextoImportacao(desc)+" ";
+  const lista=tipo==="inc"?S.incCats:S.expCats;
+  for(const [chaves,cands] of IMP_CATS){
+    if(!chaves.some(k=>d.includes(k))) continue;
+    const ok=cands.find(c=>lista.includes(c));
+    if(ok) return ok;
+  }
+  return "";
+}
+
+/* movimentação crua → movimentação validada; erro descrito, nunca silencioso */
+function normalizarMovimentacaoImportada(mov){
+  if(!mov.data) return {ok:false,erro:"Data não reconhecida"};
+  if(isNaN(mov.amount)) return {ok:false,erro:"Valor não reconhecido"};
+  if(!mov.amount) return {ok:false,erro:"Valor zerado"};
+  return {ok:true,erro:null};
+}
+/* movimentação validada → pré-lançamento, com as sugestões e o aviso de
+   duplicidade já resolvidos. amount é sempre POSITIVO: no WIGO quem carrega o
+   sinal é o type, como val() e signed() esperam. */
+function criarPreLancamento(mov,accId,origem,marcas){
+  const base={ id:uid(), origem, fitid:mov.fitid||null, chave:null,
+    data:mov.data||"", descOriginal:mov.desc||"", desc:mov.desc||"",
+    amount:0, type:"exp", method:"debito", cat:"", accId,
+    duplicado:false, selecionado:false, erro:null };
+  const v=normalizarMovimentacaoImportada(mov);
+  if(!v.ok) return Object.assign(base,{erro:v.erro});
+  const type=sugerirTipoImportacao(mov);
+  const {dup,chave}=ehDuplicadoImportacao(mov,accId,marcas);
+  return Object.assign(base,{ chave, amount:Math.abs(mov.amount), type,
+    method:sugerirMetodoImportacao(mov.desc),
+    cat:sugerirCategoriaImportacao(mov.desc,type),
+    duplicado:dup, selecionado:!dup });
+}
+function preLancamentosDe(movs,accId,origem){
+  /* marcas já usadas: o que veio de importação anterior e, conforme a lista
+     cresce, o próprio arquivo — extrato repetido dentro do mesmo CSV existe */
+  const marcas=new Set(aTx().map(t=>t.impId).filter(Boolean));
+  return movs.map(m=>{
+    const pre=criarPreLancamento(m,accId,origem,marcas);
+    if(pre.chave) marcas.add(pre.chave);
+    return pre;
+  });
+}
+
+/* ---------- confirmação: pré-lançamento → lançamento ---------- */
+
+/* Reaproveita createTx, o mesmo caminho da criação manual. Assim o formato do
+   lançamento — e qualquer regra futura de criação — vale também para o que veio
+   do banco, sem uma segunda porta de entrada em S.tx.
+
+   O extrato é dinheiro que já se moveu: alreadyPaid, com due e payDate na data
+   do extrato e competência no mês em que ocorreu. Sem categoria vira "Outros",
+   que existe nas duas listas — cat vazia deixaria um grupo sem nome no donut. */
+function criarLancamentoImportado(pre){
+  const gid=createTx({ type:pre.type, dest:null, desc:pre.desc, cat:pre.cat||"Outros",
+    method:pre.method, cardId:null, ticketId:null, goalId:null,
+    accId:pre.accId, pesId:null, comp:mkey(pre.data),
+    kind:"avista", total:pre.amount, n:2, paidCount:0, months:12,
+    firstDue:pre.data, alreadyPaid:true, payDate:pre.data });
+  /* marca de origem: é o que impede a próxima importação do mesmo extrato de
+     duplicar o que já entrou, mesmo depois de o lançamento ser editado */
+  S.tx.forEach(t=>{ if(t.gid===gid) t.impId=pre.chave||null; });
+  return gid;
+}
+function confirmarPreLancamentos(){
+  if(!imp) return;
+  const sel=imp.linhas.filter(l=>l.selecionado&&!l.erro);
+  if(!sel.length){ toast("Selecione ao menos uma movimentação"); return; }
+  const antes=S.tx.length;
+  sel.forEach(criarLancamentoImportado);
+  const ids=S.tx.slice(antes).map(t=>t.id);
+  S.ultimaImportacao={ids,quando:Date.now()};
+  /* um save() só para o lote inteiro: o debounce de 700ms existe justamente
+     para 40 lançamentos não virarem 40 escritas no Firestore */
+  save(); render();
+  imp.resultado={ criados:ids.length,
+    dup:imp.linhas.filter(l=>l.duplicado&&!l.selecionado).length,
+    semcat:sel.filter(l=>!l.cat).length,
+    erro:imp.linhas.filter(l=>l.erro).length };
+  imp.etapa="resultado"; renderImportacao();
+}
+/* Desfazer manda para a Lixeira, não remove: excluir de verdade quebraria a
+   regra de que nada some do histórico sem poder voltar. */
+function desfazerUltimaImportacao(){
+  const u=S.ultimaImportacao;
+  if(!u||!u.ids||!u.ids.length){ toast("Nada para desfazer"); return; }
+  const set=new Set(u.ids);
+  const alvo=S.tx.filter(t=>set.has(t.id)&&!t.deleted);
+  if(!alvo.length){ S.ultimaImportacao=null; save(); toast("Esses lançamentos já saíram"); return; }
+  if(!confirm("Mandar para a lixeira os "+alvo.length+" lançamentos da última importação?")) return;
+  markDeleted(alvo);
+  S.ultimaImportacao=null;
+  imp=null; save(); closeModal(); render();
+  toast(alvo.length+" lançamento(s) na lixeira ✓");
+}
+
+/* ---------- camada 4: UI ---------- */
+
+function abrirImportacao(){
+  if(!S.accounts.length){ toast("Cadastre uma conta antes de importar um extrato"); return; }
+  imp={ contaId:S.accounts[0].id, arquivo:null, formato:null, encoding:null,
+    etapa:"arquivo", linhas:[], colunas:null, bruto:null, sep:null,
+    q:"", flt:"todos", resultado:null };
+  renderImportacao();
+}
+function fecharImportacao(){ imp=null; closeModal(); }
+function descartarImportacao(){
+  if(imp&&imp.linhas.length&&!confirm("Descartar as movimentações lidas? Nada foi lançado ainda.")) return;
+  imp=null; closeModal(); toast("Importação descartada");
+}
+function impContas(sel){
+  return S.accounts.map(a=>'<option value="'+a.id+'"'+(a.id===sel?" selected":"")+'>'+esc(a.name)+'</option>').join("");
+}
+
+/* orquestração: arquivo → texto → movimentações → pré-lançamentos → revisão */
+async function processarArquivoImportacao(file){
+  if(!imp) return;
+  if(!file){ toast("Selecione um arquivo para continuar"); return; }
+  if(file.size>IMP_MAX_BYTES){ toast("Arquivo muito grande — o limite é 10 MB"); return; }
+  let lido;
+  try{ lido=await lerArquivoImportacao(file); }
+  catch{ toast("Não foi possível ler o arquivo"); return; }
+  const formato=detectarFormatoArquivo(file.name,lido.texto);
+  if(!formato){ toast("Formato não suportado. Selecione um arquivo CSV ou OFX."); return; }
+  imp.arquivo=file.name; imp.formato=formato; imp.encoding=lido.encoding;
+
+  if(formato==="ofx"){
+    const {movs,erro}=parseOFX(lido.texto);
+    if(erro==="ofx"){ toast("Não foi possível interpretar este arquivo OFX. Exporte direto pelo banco."); return; }
+    if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
+    imp.linhas=preLancamentosDe(movs,imp.contaId,"ofx");
+    imp.etapa="revisao"; renderImportacao(); return;
+  }
+  const sep=detectarSeparadorCSV(lido.texto);
+  const bruto=parseCSV(lido.texto,sep);
+  if(bruto.length<2){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
+  imp.sep=sep; imp.bruto=bruto;
+  const cols=detectarColunasCSV(bruto[0]);
+  imp.colunas=cols;
+  /* detecção duvidosa não importa em silêncio: pergunta em vez de errar calado */
+  if(!cols.confiavel){ imp.etapa="colunas"; renderImportacao(); return; }
+  aplicarColunasImportacao(cols);
+}
+function aplicarColunasImportacao(cols){
+  const movs=mapearCSV(imp.bruto.slice(1),cols);
+  if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
+  imp.colunas=cols;
+  imp.linhas=preLancamentosDe(movs,imp.contaId,"csv");
+  imp.etapa="revisao"; renderImportacao();
+}
+
+function renderImportacao(){
+  if(!imp) return;
+  if(imp.etapa==="colunas") openModal(impTelaColunas());
+  else if(imp.etapa==="revisao") openModal(impTelaRevisao());
+  else if(imp.etapa==="resultado") openModal(renderResumoImportacao());
+  else openModal(impTelaArquivo());
+}
+function impTelaArquivo(){
+  const u=S.ultimaImportacao;
+  return modalHead("Importar extrato","Vira pré-lançamento, não lançamento: você revisa antes")+
+  '<label>Conta</label><select id="impConta">'+impContas(imp.contaId)+'</select>'+
+  '<div class="help">Todas as movimentações do arquivo entram nesta conta. Dá para trocar depois, uma a uma.</div>'+
+  '<label style="margin-top:16px">Arquivo</label>'+
+  '<button type="button" class="btn ghost" data-action="imp-escolher">'+ic("upload")+' Selecionar extrato</button>'+
+  '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt" class="hidden">'+
+  '<div class="help">CSV ou OFX exportado pelo banco, até 10 MB. O arquivo é lido aqui no navegador — não sai do seu aparelho.</div>'+
+  (u&&u.ids&&u.ids.length?'<div class="help" style="margin-top:16px">Última importação: <b>'+u.ids.length+
+    '</b> lançamento(s). <b data-action="desfazer-importacao" style="color:var(--v-2);cursor:pointer">Desfazer</b></div>':"")+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="fechar-importacao">Cancelar</button></div>';
+}
+function impTelaColunas(){
+  const cab=imp.bruto[0]||[], c=imp.colunas||{};
+  const opt=(sel,vazio)=>(vazio?'<option value="">— nenhuma —</option>':"")+
+    cab.map((x,i)=>'<option value="'+i+'"'+(String(i)===String(sel)?" selected":"")+'>'+
+      esc(String(x||"").trim()||("Coluna "+(i+1)))+'</option>').join("");
+  const previa=imp.bruto.slice(1,4).map(l=>'<div>'+esc(l.slice(0,5).map(x=>String(x).slice(0,20)).join(" · "))+'</div>').join("");
+  return modalHead("Confira as colunas do extrato","Não deu para identificar sozinho")+
+  '<div class="help" style="margin-bottom:14px">Diga qual coluna é o quê. Se o seu extrato separa débito e crédito em colunas diferentes, deixe <b>Valor</b> em branco e preencha as duas de baixo.</div>'+
+  '<form id="fImpCols">'+
+  '<label>Data</label><select id="icData">'+opt(c.data)+'</select>'+
+  '<label style="margin-top:12px">Descrição</label><select id="icDesc">'+opt(c.desc)+'</select>'+
+  '<label style="margin-top:12px">Valor</label><select id="icValor">'+opt(c.valor,true)+'</select>'+
+  '<div class="row2" style="margin-top:12px">'+
+    '<div><label>Débito</label><select id="icDeb">'+opt(c.debito,true)+'</select></div>'+
+    '<div><label>Crédito</label><select id="icCred">'+opt(c.credito,true)+'</select></div></div>'+
+  '<label style="margin-top:12px">Tipo (D/C)</label><select id="icTipo">'+opt(c.tipo,true)+'</select>'+
+  '<div class="help">Opcional. Só é usada quando o extrato traz o valor sempre positivo.</div>'+
+  (previa?'<div class="help" style="margin-top:14px"><b>Primeiras linhas do arquivo</b>'+previa+'</div>':"")+
+  '<button class="btn" type="submit" style="margin-top:16px">Continuar</button></form>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="descartar-importacao">Cancelar</button></div>';
+}
+function impTelaRevisao(){
+  const a=accOf(imp.contaId);
+  return modalHead("Revisar importação",
+    (a?esc(a.name)+" · ":"")+(imp.formato||"").toUpperCase()+(imp.encoding?" · "+imp.encoding:""))+
+  '<div id="impStats">'+renderResumoContagem()+'</div>'+
+  '<input id="impBusca" placeholder="Buscar movimentação…" autocomplete="off" value="'+esc(imp.q)+'">'+
+  '<div class="chips" id="impChips" style="margin-top:10px">'+impChips()+'</div>'+
+  '<div class="act-row" style="margin:0 0 10px">'+
+    '<button type="button" class="btn small ghost" data-action="marcar-todos-importacao" data-v="1">Marcar todos</button>'+
+    '<button type="button" class="btn small ghost" data-action="marcar-todos-importacao" data-v="0">Desmarcar</button></div>'+
+  '<div id="impBox">'+renderListaPreLancamentos()+'</div>'+
+  '<div id="impFoot">'+impRodape()+'</div>';
+}
+function impStats(){
+  const l=imp?imp.linhas:[];
+  return { total:l.length,
+    erro:l.filter(x=>x.erro).length,
+    dup:l.filter(x=>x.duplicado&&!x.erro).length,
+    semcat:l.filter(x=>!x.cat&&!x.erro).length,
+    sel:l.filter(x=>x.selecionado&&!x.erro).length };
+}
+function renderResumoContagem(){
+  const s=impStats();
+  const it=(n,r)=>'<div><b>'+n+'</b><span>'+r+'</span></div>';
+  return '<div class="imp-stats">'+it(s.total,"encontradas")+it(s.sel,"prontas")+
+    (s.dup?it(s.dup,"duplicadas"):"")+(s.semcat?it(s.semcat,"sem categoria"):"")+
+    (s.erro?it(s.erro,"com erro"):"")+'</div>';
+}
+function impChips(){
+  const s=impStats(), l=imp.linhas;
+  return [["todos","Todos",s.total],["sel","Selecionados",s.sel],
+    ["dup","Possíveis duplicados",s.dup],["semcat","Sem categoria",s.semcat],
+    ["exp","Despesas",l.filter(x=>x.type==="exp"&&!x.erro).length],
+    ["inc","Receitas",l.filter(x=>x.type==="inc"&&!x.erro).length],
+    ["erro","Com erro",s.erro]]
+    .filter(([v,,n])=>n||v==="todos")
+    .map(([v,r,n])=>'<button type="button" class="fchip'+(imp.flt===v?" on":"")+
+      '" data-action="imp-flt" data-v="'+v+'">'+r+'<span class="n">'+n+'</span></button>').join("");
+}
+function impFiltradas(){
+  const q=normalizarTextoImportacao(imp.q);
+  return imp.linhas.filter(l=>{
+    if(imp.flt==="sel"&&!l.selecionado) return false;
+    if(imp.flt==="dup"&&!l.duplicado) return false;
+    if(imp.flt==="semcat"&&(l.cat||l.erro)) return false;
+    if(imp.flt==="exp"&&(l.type!=="exp"||l.erro)) return false;
+    if(imp.flt==="inc"&&(l.type!=="inc"||l.erro)) return false;
+    if(imp.flt==="erro"&&!l.erro) return false;
+    if(q&&!normalizarTextoImportacao(l.desc+" "+l.data+" "+l.amount).includes(q)) return false;
+    return true;
+  });
+}
+/* A lista sai numa string só, e com teto: 2.000 movimentações viram 2.000 nós
+   se cada uma for inserida por vez, e o celular trava antes de terminar. */
+function renderListaPreLancamentos(){
+  const lista=impFiltradas();
+  if(!lista.length) return '<div class="empty">Nenhuma movimentação neste filtro.</div>';
+  const corte=lista.slice(0,IMP_MAX_LISTA);
+  const html='<div class="del-list imp-list">'+corte.map(l=>{
+    const meta=[fmtDate(l.data),METHODS[l.method]||l.method,l.cat||"sem categoria"].join(" · ");
+    return '<div class="imp-item'+(l.erro?" erro":"")+'">'+
+      '<label class="imp-pick"><input type="checkbox" name="impSel" data-id="'+l.id+'"'+
+        (l.selecionado?" checked":"")+(l.erro?" disabled":"")+'></label>'+
+      '<div class="imp-mid" data-action="editar-pre-lancamento" data-id="'+l.id+'">'+
+        '<b>'+esc(l.desc)+'</b><span class="faint">'+esc(meta)+'</span>'+
+        (l.duplicado?'<span class="chip proximo">Possível duplicado</span>':"")+
+        (l.erro?'<span class="chip atrasado">'+esc(l.erro)+'</span>':"")+'</div>'+
+      '<div class="imp-rt"><b class="'+(l.type==="inc"?"up":"down")+'">'+
+        (l.erro?"—":(l.type==="inc"?"+":"−")+fmt(l.amount))+'</b>'+
+        (l.erro?"":'<span class="faint">editar</span>')+'</div></div>';
+  }).join("")+'</div>';
+  return html+(lista.length>corte.length?'<div class="help" style="text-align:center">Mostrando '+
+    corte.length+' de '+lista.length+'. Use a busca ou os filtros para chegar no resto.</div>':"");
+}
+function impRodape(){
+  const n=impStats().sel;
+  return '<div class="act-row">'+
+    '<button type="button" class="btn small ghost" data-action="descartar-importacao">Descartar</button>'+
+    '<button type="button" class="btn small" data-action="confirmar-importacao"'+(n?"":" disabled")+'>'+
+      (n?"Confirmar "+n+" selecionado"+(n>1?"s":""):"Confirmar selecionados")+'</button></div>';
+}
+/* marcar/desmarcar age sobre o que está VISÍVEL: com um filtro ligado, o que
+   se espera é marcar aquele recorte, não o arquivo inteiro */
+function marcarTodosImportacao(on){
+  impFiltradas().forEach(l=>{ if(!l.erro) l.selecionado=on; });
+  impRedesenhaRevisao();
+}
+/* troca só o miolo: refazer o modal inteiro perderia o foco da busca */
+function impRedesenhaRevisao(){
+  const box=$("#impBox"); if(box) box.innerHTML=renderListaPreLancamentos();
+  impAtualizaContagem();
+}
+function impAtualizaContagem(){
+  const st=$("#impStats"); if(st) st.innerHTML=renderResumoContagem();
+  const ft=$("#impFoot"); if(ft) ft.innerHTML=impRodape();
+  const ch=$("#impChips"); if(ch) ch.innerHTML=impChips();
+}
+function openPreEdit(id){
+  const l=imp&&imp.linhas.find(x=>x.id===id);
+  if(!l) return;
+  const cats=l.type==="inc"?S.incCats:S.expCats;
+  openModal(modalHead("Editar movimentação",esc(l.descOriginal||""))+
+  '<form id="fImpEdit" data-id="'+l.id+'">'+
+  '<label>Descrição</label><input id="ieDesc" value="'+esc(l.desc)+'" required>'+
+  '<div class="row2" style="margin-top:12px">'+
+    '<div><label>Data</label><input id="ieData" type="date" value="'+esc(l.data)+'" required></div>'+
+    '<div><label>Valor</label><input id="ieVal" inputmode="decimal" value="'+
+      esc(String(l.amount).replace(".",","))+'" required></div></div>'+
+  '<label style="margin-top:12px">Tipo</label><select id="ieTipo">'+
+    '<option value="exp"'+(l.type==="exp"?" selected":"")+'>Gasto</option>'+
+    '<option value="inc"'+(l.type==="inc"?" selected":"")+'>Receita</option></select>'+
+  '<label style="margin-top:12px">Categoria</label><select id="ieCat">'+impCatOptions(l.type,l.cat)+'</select>'+
+  '<label style="margin-top:12px">Método</label><select id="ieMet">'+
+    Object.entries(METHODS).filter(([k])=>k!=="cartao"&&k!=="ticket")
+      .map(([k,v])=>'<option value="'+k+'"'+(k===l.method?" selected":"")+'>'+esc(v)+'</option>').join("")+'</select>'+
+  '<div class="help">Cartão e ticket não entram por aqui: o extrato é da conta, e a fatura do cartão se paga em Carteira.</div>'+
+  '<label style="margin-top:12px">Conta</label><select id="ieAcc">'+impContas(l.accId)+'</select>'+
+  '<button class="btn" type="submit" style="margin-top:16px">Salvar</button></form>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="imp-voltar">Voltar sem salvar</button></div>');
+}
+/* sem "criar nova categoria": a importação escolhe entre o que já existe */
+function impCatOptions(tipo,sel){
+  const cats=tipo==="inc"?S.incCats:S.expCats;
+  return '<option value="">— sem categoria —</option>'+
+    cats.map(c=>'<option value="'+esc(c)+'"'+(c===sel?" selected":"")+'>'+esc(c)+'</option>').join("");
+}
+function renderResumoImportacao(){
+  const r=imp.resultado||{};
+  const li=(t,s)=>'<div class="ni"><b>'+t+'</b><span>'+s+'</span></div>';
+  const pl=(n,a,b)=>n+" "+(n>1?b:a);
+  return modalHead("Importação concluída","Os lançamentos já estão no seu financeiro")+
+  '<div class="news">'+
+  li(pl(r.criados,"lançamento importado","lançamentos importados"),"Entraram como pagos, na data do extrato.")+
+  (r.dup?li(pl(r.dup,"ignorado","ignorados"),"Possíveis duplicados que ficaram desmarcados."):"")+
+  (r.semcat?li(pl(r.semcat,"sem categoria","sem categoria"),"Entraram em Outros — dá para ajustar na lista de lançamentos."):"")+
+  (r.erro?li(pl(r.erro,"com erro","com erro"),"Linhas que o arquivo não deixou entender. Nada foi criado para elas."):"")+
+  '</div>'+
+  '<button class="btn" data-action="fechar-importacao">Concluir</button>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="desfazer-importacao">Desfazer importação</button></div>';
+}
+
 /* ══════════════════ TOUR GUIADO ══════════════════
    Balões ancorados em elementos reais da tela, com o resto escurecido.
 
@@ -3910,6 +4584,17 @@ document.addEventListener("click", async e=>{
       save(); render(); break; }
     // backup
     case "backup-export": exportBackup(); break;
+    /* ----- importar extrato ----- */
+    case "abrir-importacao": abrirImportacao(); break;
+    case "imp-escolher": { const inp=$("#impArquivo"); if(inp) inp.click(); break; }
+    case "fechar-importacao": fecharImportacao(); break;
+    case "descartar-importacao": descartarImportacao(); break;
+    case "confirmar-importacao": confirmarPreLancamentos(); break;
+    case "marcar-todos-importacao": marcarTodosImportacao(el.dataset.v==="1"); break;
+    case "imp-flt": if(imp){ imp.flt=el.dataset.v; impRedesenhaRevisao(); } break;
+    case "editar-pre-lancamento": openPreEdit(id); break;
+    case "imp-voltar": if(imp){ imp.etapa="revisao"; renderImportacao(); } break;
+    case "desfazer-importacao": desfazerUltimaImportacao(); break;
     case "backup-import": $("#importFile").click(); break;
     case "csv-export": exportCSV(); break;
     // settings gear
@@ -3937,6 +4622,7 @@ document.addEventListener("input", e=>{
     redesenhaDet($("#detBox"));
     const i=$("#detSearch"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
     return; }
+  if(e.target.id==="impBusca"&&imp){ imp.q=e.target.value; impRedesenhaRevisao(); return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
       // re-render mantendo foco
@@ -3986,6 +4672,20 @@ document.addEventListener("change", e=>{
     const nm=prompt("Nome da nova categoria:"); const arr=tx.type==="inc"?S.incCats:S.expCats;
     if(nm&&!arr.includes(nm.trim()))arr.push(nm.trim());
     save(); t.innerHTML=catOptions(tx.type,nm?nm.trim():tx.cat); }
+  if(t.id==="impArquivo"){ const arq=t.files[0]; t.value=""; processarArquivoImportacao(arq); }
+  if(t.id==="impConta"&&imp){ imp.contaId=t.value;
+    /* trocar a conta refaz a duplicidade: o mesmo valor em outra conta é outro
+       lançamento, e o que era duplicado ali pode não ser aqui */
+    imp.linhas.forEach(l=>{ if(l.erro) return;
+      l.accId=t.value;
+      const r=ehDuplicadoImportacao({data:l.data,amount:l.amount,desc:l.desc,fitid:l.fitid},t.value,null);
+      l.duplicado=r.dup; l.chave=r.chave; l.selecionado=!r.dup; });
+    if(imp.etapa==="revisao") impRedesenhaRevisao(); }
+  if(t.name==="impSel"&&imp){ const l=imp.linhas.find(x=>x.id===t.dataset.id);
+    if(l){ l.selecionado=t.checked; impAtualizaContagem(); } }
+  if(t.id==="ieTipo"&&imp){ const fe=$("#fImpEdit");
+    const l=fe&&imp.linhas.find(x=>x.id===fe.dataset.id);
+    if($("#ieCat")) $("#ieCat").innerHTML=impCatOptions(t.value,l?l.cat:""); }
   if(t.id==="importFile"){ const f=t.files[0]; if(!f)return; const r=new FileReader();
     r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p.tx)throw 0;
         if(!confirm("Importar backup? Substitui os dados atuais."))return;
@@ -4005,6 +4705,32 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fImpCols"){
+    if(!imp||!imp.bruto) return;
+    const col=x=>{ const el=$(x); const v=el?el.value:""; return v===""?null:+v; };
+    const cols={ data:col("#icData"), desc:col("#icDesc"), valor:col("#icValor"),
+      debito:col("#icDeb"), credito:col("#icCred"), tipo:col("#icTipo") };
+    if(cols.data==null||cols.desc==null){ toast("Escolha as colunas de data e descrição"); return; }
+    if(cols.valor==null&&cols.debito==null&&cols.credito==null){
+      toast("Escolha a coluna de valor, ou as de débito e crédito"); return; }
+    aplicarColunasImportacao(cols); }
+  else if(f.id==="fImpEdit"){
+    const l=imp&&imp.linhas.find(x=>x.id===f.dataset.id); if(!l) return;
+    const v=parseMoney($("#ieVal").value), d=$("#ieData").value;
+    if(!v){ toast("Informe um valor válido"); return; }
+    if(!d){ toast("Informe uma data válida"); return; }
+    l.desc=$("#ieDesc").value.trim()||l.desc;
+    l.data=d; l.amount=Math.abs(v);
+    l.type=$("#ieTipo").value; l.cat=$("#ieCat").value;
+    l.method=$("#ieMet").value; l.accId=$("#ieAcc").value;
+    l.erro=null; l.selecionado=true;
+    /* a marca de origem identifica a LINHA DO ARQUIVO, e não o resultado da
+       edição: se mudasse aqui, reimportar o mesmo extrato deixaria de
+       reconhecer o que já entrou e criaria tudo de novo. Só é calculada agora
+       quando a linha nasceu com erro e nunca chegou a ter uma. */
+    if(!l.chave) l.chave=l.fitid||gerarHashImportacao(
+      l.accId+"|"+l.data+"|"+l.amount.toFixed(2)+"|"+normalizarTextoImportacao(l.desc));
+    imp.etapa="revisao"; renderImportacao(); toast("Movimentação atualizada ✓"); }
   else if(f.id==="fAcc"){
     const id=f.dataset.id;
     const v=$("#acAmt").value.trim();

@@ -114,6 +114,7 @@ usuário, um aparelho por vez.
   amount, due, comp,             // comp = mês de competência (opcional)
   paid, payDate, payAmt,         // payAmt permite juros/desconto/pagamento parcial
   perp,                          // 1 = fixo "sempre"
+  impId,                         // marca de origem, quando veio de um extrato
   deleted, deletedAt }           // lixeira
 ```
 
@@ -125,6 +126,9 @@ usuário, um aparelho por vez.
 | `goals[]` | `id, name, bank, color, goal, monthly, cdi, showHome, moves[]` |
 | `goals[].moves[]` | `id, txId, date, amount, kind:"in"\|"out"` |
 | `people[]` | `id, name, note` |
+
+`S.ultimaImportacao = { ids[], quando }` guarda o último lote importado — existe
+só para o botão de desfazer.
 
 ### Regra do Firestore
 
@@ -218,6 +222,38 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   introduzir contas, esse valor virou a abertura de uma conta "Principal" e todo o
   histórico foi atribuído a ela — o saldo por conta já nasce com passado e nenhum
   número muda no momento da atualização.
+
+### Importação de extrato
+
+- **O arquivo nunca escreve direto em `S.tx`.** Ele vira *pré-lançamentos* numa
+  estrutura fora de `S` (`imp`, como `filters` e `rep`), e só a confirmação chama
+  `createTx` — o mesmo caminho da criação manual. Uma segunda porta de entrada em
+  `S.tx` faria qualquer regra futura de criação valer só para metade do app.
+- **Extrato é dinheiro que já se moveu.** Nasce `paid:true`, com `due` e `payDate`
+  na data do arquivo, `kind:"avista"` e competência no mês em que ocorreu. A
+  importação nunca cria previsão.
+- **Três coisas nunca são inferidas:** transferência (`type:"xfer"`), cartão
+  (`cardId`/`method:"cartao"`) e poupança (`dest:"savings"`) — mesmo quando o
+  histórico diz "TED", "cartão" ou "reserva". As três dependem de intenção, que o
+  arquivo não tem; quem decide é o usuário, na revisão. Atribuir o cartão seria
+  pior que inútil: o valor sairia duas vezes, na conta e na fatura.
+- **`amount` entra positivo.** O parser trabalha com valor assinado, mas quem
+  carrega o sinal no WIGO é o `type` — é o que `val()` e `signed()` esperam.
+- **A marca de origem (`impId`) identifica a linha do arquivo e não muda quando o
+  pré-lançamento é editado.** Se acompanhasse a edição, reimportar o mesmo extrato
+  deixaria de reconhecer o que já entrou e criaria tudo de novo.
+- **Duplicidade tem duas camadas, e nenhuma basta sozinha:** a marca de origem não
+  existe no que foi digitado à mão, e a comparação por conta + valor + data (±1
+  dia) + descrição não sobrevive a uma edição. Valor igual sozinho nunca é
+  duplicata — dois cafés de R$ 15 no mesmo dia são duas compras.
+- **Duplicado suspeito continua na lista, só nasce desmarcado.** Sumir com a linha
+  esconderia do usuário uma decisão que é dele.
+- **Um `save()` para o lote inteiro.** O debounce de 700 ms existe justamente para
+  40 lançamentos não virarem 40 escritas no Firestore.
+- **Desfazer manda para a Lixeira**, não remove: nada some do histórico sem poder
+  voltar.
+- **Detecção de coluna duvidosa pergunta em vez de errar calado.** É melhor uma
+  tela a mais que um extrato inteiro importado na coluna errada.
 
 ### Interface
 
