@@ -244,8 +244,18 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   deixaria de reconhecer o que já entrou e criaria tudo de novo.
 - **Duplicidade tem duas camadas, e nenhuma basta sozinha:** a marca de origem não
   existe no que foi digitado à mão, e a comparação por conta + valor + data (±1
-  dia) + descrição não sobrevive a uma edição. Valor igual sozinho nunca é
-  duplicata — dois cafés de R$ 15 no mesmo dia são duas compras.
+  dia) + descrição não sobrevive a uma edição. **Valor igual sozinho nunca é
+  duplicata** — dois cafés de R$ 15 no mesmo dia são duas compras, e é a descrição
+  que os separa.
+- **A certeza tem dois graus, e a tela não finge que são um só.** *Já no app*
+  (marca de origem, ou valor + data ±1 dia + descrição parecida) nasce desmarcado;
+  *Confira* (mesma conta, mesmo valor, mesmo dia, descrição diferente — pode ser o
+  mesmo lançamento digitado com outro nome, pode ser coincidência) nasce marcado e
+  apenas sinalizado. Rebaixar o segundo a "duplicado" faria o usuário desmarcar
+  gasto de verdade; ignorá-lo deixaria passar repetição.
+- **O selo nomeia o lançamento que casou**, com data e valor. Dizer "já está no
+  app" sem dizer com o quê obriga a sair da tela para conferir — que é justamente
+  o trabalho que a importação existe para poupar.
 - **Duplicado suspeito continua na lista, só nasce desmarcado.** Sumir com a linha
   esconderia do usuário uma decisão que é dele.
 - **Um `save()` para o lote inteiro.** O debounce de 700 ms existe justamente para

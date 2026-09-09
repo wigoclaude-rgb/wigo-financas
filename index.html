@@ -3420,16 +3420,25 @@ function compararDescricoesImportacao(a,b){
 function ehDuplicadoImportacao(mov,accId,marcas){
   const chave=mov.fitid||gerarHashImportacao(
     accId+"|"+mov.data+"|"+Math.abs(mov.amount).toFixed(2)+"|"+normalizarTextoImportacao(mov.desc));
-  if(marcas&&marcas.has(chave)) return {dup:true,chave};
-  const alvo=Math.abs(mov.amount);
-  const dup=aTx().some(t=>{
+  if(marcas&&marcas.has(chave))
+    return {dup:true,chave,igual:aTx().find(t=>t.impId===chave)||null,motivo:"marca"};
+  const alvo=Math.abs(mov.amount), quando=daysTo(mov.data);
+  let igual=null, confira=null;
+  aTx().some(t=>{
     if(t.accId!==accId&&t.accTo!==accId) return false;
     if(Math.abs(Math.abs(val(t))-alvo)>0.005) return false;
     const dt=t.paid?(t.payDate||t.due):t.due;
-    if(Math.abs(daysTo(dt)-daysTo(mov.data))>1) return false;
-    return compararDescricoesImportacao(t.desc,mov.desc);
+    const dif=Math.abs(daysTo(dt)-quando);
+    if(dif>1) return false;
+    if(compararDescricoesImportacao(t.desc,mov.desc)){ igual=t; return true; }
+    /* mesmo valor e mesmo dia, com outro nome: pode ser o mesmo lançamento
+       digitado à mão, e pode ser coincidência. Guarda para avisar, sem afirmar. */
+    if(dif===0&&!confira) confira=t;
+    return false;
   });
-  return {dup,chave};
+  if(igual) return {dup:true,chave,igual,motivo:"conteudo"};
+  if(confira) return {dup:false,chave,igual:confira,motivo:"confira"};
+  return {dup:false,chave,igual:null,motivo:null};
 }
 
 function sugerirTipoImportacao(mov){ return mov.amount<0?"exp":"inc"; }
@@ -3499,15 +3508,16 @@ function criarPreLancamento(mov,accId,origem,marcas){
   const base={ id:uid(), origem, fitid:mov.fitid||null, chave:null,
     data:mov.data||"", descOriginal:mov.desc||"", desc:mov.desc||"",
     amount:0, type:"exp", method:"debito", cat:"", accId,
-    duplicado:false, selecionado:false, erro:null };
+    duplicado:false, motivo:null, igualId:null, selecionado:false, erro:null };
   const v=normalizarMovimentacaoImportada(mov);
   if(!v.ok) return Object.assign(base,{erro:v.erro});
   const type=sugerirTipoImportacao(mov);
-  const {dup,chave}=ehDuplicadoImportacao(mov,accId,marcas);
-  return Object.assign(base,{ chave, amount:Math.abs(mov.amount), type,
+  const d=ehDuplicadoImportacao(mov,accId,marcas);
+  return Object.assign(base,{ chave:d.chave, amount:Math.abs(mov.amount), type,
     method:sugerirMetodoImportacao(mov.desc),
     cat:sugerirCategoriaImportacao(mov.desc,type),
-    duplicado:dup, selecionado:!dup });
+    duplicado:d.dup, motivo:d.motivo, igualId:d.igual?d.igual.id:null,
+    selecionado:!d.dup });
 }
 function preLancamentosDe(movs,accId,origem){
   /* marcas já usadas: o que veio de importação anterior e, conforme a lista
@@ -3686,20 +3696,22 @@ function impStats(){
   return { total:l.length,
     erro:l.filter(x=>x.erro).length,
     dup:l.filter(x=>x.duplicado&&!x.erro).length,
+    confira:l.filter(x=>x.motivo==="confira"&&!x.erro).length,
     semcat:l.filter(x=>!x.cat&&!x.erro).length,
     sel:l.filter(x=>x.selecionado&&!x.erro).length };
 }
 function renderResumoContagem(){
   const s=impStats();
   const it=(n,r)=>'<div><b>'+n+'</b><span>'+r+'</span></div>';
-  return '<div class="imp-stats">'+it(s.total,"encontradas")+it(s.sel,"prontas")+
-    (s.dup?it(s.dup,"duplicadas"):"")+(s.semcat?it(s.semcat,"sem categoria"):"")+
-    (s.erro?it(s.erro,"com erro"):"")+'</div>';
+  return '<div class="imp-stats">'+it(s.total,"encontradas")+it(s.sel,"a lançar")+
+    (s.dup?it(s.dup,"já no app"):"")+(s.confira?it(s.confira,"confira"):"")+
+    (s.semcat?it(s.semcat,"sem categoria"):"")+(s.erro?it(s.erro,"com erro"):"")+'</div>';
 }
 function impChips(){
   const s=impStats(), l=imp.linhas;
-  return [["todos","Todos",s.total],["sel","Selecionados",s.sel],
-    ["dup","Possíveis duplicados",s.dup],["semcat","Sem categoria",s.semcat],
+  return [["todos","Todos",s.total],["sel","A lançar",s.sel],
+    ["dup","Já no app",s.dup],["confira","Confira",s.confira],
+    ["semcat","Sem categoria",s.semcat],
     ["exp","Despesas",l.filter(x=>x.type==="exp"&&!x.erro).length],
     ["inc","Receitas",l.filter(x=>x.type==="inc"&&!x.erro).length],
     ["erro","Com erro",s.erro]]
@@ -3712,6 +3724,7 @@ function impFiltradas(){
   return imp.linhas.filter(l=>{
     if(imp.flt==="sel"&&!l.selecionado) return false;
     if(imp.flt==="dup"&&!l.duplicado) return false;
+    if(imp.flt==="confira"&&l.motivo!=="confira") return false;
     if(imp.flt==="semcat"&&(l.cat||l.erro)) return false;
     if(imp.flt==="exp"&&(l.type!=="exp"||l.erro)) return false;
     if(imp.flt==="inc"&&(l.type!=="inc"||l.erro)) return false;
@@ -3720,6 +3733,20 @@ function impFiltradas(){
     return true;
   });
 }
+/* Dizer "já está no app" sem dizer COM O QUÊ obriga o usuário a sair da tela
+   para conferir. O selo nomeia o lançamento que casou, com data e valor. */
+function impSeloIgual(l){
+  if(!l.duplicado&&l.motivo!=="confira") return "";
+  const t=l.igualId?S.tx.find(x=>x.id===l.igualId&&!x.deleted):null;
+  const quem=t?esc(t.desc)+" · "+fmtDate(t.paid?(t.payDate||t.due):t.due)+" · "+fmt(val(t)):"";
+  if(l.motivo==="confira")
+    return '<span class="chip proximo">Confira: já existe '+quem+'</span>';
+  /* o rótulo cai em "Já no app" quando o motivo não veio: melhor um selo
+     genérico que nenhum, num aviso cujo papel é justamente não deixar passar */
+  const rot=l.motivo==="marca"?"Já importado antes":"Já no app";
+  return '<span class="chip pop">'+rot+(quem?" — "+quem:"")+'</span>';
+}
+
 /* A lista sai numa string só, e com teto: 2.000 movimentações viram 2.000 nós
    se cada uma for inserida por vez, e o celular trava antes de terminar. */
 function renderListaPreLancamentos(){
@@ -3733,7 +3760,7 @@ function renderListaPreLancamentos(){
         (l.selecionado?" checked":"")+(l.erro?" disabled":"")+'></label>'+
       '<div class="imp-mid" data-action="editar-pre-lancamento" data-id="'+l.id+'">'+
         '<b>'+esc(l.desc)+'</b><span class="faint">'+esc(meta)+'</span>'+
-        (l.duplicado?'<span class="chip proximo">Possível duplicado</span>':"")+
+        impSeloIgual(l)+
         (l.erro?'<span class="chip atrasado">'+esc(l.erro)+'</span>':"")+'</div>'+
       '<div class="imp-rt"><b class="'+(l.type==="inc"?"up":"down")+'">'+
         (l.erro?"—":(l.type==="inc"?"+":"−")+fmt(l.amount))+'</b>'+
@@ -4679,7 +4706,8 @@ document.addEventListener("change", e=>{
     imp.linhas.forEach(l=>{ if(l.erro) return;
       l.accId=t.value;
       const r=ehDuplicadoImportacao({data:l.data,amount:l.amount,desc:l.desc,fitid:l.fitid},t.value,null);
-      l.duplicado=r.dup; l.chave=r.chave; l.selecionado=!r.dup; });
+      l.duplicado=r.dup; l.chave=r.chave; l.motivo=r.motivo;
+      l.igualId=r.igual?r.igual.id:null; l.selecionado=!r.dup; });
     if(imp.etapa==="revisao") impRedesenhaRevisao(); }
   if(t.name==="impSel"&&imp){ const l=imp.linhas.find(x=>x.id===t.dataset.id);
     if(l){ l.selecionado=t.checked; impAtualizaContagem(); } }
