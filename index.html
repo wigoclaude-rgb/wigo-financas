@@ -3303,15 +3303,21 @@ function parseOFX(texto){
 /* Conta separadores fora de aspas nas primeiras linhas. Empate vai para o ";",
    que é o que sai da maioria dos bancos brasileiros. */
 function detectarSeparadorCSV(texto){
-  const linhas=String(texto||"").split(/\r?\n/).filter(l=>l.trim()).slice(0,8);
+  const linhas=String(texto||"").split(/\r?\n/).filter(l=>l.trim()).slice(0,15);
   if(!linhas.length) return ";";
   let melhor=";", pontos=0;
   [";","\t",","].forEach(sep=>{
     const cont=linhas.map(l=>{ let n=0,asp=false;
       for(const c of l){ if(c==='"') asp=!asp; else if(c===sep&&!asp) n++; }
-      return n; });
-    const min=Math.min(...cont);
-    const p=min>0?min*10+(cont.every(x=>x===cont[0])?5:0):0;
+      return n; }).filter(n=>n>0);
+    if(!cont.length) return;
+    /* a moda das contagens, e não o mínimo: as linhas de dados têm todas o
+       mesmo número de separadores, e é isso que distingue o separador real de
+       um que aparece por acaso dentro de uma descrição. Exigir que TODAS as
+       linhas tenham o separador zerava a conta em extrato com preâmbulo. */
+    const freq={}; cont.forEach(n=>{ freq[n]=(freq[n]||0)+1; });
+    const moda=Object.entries(freq).sort((a,b)=>b[1]-a[1]||b[0]-a[0])[0];
+    const p=moda[1]*10+Number(moda[0]);
     if(p>pontos){ pontos=p; melhor=sep; }
   });
   return melhor;
@@ -3363,6 +3369,23 @@ function detectarColunasCSV(cab){
   if(c.desc!=null&&c.desc===c.data) c.desc=null;
   c.confiavel=c.data!=null&&c.desc!=null&&(c.valor!=null||c.debito!=null||c.credito!=null);
   return c;
+}
+/* Nem todo extrato começa pelo cabeçalho: muito banco põe antes o nome do
+   relatório, a agência e o período. Procura nas primeiras linhas a que se
+   identifica como cabeçalho de tabela; se nenhuma se identifica, fica com a
+   mais preenchida — é a que dá a melhor tela de mapeamento manual. */
+function acharCabecalhoCSV(bruto){
+  const limite=Math.min(bruto.length,15);
+  for(let i=0;i<limite;i++){
+    const c=detectarColunasCSV(bruto[i]);
+    if(c.confiavel) return {idx:i,cols:c};
+  }
+  let idx=0,mx=-1;
+  for(let i=0;i<limite;i++){
+    const n=bruto[i].filter(x=>String(x).trim()).length;
+    if(n>mx){ mx=n; idx=i; }
+  }
+  return {idx,cols:detectarColunasCSV(bruto[idx])};
 }
 function mapearCSV(linhas,cols){
   const movs=[];
@@ -3587,7 +3610,7 @@ function desfazerUltimaImportacao(){
 function abrirImportacao(){
   if(!S.accounts.length){ toast("Cadastre uma conta antes de importar um extrato"); return; }
   imp={ contaId:S.accounts[0].id, arquivo:null, formato:null, encoding:null,
-    etapa:"arquivo", linhas:[], colunas:null, bruto:null, sep:null,
+    etapa:"arquivo", linhas:[], colunas:null, bruto:null, cabIdx:0, sep:null,
     q:"", flt:"todos", resultado:null };
   renderImportacao();
 }
@@ -3623,14 +3646,14 @@ async function processarArquivoImportacao(file){
   const bruto=parseCSV(lido.texto,sep);
   if(bruto.length<2){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
   imp.sep=sep; imp.bruto=bruto;
-  const cols=detectarColunasCSV(bruto[0]);
-  imp.colunas=cols;
+  const cab=acharCabecalhoCSV(bruto);
+  imp.cabIdx=cab.idx; imp.colunas=cab.cols;
   /* detecção duvidosa não importa em silêncio: pergunta em vez de errar calado */
-  if(!cols.confiavel){ imp.etapa="colunas"; renderImportacao(); return; }
-  aplicarColunasImportacao(cols);
+  if(!cab.cols.confiavel){ imp.etapa="colunas"; renderImportacao(); return; }
+  aplicarColunasImportacao(cab.cols);
 }
 function aplicarColunasImportacao(cols){
-  const movs=mapearCSV(imp.bruto.slice(1),cols);
+  const movs=mapearCSV(imp.bruto.slice((imp.cabIdx||0)+1),cols);
   if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
   imp.colunas=cols;
   imp.linhas=preLancamentosDe(movs,imp.contaId,"csv");
@@ -3658,11 +3681,11 @@ function impTelaArquivo(){
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="fechar-importacao">Cancelar</button></div>';
 }
 function impTelaColunas(){
-  const cab=imp.bruto[0]||[], c=imp.colunas||{};
+  const ci=imp.cabIdx||0, cab=imp.bruto[ci]||[], c=imp.colunas||{};
   const opt=(sel,vazio)=>(vazio?'<option value="">— nenhuma —</option>':"")+
     cab.map((x,i)=>'<option value="'+i+'"'+(String(i)===String(sel)?" selected":"")+'>'+
       esc(String(x||"").trim()||("Coluna "+(i+1)))+'</option>').join("");
-  const previa=imp.bruto.slice(1,4).map(l=>'<div>'+esc(l.slice(0,5).map(x=>String(x).slice(0,20)).join(" · "))+'</div>').join("");
+  const previa=imp.bruto.slice(ci+1,ci+4).map(l=>'<div>'+esc(l.slice(0,5).map(x=>String(x).slice(0,20)).join(" · "))+'</div>').join("");
   return modalHead("Confira as colunas do extrato","Não deu para identificar sozinho")+
   '<div class="help" style="margin-bottom:14px">Diga qual coluna é o quê. Se o seu extrato separa débito e crédito em colunas diferentes, deixe <b>Valor</b> em branco e preencha as duas de baixo.</div>'+
   '<form id="fImpCols">'+
