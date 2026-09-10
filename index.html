@@ -913,6 +913,8 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   border-radius:var(--r-xs)}
 .pd-tot{border-top:1px solid var(--line-2);border-bottom:none;color:var(--ink-2);font-weight:650}
 .parc-doc .chip{justify-self:end}
+.parc-doc .pd-row .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.parc-doc .pd-row .nw{white-space:nowrap;color:var(--ink-3)}
 
 /* ---------- importar extrato ---------- */
 .imp-alerta{display:flex;gap:9px;align-items:flex-start;background:var(--warn-bg);
@@ -4669,6 +4671,48 @@ function consRedesenha(){
   const box=$("#consBox"); if(box) box.innerHTML=renderConsGrade(l);
   const ft=$("#consFoot"); if(ft) ft.innerHTML=consRodape(tt);
 }
+/* Baixar em lote é uma decisão com data e destino, não um sim/não: o botão
+   Pagar da lista abre uma tela para ajustar data e valor, e a versão em lote não
+   podia ser um confirm() que decide tudo por conta própria.
+
+   Valor não entra aqui de propósito: em lote ele é o de cada lançamento, e um
+   campo único sobrescreveria oito valores diferentes com o mesmo número. Quem
+   precisa ajustar juros de UM lançamento usa o Pagar da linha. */
+function openConsBaixa(){
+  if(!cons) return;
+  const alvo=aTx().filter(t=>cons.sel.has(t.id)&&!t.paid);
+  const jaPagos=cons.sel.size-alvo.length;
+  if(!alvo.length){ toast("Os selecionados já estão baixados"); return; }
+  const rec=alvo.filter(t=>t.type==="inc"), pag=alvo.filter(t=>t.type!=="inc");
+  const vRec=sum(rec,val), vPag=sum(pag,val);
+  const lista=alvo.slice(0,40).map(t=>
+    '<div class="pd-row"><span class="nw">'+fmtDate(t.due)+'</span>'+
+    '<span class="ttl">'+esc(t.desc)+'</span>'+
+    '<span class="v '+(t.type==="inc"?"up":"down")+'">'+(t.type==="inc"?"+":"−")+fmt(val(t))+'</span></div>').join("");
+  openModal(modalHead("Dar baixa em "+alvo.length+" lançamento"+(alvo.length>1?"s":""),
+    "Confirma que o dinheiro se moveu")+
+  '<div class="cons-tot" style="margin-bottom:14px">'+
+    (rec.length?'<div><b class="up">'+fmt(vRec)+'</b><span>'+rec.length+' a receber</span></div>':"")+
+    (pag.length?'<div><b class="down">'+fmt(vPag)+'</b><span>'+pag.length+' a pagar</span></div>':"")+
+  '</div>'+
+  (jaPagos?'<div class="imp-alerta">'+ic("alert")+'<span>'+jaPagos+
+    ' dos selecionados já estava'+(jaPagos>1?"m":"")+' baixado'+(jaPagos>1?"s":"")+
+    ' e fica'+(jaPagos>1?"m":"")+' como está'+(jaPagos>1?"ão":"")+'.</span></div>':"")+
+  '<form id="fConsBaixa">'+
+  '<label>Data do pagamento</label><input id="cbData" type="date" value="'+todayISO()+'" required>'+
+  '<div class="help">Vale para todos. É esta data que decide em que mês o dinheiro entra ou sai do saldo.</div>'+
+  (S.accounts.length?'<label style="margin-top:14px">Conta</label>'+
+    '<select id="cbConta"><option value="">Manter a de cada lançamento</option>'+
+    S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>'+
+    '<div class="help">Só mude se todos saíram (ou entraram) pela mesma conta.</div>':"")+
+  '<div class="parc-doc" style="margin-top:14px">'+
+    '<div class="pd-cap">O que será baixado</div>'+lista+
+    (alvo.length>40?'<div class="pd-row"><span></span><span class="faint">e mais '+
+      (alvo.length-40)+'…</span><span></span></div>':"")+
+  '</div>'+
+  '<button class="btn" type="submit">'+ic("check")+' Confirmar baixa</button></form>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="close-modal">Cancelar</button></div>');
+}
 function consExportar(){
   const l=consLinhas();
   if(!l.length){ toast("Nada para exportar"); return; }
@@ -5495,14 +5539,7 @@ document.addEventListener("click", async e=>{
       l.forEach(t=>todos?cons.sel.delete(t.id):cons.sel.add(t.id)); consRedesenha(); } break;
     case "cons-limpar-sel": if(cons){ cons.sel.clear(); consRedesenha(); } break;
     case "cons-csv": consExportar(); break;
-    case "cons-baixar": {
-      if(!cons||!cons.sel.size) break;
-      const alvo=aTx().filter(t=>cons.sel.has(t.id)&&!t.paid);
-      if(!alvo.length){ toast("Os selecionados já estão baixados"); break; }
-      if(!confirm("Dar baixa em "+alvo.length+" lançamento(s), na data de hoje?")) break;
-      alvo.forEach(t=>applyPaid(t,todayISO(),t.amount));
-      cons.sel.clear(); save(); render();
-      toast(alvo.length+" baixado(s) ✓"); break; }
+    case "cons-baixar": openConsBaixa(); break;
 
     /* ----- importar extrato ----- */
     case "abrir-importacao": abrirImportacao(); break;
@@ -5646,6 +5683,21 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fConsBaixa"){
+    if(!cons) return;
+    const data=$("#cbData").value;
+    if(!data){ toast("Informe a data do pagamento"); return; }
+    const conta=$("#cbConta")?$("#cbConta").value:"";
+    const alvo=aTx().filter(t=>cons.sel.has(t.id)&&!t.paid);
+    if(!alvo.length){ toast("Nada a baixar"); return; }
+    alvo.forEach(t=>{
+      /* a conta escolhida vale antes do applyPaid, que só preenche quando está
+         vazia — do contrário a conta do cartão venceria a escolha do usuário */
+      if(conta) t.accId=conta;
+      applyPaid(t,data,t.amount);
+    });
+    cons.sel.clear(); save(); closeModal(); render();
+    toast(alvo.length+" lançamento"+(alvo.length>1?"s":"")+" baixado"+(alvo.length>1?"s":"")+" ✓"); }
   else if(f.id==="fImpCols"){
     if(!imp||!imp.bruto) return;
     const col=x=>{ const el=$(x); const v=el?el.value:""; return v===""?null:+v; };

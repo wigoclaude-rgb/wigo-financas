@@ -303,6 +303,16 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   cabeçalho não é renderizado e sem isso não havia como selecionar tudo.
 - A baixa em lote reusa `applyPaid`, o mesmo caminho do botão Pagar da lista, e
   o botão diz quantas serão baixadas quando a seleção mistura abertas e pagas.
+- **"Dar baixa" abre uma tela, não um `confirm()`** (`openConsBaixa`). Baixar é
+  escrever data de pagamento em vários lançamentos ao mesmo tempo; sem tela o
+  usuário não teria como dizer *quando* pagou, e o `confirm()` do navegador
+  gravava sempre a data de hoje. A tela mostra o total de cada lado, avisa
+  quantos da seleção já estavam baixados (esses são ignorados, não baixados de
+  novo), pede a data — obrigatória, hoje por padrão — e oferece trocar a conta
+  de todos de uma vez, com `"Manter a de cada lançamento"` como padrão.
+- **A conta escolhida é gravada ANTES do `applyPaid`.** `applyPaid` só preenche
+  `accId` quando está vazio, e num lançamento de cartão ele resolve a conta do
+  cartão — se a escrita viesse depois, a escolha do usuário nunca venceria.
 
 ### Documento do parcelamento
 
