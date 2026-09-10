@@ -597,6 +597,8 @@ input[type=date],input[type=month]{-webkit-appearance:none}
 .stat .v{font-family:var(--f-display);font-weight:700;font-size:19px;margin-top:5px;
   font-variant-numeric:tabular-nums;letter-spacing:-.025em}
 .stat .s{font-size:var(--t-xs);color:var(--ink-3);margin-top:3px}
+.stat.tap{cursor:pointer;transition:border-color .15s,background .15s}
+.stat.tap:hover{border-color:var(--v-2);background:var(--s-1)}
 .stat.mini{padding:var(--sp-3)}
 .stat.mini .v{font-size:16px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-bottom:var(--sp-4)}
@@ -849,6 +851,39 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .gr-row .nw{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-xs)}
 .gr-row .nw.atraso{color:var(--down);font-weight:700}
 .gr-row .chip{white-space:nowrap}
+/* razão da pessoa: mesma ideia da grade, com as colunas de um extrato de conta */
+.raz{background:var(--s-1);border:1px solid var(--line);border-radius:var(--r-md);margin-top:10px}
+.rz-row{display:grid;grid-template-columns:84px minmax(0,1fr) 124px 106px 112px;
+  gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);
+  font-size:var(--t-sm)}
+.rz-row:last-child{border-bottom:none}
+.rz-head{color:var(--ink-4);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.04em;background:var(--s-2);border-radius:var(--r-md) var(--r-md) 0 0}
+.rz-row.ini,.rz-row.fim{background:var(--s-2)}
+.rz-row.fim{border-radius:0 0 var(--r-md) var(--r-md)}
+.rz-row.ini .ttl,.rz-row.fim .ttl{font-weight:700;color:var(--ink-2)}
+.rz-row .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rz-row .ttl.tap{cursor:pointer}
+.rz-row .ttl.tap:hover{color:var(--v-2)}
+.rz-row .nw{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-xs);color:var(--ink-3)}
+.rz-row .faint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--t-xs)}
+.rz-row .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
+.rz-row .v.up{color:var(--up)}
+.rz-row .v.down{color:var(--down)}
+.rz-row .sd{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.rz-row .sd.neg{color:var(--down)}
+/* no celular a origem sai e o saldo se identifica sozinho, senão são dois
+   números iguais um do lado do outro sem dizer qual é qual */
+@media (max-width:900px){
+  .rz-head{display:none}
+  .rz-row{grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:11px 12px}
+  .rz-row>span:nth-child(2){grid-column:1;grid-row:1}
+  .rz-row>span:nth-child(1){grid-column:1;grid-row:2}
+  .rz-row>span:nth-child(3){display:none}
+  .rz-row>span:nth-child(4){grid-column:2;grid-row:1}
+  .rz-row>span:nth-child(5){grid-column:2;grid-row:2}
+  .rz-row .sd::before{content:"saldo ";font-size:var(--t-micro);color:var(--ink-4);font-weight:500}
+}
 .gr-ck{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--line-2);display:block}
 .gr-ck.on{background:var(--grad-v);border-color:transparent;position:relative}
 .gr-ck.on::after{content:"";position:absolute;left:5px;top:1.5px;width:4px;height:8px;
@@ -1720,6 +1755,8 @@ function render(){
   else if(tab==="report") v.innerHTML=renderReport();
   else if(tab==="settings") v.innerHTML=renderSettings();
   else if(tab==="consulta"){ if(!cons) cons=novaConsulta(); v.innerHTML=renderConsulta(); }
+  else if(tab==="razao"){ if(!razPes||!pesOf(razPes)){ tab="home"; v.innerHTML=renderHome(); }
+    else v.innerHTML=renderRazao(); }
   const g=$("#greetEl"); if(g) g.textContent=greetWord();
   const tc=$("#trashCount"); if(tc){ const n=delTx().length;
     tc.textContent=n||""; tc.classList.toggle("on",!!n); }
@@ -3058,10 +3095,12 @@ function openPesDetail(id){
   detQ=""; detFlt="all"; detSel.clear();
   const f=pesFlow(id);
   openModal(modalHead(esc(p.name),p.note?esc(p.note):(f.lancamentos+" lançamento"+(f.lancamentos===1?"":"s")))+
-  '<div class="stat" style="margin-top:14px"><div class="k">'+
+  /* o saldo abre o extrato: é a pergunta que ele sempre provoca — "de onde
+     veio esse número?" — e a resposta é o razão. */
+  '<div class="stat tap" style="margin-top:14px" data-action="pes-razao" data-id="'+id+'"><div class="k">'+
     (f.saldo>0?"Esta pessoa te deve":f.saldo<0?"Você deve a esta pessoa":"Situação")+'</div>'+
     '<div class="v '+(f.saldo>0?"up":f.saldo<0?"down":"")+'">'+fmt(Math.abs(f.saldo))+'</div>'+
-    '<div class="s">'+(f.saldo===0?"tudo quitado":"em aberto")+'</div></div>'+
+    '<div class="s">'+(f.saldo===0?"tudo quitado":"em aberto")+' · ver extrato ›</div></div>'+
   '<div class="ledger dark" style="margin-top:12px">'+
     '<div class="lg"><span>A receber</span><b class="up">'+fmt(f.aReceber)+'</b></div>'+
     '<div class="lg"><span>A pagar</span><b class="down">'+fmt(f.aPagar)+'</b></div>'+
@@ -3069,7 +3108,8 @@ function openPesDetail(id){
     '<div class="lg"><span>Já pago</span><b>'+fmt(f.pago)+'</b></div>'+
   '</div>'+
   '<div class="act-row" style="margin-top:14px;flex-wrap:wrap">'+
-    '<button class="btn small" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
+    '<button class="btn small" data-action="pes-razao" data-id="'+id+'">'+ic("receipt")+' Extrato da conta</button>'+
+    '<button class="btn small ghost" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
     '<button class="btn small ghost" data-action="pes-edit" data-id="'+id+'">Editar</button>'+
     '<button class="btn small ghost" data-action="pes-pdf" data-id="'+id+'">'+ic("receipt")+' Gerar PDF</button></div>'+
   '<div id="detBox" data-pes="'+id+'">'+pesDetBody(id)+'</div>');
@@ -3134,6 +3174,120 @@ function pesDetBody(id){
           (detSel.has(t.id)?" checked":"")+'>'+
         '<div class="det-row">'+txRow(t)+'</div></label>').join("")+'</div>'
     :'<div class="empty">'+(todos.length?"Nada com esse filtro.":"Nenhum lançamento vinculado ainda.")+'</div>');
+}
+
+/* ----- RAZÃO DA PESSOA (extrato da conta) -----
+   O saldo diz quanto sobrou; o razão mostra como se chegou nele. Cada
+   lançamento entra como documento na data de vencimento e, se já foi baixado,
+   entra de novo como baixa na data do pagamento, com o sinal trocado. É por
+   isso que o acumulado da última linha é exatamente o saldo da pessoa: o que
+   foi quitado se anula sozinho e só o que está em aberto continua de pé. */
+/* a tela cheia, e não o modal: dentro do sheet (460px) as cinco colunas não
+   cabem e a do documento colapsa para zero. Um extrato de conta precisa da
+   largura da página, igual à consulta. */
+let razPer="tudo", razPes=null;
+function razOrigem(t){
+  if(t.cardId){ const c=cardOf(t.cardId); if(c) return c.nick+" · cartão"; }
+  const a=accOf(t.accId); if(a) return a.name;
+  return METHODS[t.method]||"—";
+}
+function pesRazao(id){
+  const movs=[];
+  aTx().filter(t=>t.pesId===id&&t.type!=="xfer").forEach(t=>{
+    const inc=t.type==="inc", v=val(t), org=razOrigem(t);
+    movs.push({data:t.due,ord:0,id:t.id,desc:t.desc,origem:org,
+      rot:inc?"A receber":"A pagar",valor:inc?v:-v,
+      parc:t.kind==="parcelado"?t.i+"/"+t.n:""});
+    if(t.paid) movs.push({data:t.payDate||t.due,ord:1,id:t.id,desc:t.desc,origem:org,
+      rot:inc?"Recebimento":"Pagamento",valor:inc?-v:v,
+      parc:t.kind==="parcelado"?t.i+"/"+t.n:""});
+  });
+  movs.sort((a,b)=>a.data<b.data?-1:a.data>b.data?1:a.ord-b.ord);
+  let acc=0;
+  movs.forEach(m=>{ acc=Math.round((acc+m.valor)*100)/100; m.saldo=acc; });
+  return movs;
+}
+/* o corte do período não pode zerar o acumulado: o que ficou para trás vira a
+   linha de saldo anterior, como o "SI" de um extrato de verdade. */
+function razDesde(){
+  const hoje=todayISO();
+  if(razPer==="ano") return hoje.slice(0,4)+"-01-01";
+  if(razPer==="12m") return addMonthsISO(hoje,-12);
+  return "";
+}
+function razFatia(movs){
+  const de=razDesde();
+  if(!de) return {antes:0,corte:movs,de:""};
+  const anteriores=movs.filter(m=>m.data<de);
+  return {antes:anteriores.length?anteriores[anteriores.length-1].saldo:0,
+          corte:movs.filter(m=>m.data>=de), de};
+}
+function abrirRazao(id){
+  if(!pesOf(id)) return;
+  razPes=id; razPer="tudo"; closeModal(); tab="razao"; render();
+}
+function renderRazao(){
+  const id=razPes, p=pesOf(id);
+  const movs=pesRazao(id), {antes,corte,de}=razFatia(movs);
+  const saldo=movs.length?movs[movs.length-1].saldo:0;
+  const chip=(v,rot)=>'<button type="button" class="fchip'+(razPer===v?" on":"")+
+    '" data-action="raz-per" data-v="'+v+'">'+rot+'</button>';
+  const cab='<div class="rz-row rz-head"><span>Data</span><span>Documento</span>'+
+    '<span>Origem</span><span class="r">Valor</span><span class="r">Saldo</span></div>';
+  const linha=m=>'<div class="rz-row">'+
+    '<span class="nw">'+fmtDate(m.data)+'</span>'+
+    '<span class="ttl tap" data-action="tx-edit" data-id="'+m.id+'">'+esc(m.desc)+
+      (m.parc?' <span class="faint">'+m.parc+'</span>':"")+
+      '<div class="faint">'+m.rot+'</div></span>'+
+    '<span class="faint">'+esc(m.origem)+'</span>'+
+    '<span class="v '+(m.valor>0?"up":"down")+'">'+(m.valor>0?"+":"−")+fmt(Math.abs(m.valor))+'</span>'+
+    '<span class="sd'+(m.saldo<0?" neg":"")+'">'+(m.saldo<0?"−":"")+fmt(Math.abs(m.saldo))+'</span></div>';
+  const teto=corte.slice(-400);
+  return '<div class="sec" style="margin-top:4px"><div class="sec-head">'+
+    '<h2 class="t-h2">'+esc(p.name)+'</h2>'+
+    '<span class="more" data-action="tab" data-v="home">'+ic("x")+' Fechar</span></div>'+
+    '<div class="help" style="margin-top:0">Extrato da conta'+(p.note?' · '+esc(p.note):"")+'</div></div>'+
+  '<div class="stat"><div class="k">'+
+      (saldo>0?"Saldo — esta pessoa te deve":saldo<0?"Saldo — você deve a esta pessoa":"Saldo")+'</div>'+
+    '<div class="v '+(saldo>0?"up":saldo<0?"down":"")+'">'+fmt(Math.abs(saldo))+'</div>'+
+    '<div class="s">'+movs.length+' movimento'+(movs.length===1?"":"s")+' no total</div></div>'+
+  '<div class="chips" style="margin-top:12px">'+
+    chip("tudo","Tudo")+chip("ano","Este ano")+chip("12m","12 meses")+'</div>'+
+  (movs.length?
+    '<div class="raz">'+cab+
+      (de?'<div class="rz-row ini"><span class="nw">'+fmtDate(de)+'</span>'+
+        '<span class="ttl">Saldo anterior</span><span class="faint">—</span>'+
+        '<span class="v">—</span><span class="sd'+(antes<0?" neg":"")+'">'+
+        (antes<0?"−":"")+fmt(Math.abs(antes))+'</span></div>':"")+
+      teto.map(linha).join("")+
+      /* sem data: o acumulado já inclui vencimentos futuros, e carimbar hoje
+         faria parecer que a linha para no dia de hoje */
+      '<div class="rz-row fim"><span class="nw">—</span>'+
+        '<span class="ttl">Saldo da conta</span><span class="faint">—</span>'+
+        '<span class="v">—</span><span class="sd'+(saldo<0?" neg":"")+'">'+
+        (saldo<0?"−":"")+fmt(Math.abs(saldo))+'</span></div>'+
+    '</div>'+
+    (corte.length>teto.length?'<div class="help" style="text-align:center">Mostrando os '+
+      teto.length+' movimentos mais recentes de '+corte.length+'.</div>':"")+
+    (corte.length?"":'<div class="help" style="text-align:center">Nenhum movimento neste período.</div>')+
+    '<div class="act-row" style="margin-top:14px;flex-wrap:wrap">'+
+      '<button class="btn small ghost" data-action="raz-csv" data-id="'+id+'">'+ic("download")+' Exportar CSV</button>'+
+      '<button class="btn small ghost" data-action="raz-voltar" data-id="'+id+'">Voltar à pessoa</button></div>'
+  :'<div class="empty"><div class="e-ic">'+ic("receipt")+'</div>'+
+    '<div class="e-t">Sem movimento</div>Vincule lançamentos a esta pessoa para o extrato aparecer.</div>'+
+   '<div class="act-row" style="margin-top:14px"><button class="btn small ghost" data-action="raz-voltar" data-id="'+id+'">Voltar à pessoa</button></div>');
+}
+function razExportar(id){
+  const p=pesOf(id); if(!p)return;
+  const {corte}=razFatia(pesRazao(id));
+  if(!corte.length){ toast("Nada para exportar"); return; }
+  const limpo=v=>String(v??"").replace(/;/g,",");
+  const cab=["Data","Documento","Parcela","Tipo","Origem","Valor","Saldo"];
+  const linhas=corte.map(m=>[fmtDate(m.data),limpo(m.desc),m.parc,m.rot,limpo(m.origem),
+    String(m.valor).replace(".",","),String(m.saldo).replace(".",",")].join(";"));
+  download("WIGO_extrato_"+p.name.replace(/[^\w]+/g,"_")+"_"+todayISO()+".csv",
+    "﻿"+[cab.join(";"),...linhas].join("\n"),"text/csv;charset=utf-8");
+  toast(corte.length+" linha(s) exportada(s) ✓");
 }
 
 /* ----- VINCULAR LANÇAMENTOS EXISTENTES A UMA PESSOA -----
@@ -5393,6 +5547,10 @@ document.addEventListener("click", async e=>{
     case "pes-list": openPeople(); break;
     case "pes-add": openPesForm(); break;
     case "pes-open": openPesDetail(id); break;
+    case "pes-razao": abrirRazao(id); break;
+    case "raz-per": razPer=el.dataset.v; render(); break;
+    case "raz-csv": razExportar(id); break;
+    case "raz-voltar": tab="home"; render(); openPesDetail(id); break;
     case "pes-edit": openPesForm(id); break;
     case "pes-delete": { const emUso=aTx().some(t=>t.pesId===id);
       if(!confirm(emUso?"Esta pessoa tem lançamentos vinculados. Excluir mesmo? Os lançamentos ficam sem pessoa.":"Excluir esta pessoa?"))break;

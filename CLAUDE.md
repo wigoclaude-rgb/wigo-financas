@@ -159,6 +159,7 @@ de aba não muda a URL nem entra no histórico.
 | **Análise** (`renderReport`) | Tendência de 12 meses, comparação, projeção, heatmap por dia, médias por categoria |
 | **Ajustes** (`renderSettings`) | Contas e pessoas, lixeira, saldo de abertura, ajuda/tours, categorias, CDI, conta, backup |
 | **Consulta** (`renderConsulta`) | Contas a receber e a pagar, todos os meses de uma vez: filtros de período, pessoa, origem, categoria e situação, totais no topo, grade densa e baixa em lote. Não está no dock — abre pela sidebar, por Ajustes ou pelo `Ctrl/⌘+K` |
+| **Extrato da conta** (`renderRazao`) | O razão de uma pessoa: cada documento e cada baixa, com saldo acumulado. Abre pelo cartão de saldo da ficha da pessoa |
 
 Navegação: **dock** inferior no celular, **sidebar** de 250 px no desktop
 (`min-width:1024px`). Modais são bottom sheet no celular e painel lateral direito
@@ -317,6 +318,32 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
 - **A conta escolhida é gravada ANTES do `applyPaid`.** `applyPaid` só preenche
   `accId` quando está vazio, e num lançamento de cartão ele resolve a conta do
   cartão — se a escrita viesse depois, a escolha do usuário nunca venceria.
+
+### Extrato da conta da pessoa (razão)
+
+`pesRazao(id)` monta o razão e `renderRazao()` desenha a tela. O saldo da pessoa
+diz **quanto sobrou**; o razão mostra **como se chegou nele**.
+
+- **Cada lançamento entra duas vezes quando já foi baixado**: o documento, na
+  data de vencimento, e a baixa, na data do pagamento, com o sinal trocado. É
+  por isso que o acumulado da última linha é exatamente o saldo — o que foi
+  quitado se anula sozinho no meio do extrato e só o que está em aberto fica de
+  pé. Sem a segunda linha o razão só somaria, e nunca bateria com o saldo.
+- **A receber soma, a pagar subtrai**, na mesma convenção do resto do app:
+  saldo positivo é "esta pessoa te deve".
+- **`xfer` e excluídos ficam de fora.** Transferência não é dívida de ninguém.
+- **O corte por período não zera o acumulado.** O que ficou para trás vira a
+  linha `Saldo anterior`, como o `SI` de um extrato de banco. Sem ela, filtrar
+  por "este ano" faria a última linha divergir do saldo mostrado no topo.
+- **A linha final não tem data.** O acumulado já inclui vencimentos futuros;
+  carimbar hoje faria parecer que o extrato para no dia de hoje.
+- **É tela cheia (`tab==="razao"`), não modal.** Dentro do sheet (460px no
+  desktop) as cinco colunas não cabem e a do documento colapsa para zero — foi
+  o que o teste de clique pegou. Um extrato de conta precisa da largura da
+  página, igual à consulta.
+- **O cartão de saldo na ficha da pessoa abre o extrato.** É a pergunta que o
+  número sempre provoca: "de onde veio isso?".
+- Teto de 400 movimentos desenhados, os mais recentes, como na consulta.
 
 ### Documento do parcelamento
 
