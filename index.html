@@ -818,6 +818,12 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .picked-list b{color:var(--ink);font-variant-numeric:tabular-nums}
 
 /* ---------- importar extrato ---------- */
+.imp-alerta{display:flex;gap:9px;align-items:flex-start;background:var(--warn-bg);
+  border:1px solid rgba(255,200,87,.28);border-radius:var(--r-sm);
+  padding:10px 12px;margin:0 0 var(--sp-3);font-size:var(--t-xs);
+  color:var(--warn);line-height:1.5}
+.imp-alerta .icn{width:16px;height:16px;flex:0 0 16px;margin-top:1px}
+.imp-alerta b[data-action]{cursor:pointer;text-decoration:underline}
 .imp-stats{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin:0 0 var(--sp-3)}
 .imp-stats div{flex:1;min-width:74px;background:var(--s-2);border:1px solid var(--line);
   border-radius:var(--r-sm);padding:9px 10px;display:flex;flex-direction:column;gap:1px}
@@ -3395,6 +3401,11 @@ function limparDescricaoImportacao(desc){
   if(p.length<3) return s;
   const nome=p[1].trim();
   if(!nome||nome.length<2||nome.length>60||!/[A-Za-zÀ-ÿ]{2}/.test(nome)) return s;
+  /* só age quando a cauda é papelada de banco — CPF, CNPJ, agência ou conta.
+     Descrição de fatura ("Mercado Livre - CUECAS - Parcela 1/2") tem a mesma
+     forma e NÃO é isso: encurtar ali jogava fora justamente a parcela. */
+  if(!/(ag[êe]ncia|conta:|•••|\d{3}\.\d{3}\.\d{3}|\d{2}\.\d{3}\.\d{3}\/)/i.test(p.slice(2).join(" - ")))
+    return s;
   const t=normalizarTextoImportacao(p[0]);
   let cab=p[0].trim();
   if(/pix/.test(t)) cab=/receb/.test(t)?"Pix recebido":(/envi/.test(t)?"Pix enviado":"Pix");
@@ -3557,8 +3568,10 @@ function sugerirMetodoImportacao(desc){
    em branco é honesto, chutar não. Chaves curtas ficaram de fora de propósito
    ("gol", "oi", "max"): o falso positivo custa mais caro que o campo vazio. */
 const IMP_CATS=[
-  [["ifood","uber eats","rappi","restaurante","lanchonete","padaria","pizzaria","hamburgueria","cafeteria"],["Restaurantes/Delivery","Alimentação"]],
-  [["mercado","supermercado","atacadao","hortifruti","acougue","carrefour","assai","pao de acucar"],["Mercado","Alimentação"]],
+  [["ifood","uber eats","rappi","restaurante","lanchonete","padaria","pizzaria","hamburgueria",
+    "cafeteria","burguer","burger","lanche","food","acai","sushi"],["Restaurantes/Delivery","Alimentação"]],
+  [["mercado","supermercado","atacadao","hortifruti","acougue","carrefour","assai","pao de acucar"],
+   ["Mercado","Alimentação"],["mercado livre","mercado pago","mercadolivre","mercadopago"]],
   [["posto","combustivel","gasolina","shell","ipiranga","petrobras"],["Combustível","Transporte"]],
   [["uber","99app","taxi","onibus","metro","bilhete unico","estacionamento","pedagio"],["Transporte"]],
   [["farmacia","drogaria","droga raia","drogasil","panvel"],["Farmácia","Saúde"]],
@@ -3582,7 +3595,10 @@ const IMP_CATS=[
 function sugerirCategoriaImportacao(desc,tipo){
   const d=" "+normalizarTextoImportacao(desc)+" ";
   const lista=tipo==="inc"?S.incCats:S.expCats;
-  for(const [chaves,cands] of IMP_CATS){
+  for(const [chaves,cands,excecoes] of IMP_CATS){
+    /* "Mercado Livre" e "Mercado Pago" não são supermercado: sem a exceção,
+       compra de roupa em marketplace entrava como Mercado */
+    if(excecoes&&excecoes.some(k=>d.includes(k))) continue;
     if(!chaves.some(k=>d.includes(k))) continue;
     const ok=cands.find(c=>lista.includes(c));
     if(ok) return ok;
@@ -3638,8 +3654,30 @@ function preLancamentosDe(movs,alvo0,origem){
      confiar no parâmetro — um sinal errado inverte tipo, categoria e filtros de
      uma vez só, e em silêncio. */
   ctx.sinal=ctx.modo==="cartao"?sinalFatura(movs):-1;
+  /* Duas linhas idênticas no MESMO arquivo são duas compras, não uma repetida:
+     acontece de verdade quando dois parcelamentos caem no mesmo dia com a mesma
+     loja e o mesmo valor. Sem contar a ocorrência, a segunda nascia desmarcada
+     como duplicata da primeira e o gasto sumia.
+
+     A ocorrência entra na marca de origem, e como a ordem do arquivo é estável,
+     reimportar reconhece as duas. Quando o banco manda identificador próprio
+     (fitid) nada disso é preciso: ele já é único por linha. */
+  const vistas={};
   return movs.map(m=>{
     const pre=criarPreLancamento(m,ctx,origem,marcas);
+    if(pre.chave&&!pre.fitid){
+      const n=(vistas[pre.chave]=(vistas[pre.chave]||0)+1);
+      if(n>1){
+        const comOcorrencia=pre.chave+"#"+n;
+        const jaEstava=marcas.has(comOcorrencia);
+        pre.chave=comOcorrencia;
+        /* a irmã do mesmo arquivo não é "já no app" — só o que já estava conta */
+        if(pre.motivo==="marca"&&!jaEstava){
+          pre.duplicado=false; pre.motivo=null; pre.igualId=null;
+          pre.selecionado=!pre.nota;
+        }
+      }
+    }
     if(pre.chave) marcas.add(pre.chave);
     return pre;
   });
@@ -3837,10 +3875,25 @@ function impTelaColunas(){
   '<button class="btn" type="submit" style="margin-top:16px">Continuar</button></form>'+
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="descartar-importacao">Cancelar</button></div>';
 }
+/* Fatura importada como extrato de conta entra INTEIRA como receita: o valor da
+   compra vem positivo, e no extrato de conta positivo é entrada. O erro é fácil
+   de cometer (o modo é um clique) e caro de descobrir depois — daí o aviso, que
+   só aparece quando quase tudo virou receita. */
+function impAvisoModo(){
+  if(!imp||imp.modo!=="conta") return "";
+  const vals=imp.linhas.filter(l=>!l.erro);
+  if(vals.length<5) return "";
+  const inc=vals.filter(l=>l.type==="inc").length;
+  if(inc/vals.length<0.9) return "";
+  return '<div class="imp-alerta">'+ic("alert")+'<span><b>'+inc+' de '+vals.length+
+    '</b> entraram como receita. Se este arquivo é uma <b>fatura de cartão</b>, '+
+    '<b data-action="imp-modo" data-v="cartao">troque o tipo e escolha o arquivo de novo</b>.</span></div>';
+}
 function impTelaRevisao(){
   return modalHead("Revisar importação",
     esc(impNomeAlvo())+" · "+(imp.modo==="cartao"?"fatura":"extrato")+" · "+
     (imp.formato||"").toUpperCase()+(imp.encoding?" · "+imp.encoding:""))+
+  impAvisoModo()+
   '<div id="impStats">'+renderResumoContagem()+'</div>'+
   '<input id="impBusca" placeholder="Buscar movimentação…" autocomplete="off" value="'+esc(imp.q)+'">'+
   '<div class="chips" id="impChips" style="margin-top:10px">'+impChips()+'</div>'+
@@ -4782,7 +4835,12 @@ document.addEventListener("click", async e=>{
     case "confirmar-importacao": confirmarPreLancamentos(); break;
     case "marcar-todos-importacao": marcarTodosImportacao(el.dataset.v==="1"); break;
     case "imp-flt": if(imp){ imp.flt=el.dataset.v; impRedesenhaRevisao(); } break;
-    case "imp-modo": if(imp){ imp.modo=el.dataset.v; renderImportacao(); } break;
+    case "imp-modo": if(imp){ imp.modo=el.dataset.v;
+      /* as linhas já foram interpretadas com a regra do modo antigo: manter
+         qualquer uma delas aqui daria um estado meio conta, meio cartão */
+      if(imp.etapa!=="arquivo"){ imp.linhas=[]; imp.bruto=null; imp.colunas=null;
+        imp.cabIdx=0; imp.q=""; imp.flt="todos"; imp.etapa="arquivo"; }
+      renderImportacao(); } break;
     case "editar-pre-lancamento": openPreEdit(id); break;
     case "imp-voltar": if(imp){ imp.etapa="revisao"; renderImportacao(); } break;
     case "desfazer-importacao": desfazerUltimaImportacao(); break;

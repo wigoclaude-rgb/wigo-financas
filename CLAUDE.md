@@ -243,6 +243,20 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   fatura depende do banco (Nubank manda a compra positiva, OFX de cartão manda
   negativa), então quem decide é a maioria das linhas (`sinalFatura`). Confiar no
   parâmetro já inverteu tipo, categoria e filtros de uma vez, em silêncio.
+- **A tela avisa quando quase tudo virou receita no modo conta.** Fatura
+  importada como extrato de conta entra INTEIRA como receita — o valor da compra
+  vem positivo, e no extrato de conta positivo é entrada. O erro é um clique e a
+  descoberta é tardia. Trocar o modo depois de ler o arquivo limpa as linhas e
+  volta para a escolha: manter qualquer uma daria um estado meio conta, meio cartão.
+- **Duas linhas idênticas no mesmo arquivo são duas compras**, não uma repetida —
+  acontece quando dois parcelamentos caem no mesmo dia com a mesma loja e o mesmo
+  valor (visto numa fatura real: quatro "Gowd - Parcela 5/5", duas delas com o
+  mesmo valor). A ocorrência entra na marca de origem, e como a ordem do arquivo
+  é estável, reimportar reconhece todas. Sem isso a segunda nascia desmarcada e o
+  gasto sumia.
+- **A limpeza de descrição só age quando a cauda é papelada de banco** (CPF,
+  CNPJ, agência ou conta). Descrição de fatura tem a mesma forma — "Mercado Livre
+  - ITEM - Parcela 1/2" — e encurtar ali jogava fora justamente a parcela.
 - **A linha de "pagamento" na fatura nasce desmarcada.** É a quitação da fatura
   anterior, que já foi lançada do lado da conta; importar de novo criaria uma
   receita que nunca existiu.
