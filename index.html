@@ -3250,12 +3250,8 @@ function razFiltra(l){
   }
   if(raz.mov==="doc") l=l.filter(m=>m.ord===0);
   else if(raz.mov==="baixa") l=l.filter(m=>m.ord===1);
-  /* pelo SINAL do movimento, não pelo tipo do lançamento: quem olha a coluna
-     Valor espera achar os "+" em A receber e os "−" em A pagar. Pelo tipo, o
-     recebimento de uma receita (−, porque abate a dívida) aparecia em A
-     receber, e o pagamento de uma despesa (+) em A pagar. */
-  if(raz.lado==="receber") l=l.filter(m=>m.valor>0);
-  else if(raz.lado==="pagar") l=l.filter(m=>m.valor<0);
+  if(raz.lado==="receber") l=l.filter(m=>m.type==="inc");
+  else if(raz.lado==="pagar") l=l.filter(m=>m.type!=="inc");
   if(raz.sit==="aberto") l=l.filter(m=>!m.paid);
   else if(raz.sit==="baixado") l=l.filter(m=>m.paid);
   else if(raz.sit==="atraso") l=l.filter(m=>m.atraso);
@@ -3302,8 +3298,8 @@ function renderRazao(){
       razChip("sit","atraso","Vencidos")+razChip("sit","baixado","Baixados")+
     '</div>'+
     '<div class="chips" style="margin:2px 0 0">'+
-      razChip("lado","all","Os dois lados")+razChip("lado","receber","A receber (+)")+
-      razChip("lado","pagar","A pagar (−)")+
+      razChip("lado","all","Os dois lados")+razChip("lado","receber","A receber")+
+      razChip("lado","pagar","A pagar")+
     '</div>'+
     '<div class="chips" style="margin:2px 0 0">'+
       razChip("mov","all","Documentos e baixas")+razChip("mov","doc","Só documentos")+
