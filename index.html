@@ -3581,7 +3581,26 @@ function gerarHashImportacao(s){
 /* Duas descrições são a mesma quando uma contém a outra ou quando compartilham
    a maior parte das palavras longas: "PIX ENVIADO MERCADO X" e "PIX MERCADO X"
    são o mesmo lançamento visto por dois canais. */
+/* "Parcela 1/3" e "Parcela 2/3" são compras diferentes, mesmo com loja, valor e
+   data da compra idênticos — e a fatura repete a data da compra em toda parcela.
+   Numa fatura brasileira metade das linhas costuma ser parcela, então tratá-las
+   como repetição faria o app engolir a parcela do mês seguinte, silenciosamente.
+
+   Só decide quando AS DUAS declaram parcela: se uma não declara, quem resolve é
+   a comparação normal — senão um lançamento digitado à mão deixaria de casar. */
+function numeroParcela(desc){
+  const s=String(desc||"");
+  let m=/parcela\s*(\d{1,2})\s*\/\s*(\d{1,2})/i.exec(s);
+  if(!m) m=/\b(\d{1,2})\s*\/\s*(\d{1,2})\s*$/.exec(s);
+  return m?(m[1]+"/"+m[2]):null;
+}
+function mesmaParcela(a,b){
+  const pa=numeroParcela(a), pb=numeroParcela(b);
+  if(!pa||!pb) return true;
+  return pa===pb;
+}
 function compararDescricoesImportacao(a,b){
+  if(!mesmaParcela(a,b)) return false;
   const x=normalizarTextoImportacao(a), y=normalizarTextoImportacao(b);
   if(!x||!y) return false;
   if(x===y||x.includes(y)||y.includes(x)) return true;

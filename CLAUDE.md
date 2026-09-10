@@ -248,6 +248,15 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   vem positivo, e no extrato de conta positivo é entrada. O erro é um clique e a
   descoberta é tardia. Trocar o modo depois de ler o arquivo limpa as linhas e
   volta para a escolha: manter qualquer uma daria um estado meio conta, meio cartão.
+- **O número da parcela conta na comparação de duplicidade.** "Parcela 1/3" e
+  "Parcela 2/3" são compras diferentes mesmo com loja, valor e data idênticos — e
+  a fatura repete a data da compra em toda parcela. Numa fatura brasileira metade
+  das linhas costuma ser parcela, então sem isso o app engolia a parcela do mês
+  seguinte, silenciosamente. Só decide quando as duas descrições declaram parcela.
+- **A importação NÃO cria as parcelas futuras.** A fatura traz só a parcela do
+  mês, e é ela que entra, como `avista`. As seguintes chegam nas próximas
+  faturas. O efeito é que o compromisso futuro não aparece no app — quem quiser
+  isso lança à mão como `parcelado`, que aí `createTx` cria as N de uma vez.
 - **Duas linhas idênticas no mesmo arquivo são duas compras**, não uma repetida —
   acontece quando dois parcelamentos caem no mesmo dia com a mesma loja e o mesmo
   valor (visto numa fatura real: quatro "Gowd - Parcela 5/5", duas delas com o
