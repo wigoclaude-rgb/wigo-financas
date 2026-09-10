@@ -872,6 +872,10 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .rz-row .v.down{color:var(--down)}
 .rz-row .sd{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
 .rz-row .sd.neg{color:var(--down)}
+.rz-row .nw.atraso{color:var(--down);font-weight:700}
+.raz-foot{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;
+  padding:9px 4px 0;font-size:var(--t-xs);color:var(--ink-3)}
+.raz-foot b{font-variant-numeric:tabular-nums}
 /* no celular a origem sai e o saldo se identifica sozinho, senão são dois
    números iguais um do lado do outro sem dizer qual é qual */
 @media (max-width:900px){
@@ -1755,7 +1759,7 @@ function render(){
   else if(tab==="report") v.innerHTML=renderReport();
   else if(tab==="settings") v.innerHTML=renderSettings();
   else if(tab==="consulta"){ if(!cons) cons=novaConsulta(); v.innerHTML=renderConsulta(); }
-  else if(tab==="razao"){ if(!razPes||!pesOf(razPes)){ tab="home"; v.innerHTML=renderHome(); }
+  else if(tab==="razao"){ if(!raz||!pesOf(raz.pes)){ tab="home"; v.innerHTML=renderHome(); }
     else v.innerHTML=renderRazao(); }
   const g=$("#greetEl"); if(g) g.textContent=greetWord();
   const tc=$("#trashCount"); if(tc){ const n=delTx().length;
@@ -3181,11 +3185,18 @@ function pesDetBody(id){
    lançamento entra como documento na data de vencimento e, se já foi baixado,
    entra de novo como baixa na data do pagamento, com o sinal trocado. É por
    isso que o acumulado da última linha é exatamente o saldo da pessoa: o que
-   foi quitado se anula sozinho e só o que está em aberto continua de pé. */
-/* a tela cheia, e não o modal: dentro do sheet (460px) as cinco colunas não
-   cabem e a do documento colapsa para zero. Um extrato de conta precisa da
-   largura da página, igual à consulta. */
-let razPer="tudo", razPes=null;
+   foi quitado se anula sozinho e só o que está em aberto continua de pé.
+
+   A tela cheia, e não o modal: dentro do sheet (460px) as cinco colunas não
+   cabem e a do documento colapsa para zero. */
+let raz=null;
+function novoRazao(id){
+  return {pes:id,q:"",per:"tudo",de:"",ate:"",mov:"all",lado:"all",sit:"all",org:"all",cat:"all"};
+}
+function abrirRazao(id){
+  if(!pesOf(id)) return;
+  raz=novoRazao(id); closeModal(); tab="razao"; render();
+}
 function razOrigem(t){
   if(t.cardId){ const c=cardOf(t.cardId); if(c) return c.nick+" · cartão"; }
   const a=accOf(t.accId); if(a) return a.name;
@@ -3195,99 +3206,182 @@ function pesRazao(id){
   const movs=[];
   aTx().filter(t=>t.pesId===id&&t.type!=="xfer").forEach(t=>{
     const inc=t.type==="inc", v=val(t), org=razOrigem(t);
-    movs.push({data:t.due,ord:0,id:t.id,desc:t.desc,origem:org,
-      rot:inc?"A receber":"A pagar",valor:inc?v:-v,
-      parc:t.kind==="parcelado"?t.i+"/"+t.n:""});
-    if(t.paid) movs.push({data:t.payDate||t.due,ord:1,id:t.id,desc:t.desc,origem:org,
-      rot:inc?"Recebimento":"Pagamento",valor:inc?-v:v,
-      parc:t.kind==="parcelado"?t.i+"/"+t.n:""});
+    const base={id:t.id,desc:t.desc,origem:org,cat:t.cat||"",type:t.type,
+      accId:t.accId||null,cardId:t.cardId||null,paid:!!t.paid,
+      atraso:!t.paid&&statusOf(t)==="atrasado",
+      parc:t.kind==="parcelado"?t.i+"/"+t.n:""};
+    movs.push({...base,data:t.due,ord:0,rot:inc?"A receber":"A pagar",valor:inc?v:-v});
+    if(t.paid) movs.push({...base,data:t.payDate||t.due,ord:1,
+      rot:inc?"Recebimento":"Pagamento",valor:inc?-v:v});
   });
   movs.sort((a,b)=>a.data<b.data?-1:a.data>b.data?1:a.ord-b.ord);
   let acc=0;
   movs.forEach(m=>{ acc=Math.round((acc+m.valor)*100)/100; m.saldo=acc; });
   return movs;
 }
+function razPeriodo(v){
+  const hoje=todayISO();
+  if(v==="ano"){ raz.de=hoje.slice(0,4)+"-01-01"; raz.ate=""; }
+  else if(v==="12m"){ raz.de=addMonthsISO(hoje,-12); raz.ate=""; }
+  else { raz.de=""; raz.ate=""; }
+  raz.per=v;
+}
 /* o corte do período não pode zerar o acumulado: o que ficou para trás vira a
    linha de saldo anterior, como o "SI" de um extrato de verdade. */
-function razDesde(){
-  const hoje=todayISO();
-  if(razPer==="ano") return hoje.slice(0,4)+"-01-01";
-  if(razPer==="12m") return addMonthsISO(hoje,-12);
-  return "";
-}
 function razFatia(movs){
-  const de=razDesde();
-  if(!de) return {antes:0,corte:movs,de:""};
-  const anteriores=movs.filter(m=>m.data<de);
-  return {antes:anteriores.length?anteriores[anteriores.length-1].saldo:0,
-          corte:movs.filter(m=>m.data>=de), de};
+  const de=raz.de, ate=raz.ate;
+  if(!de&&!ate) return {antes:0,corte:movs,de:"",ate:""};
+  const atras=de?movs.filter(m=>m.data<de):[];
+  let corte=movs;
+  if(de) corte=corte.filter(m=>m.data>=de);
+  if(ate) corte=corte.filter(m=>m.data<=ate);
+  return {antes:atras.length?atras[atras.length-1].saldo:0,corte,de,ate};
 }
-function abrirRazao(id){
-  if(!pesOf(id)) return;
-  razPes=id; razPer="tudo"; closeModal(); tab="razao"; render();
+/* Os demais filtros ESCONDEM linhas, não recalculam nada: a coluna Saldo
+   continua sendo o saldo da conta naquele momento, na ordem das datas. Se ela
+   fosse recalculada sobre o filtro, "só as baixas" mostraria um saldo que
+   nunca existiu. Por isso o rodapé separa o saldo da conta da soma do filtro. */
+function razFiltra(l){
+  const q=raz.q.trim().toLowerCase();
+  if(q){
+    const num=q.replace(/[^\d,]/g,"").replace(",",".");
+    l=l.filter(m=>(m.desc+" "+m.cat+" "+m.origem+" "+m.rot).toLowerCase().includes(q)||
+      (num&&String(Math.abs(m.valor)).includes(num)));
+  }
+  if(raz.mov==="doc") l=l.filter(m=>m.ord===0);
+  else if(raz.mov==="baixa") l=l.filter(m=>m.ord===1);
+  if(raz.lado==="receber") l=l.filter(m=>m.type==="inc");
+  else if(raz.lado==="pagar") l=l.filter(m=>m.type!=="inc");
+  if(raz.sit==="aberto") l=l.filter(m=>!m.paid);
+  else if(raz.sit==="baixado") l=l.filter(m=>m.paid);
+  else if(raz.sit==="atraso") l=l.filter(m=>m.atraso);
+  if(raz.org!=="all") l=l.filter(m=>m.cardId?m.cardId===raz.org:m.accId===raz.org);
+  if(raz.cat!=="all") l=l.filter(m=>m.cat===raz.cat);
+  return l;
+}
+function razFiltrando(){
+  return !!(raz.q.trim())||raz.mov!=="all"||raz.lado!=="all"||raz.sit!=="all"||
+         raz.org!=="all"||raz.cat!=="all";
+}
+function razChip(campo,valor,rotulo){
+  return '<button type="button" class="fchip'+(raz[campo]===valor?" on":"")+
+    '" data-action="raz-set" data-c="'+campo+'" data-v="'+esc(valor)+'">'+rotulo+'</button>';
+}
+function razSelect(id,campo,opcoes){
+  return '<select id="'+id+'" data-raz="'+campo+'">'+opcoes.map(([v,r])=>
+    '<option value="'+esc(v)+'"'+(raz[campo]===v?" selected":"")+'>'+esc(r)+'</option>').join("")+'</select>';
 }
 function renderRazao(){
-  const id=razPes, p=pesOf(id);
-  const movs=pesRazao(id), {antes,corte,de}=razFatia(movs);
+  const id=raz.pes, p=pesOf(id);
+  const movs=pesRazao(id), {antes,corte,de,ate}=razFatia(movs);
+  const lista=razFiltra(corte);
   const saldo=movs.length?movs[movs.length-1].saldo:0;
-  const chip=(v,rot)=>'<button type="button" class="fchip'+(razPer===v?" on":"")+
-    '" data-action="raz-per" data-v="'+v+'">'+rot+'</button>';
+  const filtrando=razFiltrando();
+  const cats=[...new Set(movs.map(m=>m.cat).filter(Boolean))].sort();
+  const origens=[["all","Todas as origens"],
+    ...S.accounts.map(a=>[a.id,a.name]),...S.cards.map(c=>[c.id,c.nick+" (cartão)"])];
+
+  const cab='<div class="sec" style="margin-top:4px"><div class="sec-head">'+
+    '<h2 class="t-h2">'+esc(p.name)+'</h2>'+
+    '<span class="more" data-action="tab" data-v="home">'+ic("x")+' Fechar</span></div>'+
+    '<div class="help" style="margin-top:0">Extrato da conta'+(p.note?' · '+esc(p.note):"")+'</div></div>';
+
+  const topo='<div class="sec"><div class="stat"><div class="k">'+
+      (saldo>0?"Saldo — esta pessoa te deve":saldo<0?"Saldo — você deve a esta pessoa":"Saldo")+'</div>'+
+    '<div class="v '+(saldo>0?"up":saldo<0?"down":"")+'">'+fmt(Math.abs(saldo))+'</div>'+
+    '<div class="s">'+movs.length+' movimento'+(movs.length===1?"":"s")+' no total</div></div></div>';
+
+  const filtros='<div class="sec"><div class="surface" style="padding:16px">'+
+    '<input id="razQ" placeholder="Buscar descrição, categoria, origem ou valor…" autocomplete="off" value="'+esc(raz.q)+'">'+
+    '<div class="chips" style="margin:10px 0 0">'+
+      razChip("sit","all","Tudo")+razChip("sit","aberto","Em aberto")+
+      razChip("sit","atraso","Vencidos")+razChip("sit","baixado","Baixados")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 0">'+
+      razChip("lado","all","Os dois lados")+razChip("lado","receber","A receber")+
+      razChip("lado","pagar","A pagar")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 0">'+
+      razChip("mov","all","Documentos e baixas")+razChip("mov","doc","Só documentos")+
+      razChip("mov","baixa","Só baixas")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 10px">'+
+      '<button type="button" class="fchip'+(raz.per==="tudo"?" on":"")+'" data-action="raz-per" data-v="tudo">Qualquer data</button>'+
+      '<button type="button" class="fchip'+(raz.per==="ano"?" on":"")+'" data-action="raz-per" data-v="ano">Este ano</button>'+
+      '<button type="button" class="fchip'+(raz.per==="12m"?" on":"")+'" data-action="raz-per" data-v="12m">12 meses</button>'+
+    '</div>'+
+    '<div class="row2"><div><label>De</label><input id="razDe" type="date" value="'+esc(raz.de)+'"></div>'+
+      '<div><label>até</label><input id="razAte" type="date" value="'+esc(raz.ate)+'"></div></div>'+
+    '<div class="cons-selects">'+
+      razSelect("razConta","org",origens)+
+      razSelect("razCat","cat",[["all","Todas as categorias"],...cats.map(c=>[c,c])])+
+    '</div>'+
+    '<div class="act-row">'+
+      '<button type="button" class="btn small ghost" data-action="raz-limpar">Limpar filtros</button>'+
+      '<button type="button" class="btn small ghost" data-action="raz-csv" data-id="'+id+'">'+ic("download")+' Exportar</button>'+
+      '<button type="button" class="btn small ghost" data-action="raz-voltar" data-id="'+id+'">Voltar à pessoa</button>'+
+    '</div></div></div>';
+
+  return cab+topo+filtros+'<div class="sec" id="razBox">'+
+    razGrade(lista,{antes,de,ate,saldo,filtrando,total:corte.length,bruto:movs.length})+'</div>';
+}
+/* redesenha só a grade: o campo de busca fica de fora e não perde o foco */
+function razRedesenha(){
+  const box=$("#razBox"); if(!box||!raz) return;
+  const movs=pesRazao(raz.pes), {antes,corte,de,ate}=razFatia(movs);
+  box.innerHTML=razGrade(razFiltra(corte),{antes,de,ate,
+    saldo:movs.length?movs[movs.length-1].saldo:0,
+    filtrando:razFiltrando(),total:corte.length,bruto:movs.length});
+}
+function razGrade(lista,ctx){
   const cab='<div class="rz-row rz-head"><span>Data</span><span>Documento</span>'+
     '<span>Origem</span><span class="r">Valor</span><span class="r">Saldo</span></div>';
   const linha=m=>'<div class="rz-row">'+
-    '<span class="nw">'+fmtDate(m.data)+'</span>'+
+    '<span class="nw'+(m.atraso&&m.ord===0?" atraso":"")+'">'+fmtDate(m.data)+'</span>'+
     '<span class="ttl tap" data-action="tx-edit" data-id="'+m.id+'">'+esc(m.desc)+
       (m.parc?' <span class="faint">'+m.parc+'</span>':"")+
-      '<div class="faint">'+m.rot+'</div></span>'+
+      '<div class="faint">'+m.rot+(m.cat?' · '+esc(m.cat):"")+'</div></span>'+
     '<span class="faint">'+esc(m.origem)+'</span>'+
     '<span class="v '+(m.valor>0?"up":"down")+'">'+(m.valor>0?"+":"−")+fmt(Math.abs(m.valor))+'</span>'+
     '<span class="sd'+(m.saldo<0?" neg":"")+'">'+(m.saldo<0?"−":"")+fmt(Math.abs(m.saldo))+'</span></div>';
-  const teto=corte.slice(-400);
-  return '<div class="sec" style="margin-top:4px"><div class="sec-head">'+
-    '<h2 class="t-h2">'+esc(p.name)+'</h2>'+
-    '<span class="more" data-action="tab" data-v="home">'+ic("x")+' Fechar</span></div>'+
-    '<div class="help" style="margin-top:0">Extrato da conta'+(p.note?' · '+esc(p.note):"")+'</div></div>'+
-  '<div class="stat"><div class="k">'+
-      (saldo>0?"Saldo — esta pessoa te deve":saldo<0?"Saldo — você deve a esta pessoa":"Saldo")+'</div>'+
-    '<div class="v '+(saldo>0?"up":saldo<0?"down":"")+'">'+fmt(Math.abs(saldo))+'</div>'+
-    '<div class="s">'+movs.length+' movimento'+(movs.length===1?"":"s")+' no total</div></div>'+
-  '<div class="chips" style="margin-top:12px">'+
-    chip("tudo","Tudo")+chip("ano","Este ano")+chip("12m","12 meses")+'</div>'+
-  (movs.length?
-    '<div class="raz">'+cab+
-      (de?'<div class="rz-row ini"><span class="nw">'+fmtDate(de)+'</span>'+
-        '<span class="ttl">Saldo anterior</span><span class="faint">—</span>'+
-        '<span class="v">—</span><span class="sd'+(antes<0?" neg":"")+'">'+
-        (antes<0?"−":"")+fmt(Math.abs(antes))+'</span></div>':"")+
-      teto.map(linha).join("")+
-      /* sem data: o acumulado já inclui vencimentos futuros, e carimbar hoje
-         faria parecer que a linha para no dia de hoje */
-      '<div class="rz-row fim"><span class="nw">—</span>'+
-        '<span class="ttl">Saldo da conta</span><span class="faint">—</span>'+
-        '<span class="v">—</span><span class="sd'+(saldo<0?" neg":"")+'">'+
-        (saldo<0?"−":"")+fmt(Math.abs(saldo))+'</span></div>'+
-    '</div>'+
-    (corte.length>teto.length?'<div class="help" style="text-align:center">Mostrando os '+
-      teto.length+' movimentos mais recentes de '+corte.length+'.</div>':"")+
-    (corte.length?"":'<div class="help" style="text-align:center">Nenhum movimento neste período.</div>')+
-    '<div class="act-row" style="margin-top:14px;flex-wrap:wrap">'+
-      '<button class="btn small ghost" data-action="raz-csv" data-id="'+id+'">'+ic("download")+' Exportar CSV</button>'+
-      '<button class="btn small ghost" data-action="raz-voltar" data-id="'+id+'">Voltar à pessoa</button></div>'
-  :'<div class="empty"><div class="e-ic">'+ic("receipt")+'</div>'+
-    '<div class="e-t">Sem movimento</div>Vincule lançamentos a esta pessoa para o extrato aparecer.</div>'+
-   '<div class="act-row" style="margin-top:14px"><button class="btn small ghost" data-action="raz-voltar" data-id="'+id+'">Voltar à pessoa</button></div>');
+  /* "sem movimento" só quando a pessoa não tem nada mesmo — um período vazio
+     é resultado de filtro, e dizer o contrário faria procurar defeito no app */
+  if(!lista.length) return '<div class="empty"><div class="e-ic">'+ic("search")+'</div>'+
+    '<div class="e-t">'+(ctx.bruto?"Nada com esses filtros":"Sem movimento")+'</div>'+
+    (ctx.bruto?"Ajuste os filtros, o período ou limpe a busca.":"Vincule lançamentos a esta pessoa para o extrato aparecer.")+'</div>';
+  const teto=lista.slice(-400);
+  const ent=sum(lista.filter(m=>m.valor>0),m=>m.valor);
+  const sai=sum(lista.filter(m=>m.valor<0),m=>-m.valor);
+  return '<div class="raz">'+cab+
+    (ctx.de?'<div class="rz-row ini"><span class="nw">'+fmtDate(ctx.de)+'</span>'+
+      '<span class="ttl">Saldo anterior</span><span class="faint">—</span>'+
+      '<span class="v">—</span><span class="sd'+(ctx.antes<0?" neg":"")+'">'+
+      (ctx.antes<0?"−":"")+fmt(Math.abs(ctx.antes))+'</span></div>':"")+
+    teto.map(linha).join("")+
+    '<div class="rz-row fim"><span class="nw">—</span>'+
+      '<span class="ttl">Saldo da conta</span><span class="faint">—</span>'+
+      '<span class="v">—</span><span class="sd'+(ctx.saldo<0?" neg":"")+'">'+
+      (ctx.saldo<0?"−":"")+fmt(Math.abs(ctx.saldo))+'</span></div>'+
+  '</div>'+
+  '<div class="raz-foot"><span>'+lista.length+' de '+ctx.total+' movimento'+(ctx.total===1?"":"s")+'</span>'+
+    '<span><b class="up">+'+fmt(ent)+'</b> · <b class="down">−'+fmt(sai)+'</b> · '+
+    'soma <b class="'+((ent-sai)>=0?"up":"down")+'">'+fmt(ent-sai)+'</b></span></div>'+
+  (lista.length>teto.length?'<div class="help" style="text-align:center">Mostrando os '+
+    teto.length+' movimentos mais recentes de '+lista.length+'.</div>':"")+
+  (ctx.filtrando?'<div class="help" style="text-align:center">A coluna Saldo é sempre a da conta inteira, '+
+    'na ordem das datas — o filtro esconde linhas, não refaz o saldo.</div>':"");
 }
 function razExportar(id){
   const p=pesOf(id); if(!p)return;
-  const {corte}=razFatia(pesRazao(id));
-  if(!corte.length){ toast("Nada para exportar"); return; }
+  const lista=razFiltra(razFatia(pesRazao(id)).corte);
+  if(!lista.length){ toast("Nada para exportar"); return; }
   const limpo=v=>String(v??"").replace(/;/g,",");
-  const cab=["Data","Documento","Parcela","Tipo","Origem","Valor","Saldo"];
-  const linhas=corte.map(m=>[fmtDate(m.data),limpo(m.desc),m.parc,m.rot,limpo(m.origem),
+  const cab=["Data","Documento","Parcela","Movimento","Categoria","Origem","Valor","Saldo da conta"];
+  const linhas=lista.map(m=>[fmtDate(m.data),limpo(m.desc),m.parc,m.rot,limpo(m.cat),limpo(m.origem),
     String(m.valor).replace(".",","),String(m.saldo).replace(".",",")].join(";"));
   download("WIGO_extrato_"+p.name.replace(/[^\w]+/g,"_")+"_"+todayISO()+".csv",
     "﻿"+[cab.join(";"),...linhas].join("\n"),"text/csv;charset=utf-8");
-  toast(corte.length+" linha(s) exportada(s) ✓");
+  toast(lista.length+" linha(s) exportada(s) ✓");
 }
 
 /* ----- VINCULAR LANÇAMENTOS EXISTENTES A UMA PESSOA -----
@@ -5548,7 +5642,9 @@ document.addEventListener("click", async e=>{
     case "pes-add": openPesForm(); break;
     case "pes-open": openPesDetail(id); break;
     case "pes-razao": abrirRazao(id); break;
-    case "raz-per": razPer=el.dataset.v; render(); break;
+    case "raz-per": razPeriodo(el.dataset.v); render(); break;
+    case "raz-set": raz[el.dataset.c]=el.dataset.v; render(); break;
+    case "raz-limpar": raz=novoRazao(raz.pes); render(); break;
     case "raz-csv": razExportar(id); break;
     case "raz-voltar": tab="home"; render(); openPesDetail(id); break;
     case "pes-edit": openPesForm(id); break;
@@ -5753,6 +5849,9 @@ document.addEventListener("input", e=>{
   if(e.target.id==="consQ"&&cons){ cons.q=e.target.value; consRedesenha(); return; }
   if((e.target.id==="consDe"||e.target.id==="consAte")&&cons){
     cons[e.target.id==="consDe"?"de":"ate"]=e.target.value; consRedesenha(); return; }
+  if(e.target.id==="razQ"&&raz){ raz.q=e.target.value; razRedesenha(); return; }
+  if((e.target.id==="razDe"||e.target.id==="razAte")&&raz){
+    raz[e.target.id==="razDe"?"de":"ate"]=e.target.value; raz.per="custom"; razRedesenha(); return; }
   if(e.target.id==="impBusca"&&imp){ imp.q=e.target.value; impRedesenhaRevisao(); return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
@@ -5805,6 +5904,7 @@ document.addEventListener("change", e=>{
     save(); t.innerHTML=catOptions(tx.type,nm?nm.trim():tx.cat); }
   if(t.id==="impArquivo"){ const arq=t.files[0]; t.value=""; processarArquivoImportacao(arq); }
   if(t.dataset.campo&&cons&&t.closest("#view")){ cons[t.dataset.campo]=t.value; cons.sel.clear(); consRedesenha(); }
+  if(t.dataset.raz&&raz&&t.closest("#view")){ raz[t.dataset.raz]=t.value; razRedesenha(); }
   if(t.id==="impCartao"&&imp) imp.cartaoId=t.value;
   if(t.id==="impParc"&&imp){ imp.criarParcelas=t.checked;
     if(imp.etapa==="revisao") impRedesenhaRevisao(); }

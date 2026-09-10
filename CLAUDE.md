@@ -343,7 +343,26 @@ diz **quanto sobrou**; o razão mostra **como se chegou nele**.
   página, igual à consulta.
 - **O cartão de saldo na ficha da pessoa abre o extrato.** É a pergunta que o
   número sempre provoca: "de onde veio isso?".
+- **Clicar na descrição abre o lançamento** (`tx-edit`), e fechar devolve ao
+  extrato — a tela continua atrás do modal.
 - Teto de 400 movimentos desenhados, os mais recentes, como na consulta.
+
+**Filtros** (`razFiltra`, estado em `raz`, no mesmo desenho da consulta): busca,
+situação (em aberto / vencidos / baixados), lado, tipo de movimento (documentos,
+baixas ou os dois), período por atalho ou por data, origem e categoria.
+
+- **O período recalcula, os outros filtros só escondem.** `razFatia` corta por
+  data e emite a linha de saldo anterior; `razFiltra` esconde linhas e não toca
+  no acumulado. A coluna Saldo continua sendo a da conta naquele momento — se
+  fosse refeita sobre o filtro, "só as baixas" mostraria um saldo que nunca
+  existiu. O rodapé separa as duas coisas: soma do filtro de um lado, saldo da
+  conta na última linha, e um aviso quando há filtro ativo.
+- **`razFiltrando()` ignora o período** de propósito: o aviso é sobre linhas
+  escondidas, e o período não esconde nada — ele já foi contabilizado no saldo
+  anterior.
+- **"Sem movimento" só quando a pessoa não tem nada mesmo.** Um período vazio é
+  resultado de filtro; dizer o contrário faria procurar defeito no app.
+- A busca redesenha só `#razBox`, para o campo não perder o foco a cada tecla.
 
 ### Documento do parcelamento
 
