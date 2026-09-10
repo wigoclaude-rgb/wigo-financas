@@ -158,6 +158,7 @@ de aba não muda a URL nem entra no histórico.
 | **Metas** (`renderSavings`) | Poupanças com valor alvo, aporte, progresso e rendimento estimado |
 | **Análise** (`renderReport`) | Tendência de 12 meses, comparação, projeção, heatmap por dia, médias por categoria |
 | **Ajustes** (`renderSettings`) | Contas e pessoas, lixeira, saldo de abertura, ajuda/tours, categorias, CDI, conta, backup |
+| **Consulta** (`renderConsulta`) | Contas a receber e a pagar, todos os meses de uma vez: filtros de período, pessoa, origem, categoria e situação, totais no topo, grade densa e baixa em lote. Não está no dock — abre pela sidebar, por Ajustes ou pelo `Ctrl/⌘+K` |
 
 Navegação: **dock** inferior no celular, **sidebar** de 250 px no desktop
 (`min-width:1024px`). Modais são bottom sheet no celular e painel lateral direito
@@ -276,6 +277,22 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
     valor e total — antes de valer. Deixar os dois campos vazios lança como
     compra única. O que o parser leu vem preenchido: o banco escreve de formas
     diferentes, e adivinhar errado sem deixar corrigir seria pior que não tentar.
+
+### Consulta de contas
+
+- **É a única tela que olha todos os meses.** As abas do app olham UM mês, que é
+  o recorte certo para o dia a dia; a consulta responde a outra pergunta —
+  quanto tenho a receber, de quem, e o que já venceu.
+- **`cons` vive fora de `S`**, como `imp` e `filters`: é tela, não dado.
+- **A grade tem teto de 400 linhas.** Quem tem anos de histórico e pede "todas"
+  não pode travar o aparelho para descobrir isso; o rodapé diz quantas ficaram
+  de fora.
+- **No celular a grade vira lista.** Nove colunas em 390 px não é tabela, é
+  ilegível: sobram descrição, vencimento, valor e situação, que é o que se olha
+  primeiro. As outras somem por CSS, sem segunda renderização.
+- **`pes: "none"` filtra quem NÃO tem pessoa vinculada** — é uma resposta, não a
+  ausência de filtro (que é `"all"`).
+- A baixa em lote reusa `applyPaid`, o mesmo caminho do botão Pagar da lista.
 
 ### Documento do parcelamento
 

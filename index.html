@@ -817,6 +817,72 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   font-size:var(--t-sm);color:var(--ink-2)}
 .picked-list b{color:var(--ink);font-variant-numeric:tabular-nums}
 
+/* ---------- consulta de contas a receber e a pagar ---------- */
+.cons-tot{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.cons-tot div{flex:1;min-width:108px;background:var(--s-1);border:1px solid var(--line);
+  border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.cons-tot b{font-family:var(--f-display);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.cons-tot b.up{color:var(--up)}
+.cons-tot b.down{color:var(--down)}
+.cons-tot span{font-size:var(--t-xs);color:var(--ink-3)}
+.cons-selects{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:10px}
+.seg .n{background:rgba(255,255,255,.16);padding:1px 6px;border-radius:var(--r-full);
+  font-size:10px;margin-left:4px}
+
+.grade{background:var(--s-1);border:1px solid var(--line);border-radius:var(--r-md)}
+.gr-row{display:grid;
+  grid-template-columns:32px 88px minmax(0,1fr) 110px 108px 118px 48px 104px 118px;
+  gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);
+  font-size:var(--t-sm)}
+.gr-row:last-child{border-bottom:none}
+.gr-row.sel{background:var(--grad-v-soft)}
+.gr-head{color:var(--ink-4);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.04em;background:var(--s-2);border-radius:var(--r-md) var(--r-md) 0 0}
+.gr-row .ttl{font-weight:600;cursor:pointer}
+.gr-row .ttl:hover{color:var(--v-2)}
+.gr-row .ttl,.gr-row .faint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-row .faint{font-size:var(--t-xs)}
+.gr-row .r{text-align:right}
+.gr-row .v{font-variant-numeric:tabular-nums;font-weight:650}
+.gr-row .v.up{color:var(--up)}
+.gr-row .v.down{color:var(--down)}
+.gr-row .nw{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-xs)}
+.gr-row .nw.atraso{color:var(--down);font-weight:700}
+.gr-row .chip{white-space:nowrap}
+.gr-ck{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--line-2);display:block}
+.gr-ck.on{background:var(--grad-v);border-color:transparent;position:relative}
+.gr-ck.on::after{content:"";position:absolute;left:5px;top:1.5px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+
+.cons-bar{position:sticky;bottom:calc(var(--safe-b) + 82px);margin:0 var(--sp-4) var(--sp-6);
+  display:flex;gap:var(--sp-2);align-items:center;background:var(--s-3);
+  border:1px solid var(--line-2);border-radius:var(--r-lg);padding:10px 12px;
+  box-shadow:var(--e-3);z-index:40}
+.cons-bar .si{flex:1;min-width:0}
+.cons-bar .si .n{font-size:var(--t-xs);color:var(--ink-3)}
+.cons-bar .si .v{font-family:var(--f-display);font-weight:700;font-variant-numeric:tabular-nums}
+.cons-bar .btn{width:auto}
+
+/* No celular a grade vira lista: nove colunas em 390px não é tabela, é ilegível.
+   Sobram descrição, data, valor e situação — o que se olha primeiro. */
+@media (max-width:900px){
+  .gr-head{display:none}
+  .gr-row{grid-template-columns:32px minmax(0,1fr) auto;gap:3px 10px;padding:11px 12px}
+  .gr-row>span:nth-child(1){grid-row:1/3;align-self:start;padding-top:2px}
+  .gr-row>span:nth-child(3){grid-column:2;grid-row:1}
+  .gr-row>span:nth-child(2){grid-column:2;grid-row:2}
+  .gr-row>span:nth-child(8){grid-column:3;grid-row:1;text-align:right}
+  .gr-row>span:nth-child(9){grid-column:3;grid-row:2;justify-self:end}
+  .gr-row>span:nth-child(4),.gr-row>span:nth-child(5),
+  .gr-row>span:nth-child(6),.gr-row>span:nth-child(7){display:none}
+  .cons-selects{grid-template-columns:1fr}
+}
+@media (min-width:901px){
+  .grade{overflow-x:auto}
+  .gr-row{min-width:860px}
+  .cons-bar{bottom:var(--sp-6)}
+}
+
 /* ---------- documento de parcelamento ---------- */
 .parc-doc{background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);
   padding:10px 12px;margin:0 0 var(--sp-4);font-size:var(--t-xs)}
@@ -1001,6 +1067,14 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
     <button class="side-nav-item" data-action="rep-pdf">
       <svg class="icn" viewBox="0 0 24 24"><path d="M12 3.8v11.4M7.6 11l4.4 4.3 4.4-4.3"/><path d="M4.2 19.6h15.6"/></svg>
       <span>Relatório PDF</span>
+    </button>
+    <button class="side-nav-item" data-action="cons-abrir" data-v="receber">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M5.2 2.8h13.6v18.4l-2.7-1.7-2.3 1.7-2.4-1.7-2.3 1.7-2.4-1.7-1.5 1.1z"/><path d="M8.6 7.8h6.8M8.6 12h6.8"/></svg>
+      <span>Contas a receber</span>
+    </button>
+    <button class="side-nav-item" data-action="cons-abrir" data-v="pagar">
+      <svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M12 7.6v8.6M8.4 12.6 12 16.2l3.6-3.6"/></svg>
+      <span>Contas a pagar</span>
     </button>
     <button class="side-nav-item" data-action="pes-list" data-tour="pessoas">
       <svg class="icn" viewBox="0 0 24 24"><path d="M11.4 8.4 9 10.8a1.9 1.9 0 0 0 2.7 2.7l1.2-1.2 3 3a1.9 1.9 0 0 0 2.7-2.7"/><path d="M2.6 8.4 6.4 5.6h4L13 7.4M21.4 8.4 17.6 5.6h-3.2"/><path d="M2.6 8.4v6.2l2.4 2.4M21.4 8.4v6.2L19 17"/></svg>
@@ -1625,6 +1699,7 @@ function render(){
   else if(tab==="savings") v.innerHTML=renderSavings();
   else if(tab==="report") v.innerHTML=renderReport();
   else if(tab==="settings") v.innerHTML=renderSettings();
+  else if(tab==="consulta"){ if(!cons) cons=novaConsulta(); v.innerHTML=renderConsulta(); }
   const g=$("#greetEl"); if(g) g.textContent=greetWord();
   const tc=$("#trashCount"); if(tc){ const n=delTx().length;
     tc.textContent=n||""; tc.classList.toggle("on",!!n); }
@@ -2250,6 +2325,8 @@ function renderSettings(){
     '<div class="act-row" style="flex-direction:column;align-items:stretch;gap:8px">'+
       '<button class="btn ghost" data-action="acc-add">'+ic("bank")+' Adicionar conta</button>'+
       '<button class="btn ghost" data-action="pes-list">'+ic("handshake")+' Pessoas</button>'+
+      '<button class="btn ghost" data-action="cons-abrir" data-v="receber">'+ic("inflow")+' Contas a receber</button>'+
+      '<button class="btn ghost" data-action="cons-abrir" data-v="pagar">'+ic("outflow")+' Contas a pagar</button>'+
       '<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button>'+
       (S.accounts.length?"":'<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button>')+
     '</div></div></div>'+
@@ -2353,6 +2430,8 @@ const CMD_ACTIONS=[
   {ic:ic("upload"),t:"Importar extrato",s:"CSV ou OFX do banco",a:"abrir-importacao"},
   {ic:ic("handshake"),t:"Pessoas",s:"quem te deve e a quem você deve",a:"pes-list"},
   {ic:ic("coin"),t:"Saldo de abertura",s:"ponto de partida do caixa",a:"open-set"},
+  {ic:ic("inflow"),t:"Contas a receber",s:"tudo que está por entrar",a:"cons-abrir",v:"receber"},
+  {ic:ic("outflow"),t:"Contas a pagar",s:"tudo que está por sair",a:"cons-abrir",v:"pagar"},
   {ic:ic("receipt"),t:"Relatório em PDF",s:"filtrar e imprimir",a:"rep-pdf"},
   {ic:ic("trash"),t:"Abrir lixeira",s:"lançamentos excluídos",a:"trash-open"},
   {ic:ic("book"),t:"Rever tutorial",s:"como usar o app",a:"tut-open"},
@@ -4368,6 +4447,207 @@ function renderResumoImportacao(){
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="desfazer-importacao">Desfazer importação</button></div>';
 }
 
+
+/* ══════════════════ CONSULTA DE CONTAS ══════════════════
+   Uma visão transversal do que está em aberto: todos os meses de uma vez, com
+   filtro por período, pessoa, conta e situação, e os totais sempre à vista.
+
+   As abas do app olham UM mês — é o recorte certo para o dia a dia. Esta olha o
+   compromisso inteiro, que é a pergunta de quem vai cobrar ou programar
+   pagamento: quanto tenho a receber, de quem, e o que já venceu. */
+
+let cons=null;
+function novaConsulta(lado){
+  return { lado:lado||"receber", sit:"aberto", de:"", ate:"",
+    pes:"all", conta:"all", cat:"all", q:"", ord:"due", sel:new Set() };
+}
+function abrirConsulta(lado){ cons=novaConsulta(lado); tab="consulta"; render(); }
+
+function consLinhas(){
+  if(!cons) return [];
+  let l=aTx().filter(t=>t.type!=="xfer");
+  if(cons.lado==="receber") l=l.filter(t=>t.type==="inc");
+  else if(cons.lado==="pagar") l=l.filter(t=>t.type==="exp"&&t.dest!=="savings");
+  if(cons.sit==="aberto") l=l.filter(t=>!t.paid);
+  else if(cons.sit==="vencido") l=l.filter(t=>!t.paid&&statusOf(t)==="atrasado");
+  else if(cons.sit==="avencer") l=l.filter(t=>!t.paid&&statusOf(t)!=="atrasado");
+  else if(cons.sit==="pago") l=l.filter(t=>t.paid);
+  if(cons.de) l=l.filter(t=>t.due>=cons.de);
+  if(cons.ate) l=l.filter(t=>t.due<=cons.ate);
+  /* "none" é quem não tem pessoa vinculada: é uma resposta, não a ausência de filtro */
+  if(cons.pes==="none") l=l.filter(t=>!t.pesId);
+  else if(cons.pes!=="all") l=l.filter(t=>t.pesId===cons.pes);
+  if(cons.conta!=="all") l=l.filter(t=>t.accId===cons.conta||t.cardId===cons.conta);
+  if(cons.cat!=="all") l=l.filter(t=>t.cat===cons.cat);
+  if(cons.q){
+    const q=normalizarTextoImportacao(cons.q);
+    l=l.filter(t=>normalizarTextoImportacao(
+      t.desc+" "+(t.cat||"")+" "+(pesOf(t.pesId)?pesOf(t.pesId).name:"")+" "+val(t)).includes(q));
+  }
+  const por={
+    due:(a,b)=>a.due<b.due?-1:(a.due>b.due?1:0),
+    valor:(a,b)=>val(b)-val(a),
+    desc:(a,b)=>String(a.desc).localeCompare(String(b.desc),"pt-BR"),
+    pessoa:(a,b)=>String(pesOf(a.pesId)?pesOf(a.pesId).name:"~").localeCompare(
+                  String(pesOf(b.pesId)?pesOf(b.pesId).name:"~"),"pt-BR")||(a.due<b.due?-1:1)
+  };
+  return l.slice().sort(por[cons.ord]||por.due);
+}
+function consTotais(l){
+  const rec=l.filter(t=>t.type==="inc"), pag=l.filter(t=>t.type!=="inc");
+  return { n:l.length,
+    aReceber:sum(rec.filter(t=>!t.paid),val), aPagar:sum(pag.filter(t=>!t.paid),val),
+    recebido:sum(rec.filter(t=>t.paid),val), pago:sum(pag.filter(t=>t.paid),val),
+    vencido:sum(l.filter(t=>!t.paid&&statusOf(t)==="atrasado"),val),
+    nVencido:l.filter(t=>!t.paid&&statusOf(t)==="atrasado").length,
+    selN:l.filter(t=>cons.sel.has(t.id)).length,
+    sel:sum(l.filter(t=>cons.sel.has(t.id)),val) };
+}
+/* atalhos de período: a pergunta quase sempre é "o que vence este mês" ou
+   "o que já venceu", e não uma data digitada */
+function consPeriodo(v){
+  const hoje=todayISO();
+  if(v==="vencidos"){ cons.de=""; cons.ate=addMonthsISO(hoje,0); cons.ate=hoje; cons.sit="vencido"; }
+  else if(v==="mes"){ cons.de=viewMonth+"-01";
+    cons.ate=toISO(new Date(+viewMonth.slice(0,4),+viewMonth.slice(5,7),0)); }
+  else if(v==="30"){ cons.de=hoje; cons.ate=addMonthsISO(hoje,1); }
+  else if(v==="90"){ cons.de=hoje; cons.ate=addMonthsISO(hoje,3); }
+  else { cons.de=""; cons.ate=""; }
+}
+
+
+/* ---------- a tela ---------- */
+function consChip(campo,valor,rotulo,n){
+  return '<button type="button" class="fchip'+(cons[campo]===valor?" on":"")+
+    '" data-action="cons-set" data-c="'+campo+'" data-v="'+esc(valor)+'">'+rotulo+
+    (n!=null?'<span class="n">'+n+'</span>':"")+'</button>';
+}
+function consSelect(id,campo,opcoes){
+  return '<select id="'+id+'" data-campo="'+campo+'">'+opcoes.map(([v,r])=>
+    '<option value="'+esc(v)+'"'+(String(cons[campo])===String(v)?" selected":"")+'>'+esc(r)+'</option>').join("")+'</select>';
+}
+function renderConsulta(){
+  const l=consLinhas(), tt=consTotais(l);
+  const todos=aTx().filter(x=>x.type!=="xfer");
+  const nRec=todos.filter(x=>x.type==="inc"&&!x.paid).length;
+  const nPag=todos.filter(x=>x.type==="exp"&&x.dest!=="savings"&&!x.paid).length;
+  const cats=[...new Set(todos.map(x=>x.cat).filter(Boolean))].sort();
+  const origens=[["all","Todas as origens"],
+    ...S.accounts.map(a=>[a.id,a.name]),...S.cards.map(c=>[c.id,c.nick+" (cartão)"])];
+  const pessoas=[["all","Todas as pessoas"],["none","Sem pessoa"],
+    ...S.people.map(p=>[p.id,p.name])];
+
+  const cab='<div class="sec" style="margin-top:4px"><div class="sec-head">'+
+    '<h2 class="t-h2">Contas a '+(cons.lado==="pagar"?"pagar":(cons.lado==="tudo"?"receber e pagar":"receber"))+'</h2>'+
+    '<span class="more" data-action="tab" data-v="home">'+ic("x")+' Fechar</span></div></div>';
+
+  const abas='<div class="sec"><div class="seg">'+
+    '<button type="button" class="'+(cons.lado==="receber"?"on":"")+'" data-action="cons-set" data-c="lado" data-v="receber">'+
+      ic("inflow")+' A receber'+(nRec?' <span class="n">'+nRec+'</span>':"")+'</button>'+
+    '<button type="button" class="'+(cons.lado==="pagar"?"on":"")+'" data-action="cons-set" data-c="lado" data-v="pagar">'+
+      ic("outflow")+' A pagar'+(nPag?' <span class="n">'+nPag+'</span>':"")+'</button>'+
+    '<button type="button" class="'+(cons.lado==="tudo"?"on":"")+'" data-action="cons-set" data-c="lado" data-v="tudo">Tudo</button>'+
+    '</div></div>';
+
+  const cx=(rot,v,cls)=>'<div><b class="'+(cls||"")+'">'+fmt(v)+'</b><span>'+rot+'</span></div>';
+  const totais='<div class="sec"><div class="cons-tot">'+
+    (cons.lado!=="pagar"?cx("a receber",tt.aReceber,"up"):"")+
+    (cons.lado!=="receber"?cx("a pagar",tt.aPagar,"down"):"")+
+    (cons.lado==="tudo"?cx("saldo",tt.aReceber-tt.aPagar,(tt.aReceber-tt.aPagar)>=0?"up":"down"):"")+
+    (tt.vencido?cx(tt.nVencido+" vencida"+(tt.nVencido>1?"s":""),tt.vencido,"down"):"")+
+    '<div><b>'+tt.n+'</b><span>lançamento'+(tt.n===1?"":"s")+'</span></div>'+
+    '</div></div>';
+
+  const filtros='<div class="sec"><div class="surface" style="padding:16px">'+
+    '<input id="consQ" placeholder="Buscar descrição, categoria, pessoa ou valor…" autocomplete="off" value="'+esc(cons.q)+'">'+
+    '<div class="chips" style="margin:10px 0 0">'+
+      consChip("sit","aberto","Em aberto")+consChip("sit","vencido","Vencidas")+
+      consChip("sit","avencer","A vencer")+consChip("sit","pago","Baixadas")+
+      consChip("sit","todos","Todas")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 10px">'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="todos">Qualquer data</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="vencidos">Já venceu</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="mes">'+esc(monthLabel(viewMonth))+'</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="30">Próximos 30 dias</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="90">Próximos 90 dias</button>'+
+    '</div>'+
+    '<div class="row2"><div><label>Vence de</label><input id="consDe" type="date" value="'+esc(cons.de)+'"></div>'+
+      '<div><label>até</label><input id="consAte" type="date" value="'+esc(cons.ate)+'"></div></div>'+
+    '<div class="cons-selects">'+
+      consSelect("consPes","pes",pessoas)+
+      consSelect("consConta","conta",origens)+
+      consSelect("consCat","cat",[["all","Todas as categorias"],...cats.map(c=>[c,c])])+
+      consSelect("consOrd","ord",[["due","Ordenar por vencimento"],["valor","Por valor"],
+        ["desc","Por descrição"],["pessoa","Por pessoa"]])+
+    '</div>'+
+    '<div class="act-row">'+
+      '<button type="button" class="btn small ghost" data-action="cons-limpar">Limpar filtros</button>'+
+      '<button type="button" class="btn small ghost" data-action="cons-csv">'+ic("download")+' Exportar</button>'+
+    '</div></div></div>';
+
+  return cab+abas+totais+filtros+
+    '<div class="sec"><div id="consBox">'+renderConsGrade(l)+'</div></div>'+
+    '<div id="consFoot">'+consRodape(tt)+'</div>';
+}
+/* A grade sai numa string só e com teto: quem tem anos de histórico e pede
+   "todas" não pode travar o aparelho para descobrir isso. */
+function renderConsGrade(l){
+  if(!l.length) return '<div class="empty"><div class="e-ic">'+ic("search")+'</div>'+
+    '<div class="e-t">Nada encontrado</div>Ajuste os filtros ou limpe a busca.</div>';
+  const corte=l.slice(0,400);
+  const marcados=corte.length&&corte.every(t=>cons.sel.has(t.id));
+  const cab='<div class="gr-row gr-head">'+
+    '<span><button type="button" class="gr-ck'+(marcados?" on":"")+'" data-action="cons-todos"></button></span>'+
+    '<span>Vencimento</span><span>Descrição</span><span>Pessoa</span><span>Categoria</span>'+
+    '<span>Origem</span><span>Parc.</span><span class="r">Valor</span><span>Situação</span></div>';
+  return '<div class="grade">'+cab+corte.map(t=>{
+    const p=pesOf(t.pesId), c=t.cardId?cardOf(t.cardId):null, a=accOf(t.accId);
+    const origem=c?(c.nick+" · cartão"):(a?a.name:(METHODS[t.method]||""));
+    return '<div class="gr-row'+(cons.sel.has(t.id)?" sel":"")+'">'+
+      '<span><button type="button" class="gr-ck'+(cons.sel.has(t.id)?" on":"")+
+        '" data-action="cons-pick" data-id="'+t.id+'"></button></span>'+
+      '<span class="nw'+(!t.paid&&statusOf(t)==="atrasado"?" atraso":"")+'">'+fmtDate(t.due)+'</span>'+
+      '<span class="ttl" data-action="tx-edit" data-id="'+t.id+'">'+esc(t.desc)+'</span>'+
+      '<span class="faint">'+(p?esc(p.name):"—")+'</span>'+
+      '<span class="faint">'+esc(t.cat||"—")+'</span>'+
+      '<span class="faint">'+esc(origem||"—")+'</span>'+
+      '<span class="faint">'+(t.kind==="parcelado"?t.i+"/"+t.n:(t.kind==="fixo"?"fixo":"—"))+'</span>'+
+      '<span class="r v '+(t.type==="inc"?"up":"down")+'">'+fmt(val(t))+'</span>'+
+      '<span>'+stChip(t)+'</span></div>';
+  }).join("")+'</div>'+
+  (l.length>corte.length?'<div class="help" style="text-align:center">Mostrando '+corte.length+
+    ' de '+l.length+'. Refine os filtros para ver o resto.</div>':"");
+}
+function consRodape(tt){
+  if(!tt.selN) return "";
+  return '<div class="cons-bar"><div class="si"><div class="n">'+tt.selN+' selecionado'+
+    (tt.selN>1?"s":"")+'</div><div class="v">'+fmt(tt.sel)+'</div></div>'+
+    '<button class="btn small" data-action="cons-baixar">'+ic("check")+' Dar baixa</button>'+
+    '<button class="btn small ghost" data-action="cons-limpar-sel">Limpar</button></div>';
+}
+function consRedesenha(){
+  const l=consLinhas(), tt=consTotais(l);
+  const box=$("#consBox"); if(box) box.innerHTML=renderConsGrade(l);
+  const ft=$("#consFoot"); if(ft) ft.innerHTML=consRodape(tt);
+}
+function consExportar(){
+  const l=consLinhas();
+  if(!l.length){ toast("Nada para exportar"); return; }
+  const cab=["Vencimento","Descrição","Pessoa","Categoria","Origem","Parcela","Tipo","Valor","Situação"];
+  const limpo=v=>String(v??"").replace(/;/g,",");
+  const linhas=l.map(t=>{
+    const p=pesOf(t.pesId), c=t.cardId?cardOf(t.cardId):null, a=accOf(t.accId);
+    return [fmtDate(t.due),limpo(t.desc),limpo(p?p.name:""),limpo(t.cat),
+      limpo(c?c.nick+" (cartão)":(a?a.name:METHODS[t.method]||"")),
+      t.kind==="parcelado"?t.i+"/"+t.n:"",
+      t.type==="inc"?"A receber":"A pagar",
+      String(val(t)).replace(".",","), stLabel(t)].join(";");
+  });
+  download("WIGO_contas_"+todayISO()+".csv","﻿"+[cab.join(";"),...linhas].join("\n"),"text/csv;charset=utf-8");
+  toast(l.length+" linha(s) exportada(s) ✓");
+}
+
 /* ══════════════════ TOUR GUIADO ══════════════════
    Balões ancorados em elementos reais da tela, com o resto escurecido.
 
@@ -5166,6 +5446,26 @@ document.addEventListener("click", async e=>{
       save(); render(); break; }
     // backup
     case "backup-export": exportBackup(); break;
+    /* ----- consulta de contas ----- */
+    case "cons-abrir": closeCmd(); abrirConsulta(el.dataset.v); break;
+    case "cons-set": if(cons){ cons[el.dataset.c]=el.dataset.v; cons.sel.clear(); render(); } break;
+    case "cons-per": if(cons){ consPeriodo(el.dataset.v); render(); } break;
+    case "cons-limpar": if(cons){ const lado=cons.lado; cons=novaConsulta(lado); render(); } break;
+    case "cons-pick": if(cons){ cons.sel.has(id)?cons.sel.delete(id):cons.sel.add(id); consRedesenha(); } break;
+    case "cons-todos": if(cons){ const l=consLinhas().slice(0,400);
+      const todos=l.length&&l.every(t=>cons.sel.has(t.id));
+      l.forEach(t=>todos?cons.sel.delete(t.id):cons.sel.add(t.id)); consRedesenha(); } break;
+    case "cons-limpar-sel": if(cons){ cons.sel.clear(); consRedesenha(); } break;
+    case "cons-csv": consExportar(); break;
+    case "cons-baixar": {
+      if(!cons||!cons.sel.size) break;
+      const alvo=aTx().filter(t=>cons.sel.has(t.id)&&!t.paid);
+      if(!alvo.length){ toast("Os selecionados já estão baixados"); break; }
+      if(!confirm("Dar baixa em "+alvo.length+" lançamento(s), na data de hoje?")) break;
+      alvo.forEach(t=>applyPaid(t,todayISO(),t.amount));
+      cons.sel.clear(); save(); render();
+      toast(alvo.length+" baixado(s) ✓"); break; }
+
     /* ----- importar extrato ----- */
     case "abrir-importacao": abrirImportacao(); break;
     case "imp-escolher": { const inp=$("#impArquivo"); if(inp) inp.click(); break; }
@@ -5217,6 +5517,9 @@ document.addEventListener("input", e=>{
       box.innerHTML=impPreviaParcelas({...l,amount:Math.abs(amt)},
         parseInt($("#iePn").value)||null,parseInt($("#iePt").value)||null); }
     return; }
+  if(e.target.id==="consQ"&&cons){ cons.q=e.target.value; consRedesenha(); return; }
+  if((e.target.id==="consDe"||e.target.id==="consAte")&&cons){
+    cons[e.target.id==="consDe"?"de":"ate"]=e.target.value; consRedesenha(); return; }
   if(e.target.id==="impBusca"&&imp){ imp.q=e.target.value; impRedesenhaRevisao(); return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
@@ -5268,6 +5571,7 @@ document.addEventListener("change", e=>{
     if(nm&&!arr.includes(nm.trim()))arr.push(nm.trim());
     save(); t.innerHTML=catOptions(tx.type,nm?nm.trim():tx.cat); }
   if(t.id==="impArquivo"){ const arq=t.files[0]; t.value=""; processarArquivoImportacao(arq); }
+  if(t.dataset.campo&&cons&&t.closest("#view")){ cons[t.dataset.campo]=t.value; cons.sel.clear(); consRedesenha(); }
   if(t.id==="impCartao"&&imp) imp.cartaoId=t.value;
   if(t.id==="impParc"&&imp){ imp.criarParcelas=t.checked;
     if(imp.etapa==="revisao") impRedesenhaRevisao(); }
