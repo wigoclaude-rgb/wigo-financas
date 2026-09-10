@@ -3766,13 +3766,18 @@ function criarPreLancamento(mov,alvo0,origem,marcas){
     data:mov.data||"", descOriginal:mov.descBruta||mov.desc||"", desc:mov.desc||"",
     amount:0, type:"exp", method:ctx.modo==="cartao"?"cartao":"debito", cat:"",
     modo:ctx.modo, accId:ctx.accId, cardId:ctx.cardId,
-    duplicado:false, motivo:null, igualId:null, nota:null, selecionado:false, erro:null };
+    duplicado:false, motivo:null, igualId:null, nota:null, parc:null, selecionado:false, erro:null };
   const v=normalizarMovimentacaoImportada(mov);
   if(!v.ok) return Object.assign(base,{erro:v.erro});
   const type=sugerirTipoImportacao(mov,ctx.sinal);
   const d=ehDuplicadoImportacao(mov,ctx,marcas);
   /* na fatura, a linha do sinal invertido que fala em pagamento é a quitação da
      fatura anterior: fica visível, mas desmarcada */
+  /* a fatura DECLARA "Parcela 1/3" — não é palpite, é dado. Guardar permite
+     criar as que faltam de uma vez, sem inventar nada. */
+  const np=numeroParcela(mov.desc);
+  const pp=np?np.split("/").map(Number):null;
+  const parc=(pp&&pp[0]>=1&&pp[1]>=pp[0]&&pp[1]<=99)?{n:pp[0],total:pp[1]}:null;
   const pgto=ctx.modo==="cartao"&&type==="inc"&&ehPagamentoFatura(mov.desc);
   /* No extrato da CONTA, "pagamento de fatura" é dinheiro que saiu de verdade —
      mas quem também importa a fatura do cartão lança as compras uma a uma, e
@@ -3784,6 +3789,7 @@ function criarPreLancamento(mov,alvo0,origem,marcas){
     method:ctx.modo==="cartao"?"cartao":sugerirMetodoImportacao(mov.desc),
     cat:sugerirCategoriaImportacao(mov.desc,type),
     duplicado:d.dup, motivo:d.motivo, igualId:d.igual?d.igual.id:null,
+    parc:ctx.modo==="cartao"?parc:null,
     nota:pgto?"Pagamento da fatura — já lançado pela conta"
       :(fatConta?"Pagamento de fatura — não lance também as compras do cartão":null),
     selecionado:!d.dup&&!pgto });
@@ -3851,16 +3857,54 @@ function criarLancamentoImportado(pre){
      A competência é sempre o mês em que a coisa aconteceu, então uma compra de
      30/09 que vence em 10/10 continua pesando em setembro na Análise. */
   const due=(noCartao&&c&&pre.data)?cardFirstDue(c,pre.data):pre.data;
-  const gid=createTx({ type:pre.type, dest:null, desc:pre.desc, cat:pre.cat||"Outros",
+  /* A fatura traz uma parcela por mês, mas declara o total ("Parcela 1/3"), e
+     com isso dá para lançar as que faltam de uma vez — a atual vence nesta
+     fatura e as seguintes nas próximas.
+
+     As parcelas ANTERIORES não são criadas: já aconteceram, e inventá-las
+     mexeria em meses que o usuário pode já ter conciliado. Uma "Parcela 3/4"
+     cria duas, não quatro. */
+  const p=(noCartao&&imp&&imp.criarParcelas!==false)?pre.parc:null;
+  const quantas=p?(p.total-p.n+1):1;
+  /* mesmo quando resta uma só (uma "Parcela 5/5"), o lançamento entra como
+     parcelado com i/n de verdade: assim a última parcela de uma compra aparece
+     igual às irmãs, e não como uma compra à vista com o número no nome. */
+  const gid=createTx({ type:pre.type, dest:null,
+    desc:p?semSufixoParcela(pre.desc):pre.desc, cat:pre.cat||"Outros",
     method:noCartao?"cartao":pre.method,
     cardId:noCartao?pre.cardId:null, ticketId:null, goalId:null,
     accId:noCartao?null:pre.accId, pesId:null, comp:mkey(pre.data),
-    kind:"avista", total:pre.amount, n:2, paidCount:0, months:12,
+    kind:p?"parcelado":"avista",
+    total:p?Math.round(pre.amount*quantas*100)/100:pre.amount,
+    n:quantas, paidCount:0, months:12,
     firstDue:due, alreadyPaid:!noCartao, payDate:pre.data });
   /* marca de origem: é o que impede a próxima importação do mesmo extrato de
      duplicar o que já entrou, mesmo depois de o lançamento ser editado */
-  S.tx.forEach(t=>{ if(t.gid===gid) t.impId=pre.chave||null; });
+  S.tx.filter(t=>t.gid===gid).forEach((t,k)=>{
+    if(p){
+      /* createTx numera de 1; a numeração real é a que a fatura declara */
+      t.i=p.n+k; t.n=p.total;
+      /* valor exato da parcela: dividir o total reintroduziria centavo de sobra */
+      t.amount=pre.amount;
+      /* cada parcela recebe a marca da linha como ela virá NA SUA fatura, para
+         que importar o mês seguinte reconheça em vez de criar de novo */
+      t.impId=k===0?(pre.chave||null):chaveDaParcela(pre,p.n+k);
+    } else t.impId=pre.chave||null;
+  });
   return gid;
+}
+/* a numeração passa a viver em i/n, como no lançamento manual: repetir
+   "Parcela 1/3" em três lançamentos diferentes seria mentira em dois deles */
+function semSufixoParcela(desc){
+  const s=String(desc||"");
+  const limpo=s.replace(/\s*[-–]?\s*parcela\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/i,"")
+               .replace(/\s*[-–]\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/,"").trim();
+  return limpo||s;
+}
+function chaveDaParcela(pre,k){
+  const d=String(pre.descOriginal||pre.desc||"").replace(/(\d{1,2})(\s*\/\s*\d{1,2})/,k+"$2");
+  return gerarHashImportacao("card:"+pre.cardId+"|"+pre.data+"|"+
+    pre.amount.toFixed(2)+"|"+normalizarTextoImportacao(d));
 }
 function confirmarPreLancamentos(){
   if(!imp) return;
@@ -3873,7 +3917,7 @@ function confirmarPreLancamentos(){
   /* um save() só para o lote inteiro: o debounce de 700ms existe justamente
      para 40 lançamentos não virarem 40 escritas no Firestore */
   save(); render();
-  imp.resultado={ criados:ids.length,
+  imp.resultado={ criados:ids.length, linhas:sel.length,
     dup:imp.linhas.filter(l=>l.duplicado&&!l.selecionado).length,
     semcat:sel.filter(l=>!l.cat).length,
     erro:imp.linhas.filter(l=>l.erro).length };
@@ -3899,7 +3943,7 @@ function desfazerUltimaImportacao(){
 function abrirImportacao(){
   if(!S.accounts.length&&!S.cards.length){
     toast("Cadastre uma conta ou um cartão antes de importar"); return; }
-  imp={ modo:"conta", contaId:S.accounts.length?S.accounts[0].id:null,
+  imp={ modo:"conta", criarParcelas:true, contaId:S.accounts.length?S.accounts[0].id:null,
     cartaoId:S.cards.length?S.cards[0].id:null,
     arquivo:null, formato:null, encoding:null,
     etapa:"arquivo", motivoRecusa:null, linhas:[], colunas:null, bruto:null, cabIdx:0, sep:null,
@@ -4053,7 +4097,11 @@ function impTelaArquivo(){
   (noCartao
     ? '<label>Cartão</label><select id="impCartao">'+impCartoes(imp.cartaoId)+'</select>'+
       '<div class="help">As compras entram <b>em aberto</b>, vencendo na fatura certa pelo dia de fechamento do cartão. '+
-      'Elas não saem de conta nenhuma agora — quem debita é o pagamento da fatura, em Carteira.</div>'
+      'Elas não saem de conta nenhuma agora — quem debita é o pagamento da fatura, em Carteira.</div>'+
+      '<label class="check-line"><input type="checkbox" id="impParc"'+(imp.criarParcelas?" checked":"")+'>'+
+      '<span>Lançar também as parcelas futuras'+
+      '<br><span class="faint" style="font-size:var(--t-xs)">Uma compra "Parcela 1/3" vira três lançamentos: '+
+      'o desta fatura e os das próximas. As parcelas já pagas em faturas anteriores não são criadas.</span></span></label>'
     : '<label>Conta</label><select id="impConta">'+impContas(imp.contaId)+'</select>'+
       '<div class="help">Todas as movimentações do arquivo entram nesta conta, como já pagas. Dá para trocar depois, uma a uma.</div>')+
   '<label style="margin-top:16px">Arquivo</label>'+
@@ -4187,6 +4235,9 @@ function renderListaPreLancamentos(){
       '<div class="imp-mid" data-action="editar-pre-lancamento" data-id="'+l.id+'">'+
         '<b>'+esc(l.desc)+'</b><span class="faint">'+esc(meta)+'</span>'+
         impSeloIgual(l)+
+        (l.parc&&imp.criarParcelas&&l.parc.total>l.parc.n&&!l.erro
+          ?'<span class="chip pop">parcela '+l.parc.n+'/'+l.parc.total+' · cria '+
+            (l.parc.total-l.parc.n+1)+' lançamentos</span>':"")+
         (l.nota?'<span class="chip proximo">'+esc(l.nota)+'</span>':"")+
         (l.erro?'<span class="chip atrasado">'+esc(l.erro)+'</span>':"")+'</div>'+
       '<div class="imp-rt"><b class="'+(l.type==="inc"?"up":"down")+'">'+
@@ -4257,7 +4308,10 @@ function renderResumoImportacao(){
   const pl=(n,a,b)=>n+" "+(n>1?b:a);
   return modalHead("Importação concluída","Os lançamentos já estão no seu financeiro")+
   '<div class="news">'+
-  li(pl(r.criados,"lançamento importado","lançamentos importados"),"Entraram como pagos, na data do extrato.")+
+  li(pl(r.criados,"lançamento importado","lançamentos importados"),
+     r.linhas&&r.criados>r.linhas
+       ? "De "+r.linhas+" linhas do arquivo — as parcelas futuras entraram junto."
+       : (imp.modo==="cartao"?"Entraram em aberto, vencendo na fatura.":"Entraram como pagos, na data do extrato."))+
   (r.dup?li(pl(r.dup,"ignorado","ignorados"),"Possíveis duplicados que ficaram desmarcados."):"")+
   (r.semcat?li(pl(r.semcat,"sem categoria","sem categoria"),"Entraram em Outros — dá para ajustar na lista de lançamentos."):"")+
   (r.erro?li(pl(r.erro,"com erro","com erro"),"Linhas que o arquivo não deixou entender. Nada foi criado para elas."):"")+
@@ -5137,6 +5191,8 @@ document.addEventListener("change", e=>{
     save(); t.innerHTML=catOptions(tx.type,nm?nm.trim():tx.cat); }
   if(t.id==="impArquivo"){ const arq=t.files[0]; t.value=""; processarArquivoImportacao(arq); }
   if(t.id==="impCartao"&&imp) imp.cartaoId=t.value;
+  if(t.id==="impParc"&&imp){ imp.criarParcelas=t.checked;
+    if(imp.etapa==="revisao") impRedesenhaRevisao(); }
   if(t.id==="impConta"&&imp){ imp.contaId=t.value;
     /* trocar a conta refaz a duplicidade: o mesmo valor em outra conta é outro
        lançamento, e o que era duplicado ali pode não ser aqui */

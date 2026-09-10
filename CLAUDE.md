@@ -253,10 +253,24 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   a fatura repete a data da compra em toda parcela. Numa fatura brasileira metade
   das linhas costuma ser parcela, então sem isso o app engolia a parcela do mês
   seguinte, silenciosamente. Só decide quando as duas descrições declaram parcela.
-- **A importação NÃO cria as parcelas futuras.** A fatura traz só a parcela do
-  mês, e é ela que entra, como `avista`. As seguintes chegam nas próximas
-  faturas. O efeito é que o compromisso futuro não aparece no app — quem quiser
-  isso lança à mão como `parcelado`, que aí `createTx` cria as N de uma vez.
+- **A importação cria as parcelas que faltam, porque a fatura as declara.**
+  "Parcela 1/3" vira um grupo de três: a atual vence nesta fatura e as outras nas
+  seguintes, com competência avançando junto. Não é inferência — o número está no
+  arquivo. As parcelas **anteriores** nunca são criadas: já aconteceram, e
+  inventá-las mexeria em meses que o usuário pode ter conciliado; uma "Parcela
+  3/4" cria duas, não quatro.
+  - Cada parcela recebe a marca de origem da linha **como ela virá na sua própria
+    fatura** (a descrição com o número trocado). É isso que faz a fatura do mês
+    seguinte reconhecer a parcela em vez de criar de novo.
+  - O valor é o da parcela, copiado, não `total/n`: dividir reintroduziria
+    centavo de sobra.
+  - A numeração real (`i`/`n`) vem da fatura e sobrescreve a do `createTx`, que
+    conta de 1. O sufixo "- Parcela 1/3" sai da descrição, porque repeti-lo em
+    três lançamentos seria mentira em dois deles.
+  - Vale também quando resta só uma ("Parcela 5/5"): entra como `parcelado` com
+    i/n de verdade, para a última parcela aparecer igual às irmãs.
+  - `imp.criarParcelas` desliga tudo isso e volta ao comportamento de uma linha,
+    um lançamento à vista.
 - **Duas linhas idênticas no mesmo arquivo são duas compras**, não uma repetida —
   acontece quando dois parcelamentos caem no mesmo dia com a mesma loja e o mesmo
   valor (visto numa fatura real: quatro "Gowd - Parcela 5/5", duas delas com o
