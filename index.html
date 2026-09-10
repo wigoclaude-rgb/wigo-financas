@@ -854,13 +854,26 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .gr-ck.on::after{content:"";position:absolute;left:5px;top:1.5px;width:4px;height:8px;
   border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
 
-.cons-bar{position:sticky;bottom:calc(var(--safe-b) + 82px);margin:0 var(--sp-4) var(--sp-6);
-  display:flex;gap:var(--sp-2);align-items:center;background:var(--s-3);
-  border:1px solid var(--line-2);border-radius:var(--r-lg);padding:10px 12px;
-  box-shadow:var(--e-3);z-index:40}
+/* fixed, e não sticky: a grade é mais alta que a tela, e uma barra sticky no fim
+   do documento só apareceria depois de rolar até lá — justamente quando já não
+   se precisa dela. Mesmo lugar da barra de seleção da lista. */
+.cons-bar{position:fixed;left:var(--sp-3);right:var(--sp-3);
+  bottom:calc(var(--safe-b) + 84px);z-index:90;
+  display:flex;gap:var(--sp-2);align-items:center;
+  background:rgba(24,24,31,.94);backdrop-filter:blur(26px) saturate(180%);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid var(--line-2);border-radius:var(--r-lg);padding:11px var(--sp-4);
+  box-shadow:var(--e-4);max-width:720px;margin:0 auto;
+  animation:selIn var(--dur-3) var(--ease-out)}
 .cons-bar .si{flex:1;min-width:0}
 .cons-bar .si .n{font-size:var(--t-xs);color:var(--ink-3)}
-.cons-bar .si .v{font-family:var(--f-display);font-weight:700;font-variant-numeric:tabular-nums}
+.cons-bar .si .v{font-size:var(--t-sm);color:var(--ink-2);margin-top:2px;
+  font-variant-numeric:tabular-nums;line-height:1.5}
+.cons-bar .si .v b{font-family:var(--f-display);font-weight:700}
+.cons-bar .si .v b.up{color:var(--up)}
+.cons-bar .si .v b.down{color:var(--down)}
+.cons-bar .si .n .down{color:var(--down)}
+.cons-bar .si .v i{color:var(--ink-4);font-style:normal;margin:0 2px}
 .cons-bar .btn{width:auto}
 
 /* No celular a grade vira lista: nove colunas em 390px não é tabela, é ilegível.
@@ -880,7 +893,10 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 @media (min-width:901px){
   .grade{overflow-x:auto}
   .gr-row{min-width:860px}
-  .cons-bar{bottom:var(--sp-6)}
+}
+@media (min-width:1024px){
+  /* sem dock no desktop, e a sidebar ocupa a esquerda */
+  .cons-bar{bottom:var(--sp-6);left:calc(250px + var(--sp-6));right:var(--sp-6);max-width:900px}
 }
 
 /* ---------- documento de parcelamento ---------- */
@@ -4495,13 +4511,20 @@ function consLinhas(){
 }
 function consTotais(l){
   const rec=l.filter(t=>t.type==="inc"), pag=l.filter(t=>t.type!=="inc");
+  const sel=l.filter(t=>cons.sel.has(t.id));
   return { n:l.length,
     aReceber:sum(rec.filter(t=>!t.paid),val), aPagar:sum(pag.filter(t=>!t.paid),val),
     recebido:sum(rec.filter(t=>t.paid),val), pago:sum(pag.filter(t=>t.paid),val),
     vencido:sum(l.filter(t=>!t.paid&&statusOf(t)==="atrasado"),val),
     nVencido:l.filter(t=>!t.paid&&statusOf(t)==="atrasado").length,
-    selN:l.filter(t=>cons.sel.has(t.id)).length,
-    sel:sum(l.filter(t=>cons.sel.has(t.id)),val) };
+    /* a seleção é totalizada pelos DOIS lados: somar receita com despesa num
+       número só daria um valor sem significado, e no modo Tudo a seleção
+       mistura os dois de propósito */
+    selN:sel.length,
+    selRec:sum(sel.filter(t=>t.type==="inc"),val),
+    selPag:sum(sel.filter(t=>t.type!=="inc"),val),
+    selAberto:sel.filter(t=>!t.paid).length,
+    selVenc:sel.filter(t=>!t.paid&&statusOf(t)==="atrasado").length };
 }
 /* atalhos de período: a pergunta quase sempre é "o que vence este mês" ou
    "o que já venceu", e não uma data digitada */
@@ -4582,6 +4605,10 @@ function renderConsulta(){
         ["desc","Por descrição"],["pessoa","Por pessoa"]])+
     '</div>'+
     '<div class="act-row">'+
+      /* marcar todos vive AQUI, e não só no cabeçalho da grade: no celular o
+         cabeçalho não existe, e sem isto não havia como selecionar tudo */
+      '<button type="button" class="btn small ghost" data-action="cons-todos">'+
+        ic("checkSquare")+' Marcar todos</button>'+
       '<button type="button" class="btn small ghost" data-action="cons-limpar">Limpar filtros</button>'+
       '<button type="button" class="btn small ghost" data-action="cons-csv">'+ic("download")+' Exportar</button>'+
     '</div></div></div>';
@@ -4621,9 +4648,20 @@ function renderConsGrade(l){
 }
 function consRodape(tt){
   if(!tt.selN) return "";
-  return '<div class="cons-bar"><div class="si"><div class="n">'+tt.selN+' selecionado'+
-    (tt.selN>1?"s":"")+'</div><div class="v">'+fmt(tt.sel)+'</div></div>'+
-    '<button class="btn small" data-action="cons-baixar">'+ic("check")+' Dar baixa</button>'+
+  const dois=tt.selRec>0&&tt.selPag>0;
+  const linha=[];
+  if(tt.selRec) linha.push('<b class="up">+'+fmt(tt.selRec)+'</b> a receber');
+  if(tt.selPag) linha.push('<b class="down">−'+fmt(tt.selPag)+'</b> a pagar');
+  const saldo=tt.selRec-tt.selPag;
+  return '<div class="cons-bar"><div class="si">'+
+    '<div class="n">'+tt.selN+' selecionado'+(tt.selN>1?"s":"")+
+      (tt.selVenc?' · <span class="down">'+tt.selVenc+' vencida'+(tt.selVenc>1?"s":"")+'</span>':"")+
+      (tt.selAberto<tt.selN?' · '+(tt.selN-tt.selAberto)+' já baixada'+((tt.selN-tt.selAberto)>1?"s":""):"")+
+    '</div>'+
+    '<div class="v">'+linha.join(' <i>·</i> ')+
+      (dois?' <i>·</i> saldo <b class="'+(saldo>=0?"up":"down")+'">'+fmt(saldo)+'</b>':"")+'</div></div>'+
+    '<button class="btn small" data-action="cons-baixar"'+(tt.selAberto?"":" disabled")+'>'+
+      ic("check")+' Dar baixa'+(tt.selAberto&&tt.selAberto!==tt.selN?" ("+tt.selAberto+")":"")+'</button>'+
     '<button class="btn small ghost" data-action="cons-limpar-sel">Limpar</button></div>';
 }
 function consRedesenha(){

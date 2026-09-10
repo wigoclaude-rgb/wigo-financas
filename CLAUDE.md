@@ -292,7 +292,17 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   primeiro. As outras somem por CSS, sem segunda renderização.
 - **`pes: "none"` filtra quem NÃO tem pessoa vinculada** — é uma resposta, não a
   ausência de filtro (que é `"all"`).
-- A baixa em lote reusa `applyPaid`, o mesmo caminho do botão Pagar da lista.
+- **A seleção é totalizada pelos dois lados, nunca num número só.** Somar
+  receita com despesa daria um valor sem significado — e no modo Tudo a seleção
+  mistura os dois de propósito. A barra mostra a receber, a pagar e o saldo,
+  mais quantas estão vencidas e quantas já foram baixadas.
+- **A barra é `fixed`, não `sticky`.** A grade é mais alta que a tela, e uma
+  barra sticky no fim do documento só apareceria depois de rolar até lá —
+  justamente quando já não se precisa dela.
+- **"Marcar todos" existe fora do cabeçalho da grade**, porque no celular o
+  cabeçalho não é renderizado e sem isso não havia como selecionar tudo.
+- A baixa em lote reusa `applyPaid`, o mesmo caminho do botão Pagar da lista, e
+  o botão diz quantas serão baixadas quando a seleção mistura abertas e pagas.
 
 ### Documento do parcelamento
 
