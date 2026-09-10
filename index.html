@@ -5192,8 +5192,19 @@ function openTutorial(){ startTour(TOUR_BASIC,"tutorialSeen"); }
    S.seenVersion guarda a última versão que o usuário já viu. Quando publico
    algo novo, subo APP_VERSION e escrevo os itens aqui — não dá para deduzir
    isso do código sozinho. */
-const APP_VERSION="2.1";
+const APP_VERSION="2.2";
 const WHATS_NEW=[
+ {v:"2.2",d:"Setembro de 2026",itens:[
+   ["Importar extrato e fatura","Traga o extrato do banco ou a fatura do cartão em CSV, Excel ou OFX. O app lê, sugere tipo, categoria e forma, e você confere antes de lançar."],
+   ["Sabe o que já está no app","Cada linha importada é comparada com o que você já tem: o que for repetido vem marcado, dizendo com qual lançamento casou. Nada entra duas vezes sem você mandar."],
+   ["Parcelas futuras da fatura","Uma compra que diz 3/10 na fatura vira as oito parcelas que faltam, já com os vencimentos certos."],
+   ["Editar antes de lançar","Dá para corrigir descrição, valor, categoria, conta e parcelamento de cada linha antes de confirmar. E desfazer a importação inteira pela Lixeira."],
+   ["PDF não serve, e o app avisa","Extrato em PDF não é lido. A tela explica o motivo e ensina a baixar em CSV ou Excel no seu banco."],
+   ["Contas a receber e a pagar","Tela nova para consultar todos os meses de uma vez: filtros de período, pessoa, origem, categoria e situação, com totais no topo."],
+   ["Baixa em lote","Marque vários e dê baixa de uma vez, escolhendo a data do pagamento e a conta."],
+   ["Extrato da conta da pessoa","O saldo de cada pessoa agora abre um extrato: cada cobrança, cada pagamento e o saldo correndo linha a linha, com filtros e exportação."],
+   ["Documento do parcelamento","Ao abrir uma parcela, o grupo inteiro aparece em cima: número, vencimento, valor e situação de cada uma."]
+ ]},
  {v:"2.1",d:"Agosto de 2026",itens:[
    ["Contas","Cadastre banco, poupança e dinheiro em espécie. Cada conta tem saldo próprio e o total é a soma delas."],
    ["Transferência entre contas","Mover dinheiro de uma conta para outra sem virar receita nem despesa — o total não muda."],

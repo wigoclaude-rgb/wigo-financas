@@ -10,7 +10,7 @@ regra do Firestore.
 
 - **Site:** https://fastidious-hamster-2b9ffd.netlify.app
 - **Projeto Firebase:** `app-fin-ebcfe` (só Auth + Firestore — o site não é hospedado lá)
-- Versão do app exibida ao usuário: **2.1** (ver `APP_VERSION` no `index.html`)
+- Versão do app exibida ao usuário: **2.2** (ver `APP_VERSION` no `index.html`)
 
 ---
 
@@ -591,12 +591,17 @@ o que o usuário já viu — não dá para deduzir isso do código sozinho.
    (com vínculo em lote para o histórico antigo), transferência entre contas,
    cartão ligado à conta, conciliação (mês encerrado fecha onde o seguinte abre),
    filtros e desvínculo em lote, correção do destaque do tour.
+4. **10/09 — versão 2.2.** Importação de extrato e fatura (CSV, Excel, OFX) com
+   detecção de duplicidade, parcelas futuras da fatura, edição antes de lançar e
+   recusa explicada do PDF; consulta de contas a receber e a pagar com baixa em
+   lote; extrato da conta da pessoa com saldo acumulado e filtros; documento do
+   parcelamento.
 
 ---
 
 ## Estado atual
 
-`main` está em `27e0f0f`. Nada pendente no código.
+`main` recebeu a versão 2.2. Nada pendente no código.
 
 ## Pendente de ação manual
 
