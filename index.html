@@ -3300,6 +3300,9 @@ function parseOFX(texto){
       data:normalizarDataImportacao(tagOFX(bloco,"DTPOSTED")),
       amount:normalizarValorImportacao(tagOFX(bloco,"TRNAMT")),
       desc:limparDescricaoImportacao(descOFX(tagOFX(bloco,"NAME"),tagOFX(bloco,"MEMO"),tagOFX(bloco,"TRNTYPE"))),
+      /* TRNTYPE é o tipo dito pelo banco, e vale mais que qualquer palpite pelo
+         sinal — numa fatura OFX com poucas linhas o palpite chega a inverter */
+      tipo:tagOFX(bloco,"TRNTYPE").toUpperCase()||null,
       fitid:tagOFX(bloco,"FITID")||null
     });
   });
@@ -3418,12 +3421,21 @@ function limparDescricaoImportacao(desc){
    relatório, a agência e o período. Procura nas primeiras linhas a que se
    identifica como cabeçalho de tabela; se nenhuma se identifica, fica com a
    mais preenchida — é a que dá a melhor tela de mapeamento manual. */
+function pareceLinhaDeDados(l){
+  return (l||[]).some(c=>normalizarDataImportacao(c))&&
+         (l||[]).some(c=>!isNaN(normalizarValorImportacao(c)));
+}
 function acharCabecalhoCSV(bruto){
   const limite=Math.min(bruto.length,15);
   for(let i=0;i<limite;i++){
     const c=detectarColunasCSV(bruto[i]);
     if(c.confiavel) return {idx:i,cols:c};
   }
+  /* extrato sem cabeçalho nenhum: a primeira linha JÁ é dado, e consumi-la como
+     cabeçalho perderia uma transação inteira, em silêncio. idx -1 faz o
+     slice(idx+1) começar do zero. */
+  if(pareceLinhaDeDados(bruto[0]))
+    return {idx:-1,cols:detectarColunasCSV(bruto[0].map(()=>"")),semCabecalho:true};
   let idx=0,mx=-1;
   for(let i=0;i<limite;i++){
     const n=bruto[i].filter(x=>String(x).trim()).length;
@@ -3534,6 +3546,11 @@ function ctxImportacao(alvo){
    fatura depende do banco — o Nubank manda a compra positiva, o OFX de cartão
    manda negativa. Por isso a conta usa -1 fixo e a fatura pergunta à maioria. */
 function sugerirTipoImportacao(mov,sinal){
+  /* quando o arquivo declara o tipo (TRNTYPE do OFX), ele manda: só DEBIT e
+     CREDIT, que são inequívocos — PAYMENT significa coisas opostas no extrato
+     de conta e na fatura de cartão. */
+  if(mov.tipo==="DEBIT") return "exp";
+  if(mov.tipo==="CREDIT") return "inc";
   return Math.sign(mov.amount)===(sinal||-1)?"exp":"inc";
 }
 /* Numa fatura a maioria das linhas é compra, então o sinal predominante é o da
@@ -3606,8 +3623,17 @@ function sugerirCategoriaImportacao(desc,tipo){
   return "";
 }
 
+/* "SALDO ANTERIOR", "SALDO DO DIA", "TOTAL DO PERÍODO" são a régua do extrato,
+   não movimentação. Sem isso viravam lançamento fantasma — e um saldo anterior
+   de mil reais entrando como receita estraga o mês inteiro. */
+function ehLinhaDeSaldo(desc){
+  const d=normalizarTextoImportacao(desc);
+  return /^saldo\b/.test(d)||/\bsaldo (anterior|final|do dia|em conta|atual)\b/.test(d)||
+    /^total (do periodo|geral|de lancamentos)\b/.test(d);
+}
 /* movimentação crua → movimentação validada; erro descrito, nunca silencioso */
 function normalizarMovimentacaoImportada(mov){
+  if(ehLinhaDeSaldo(mov.desc)) return {ok:false,erro:"Linha de saldo, não é movimentação"};
   if(!mov.data) return {ok:false,erro:"Data não reconhecida"};
   if(isNaN(mov.amount)) return {ok:false,erro:"Valor não reconhecido"};
   if(!mov.amount) return {ok:false,erro:"Valor zerado"};
@@ -3855,10 +3881,14 @@ function impTelaArquivo(){
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="fechar-importacao">Cancelar</button></div>';
 }
 function impTelaColunas(){
-  const ci=imp.cabIdx||0, cab=imp.bruto[ci]||[], c=imp.colunas||{};
+  const ci=imp.cabIdx==null?0:imp.cabIdx, semCab=ci<0;
+  const cab=(semCab?imp.bruto[0]:imp.bruto[ci])||[], c=imp.colunas||{};
+  /* sem cabeçalho o conteúdo da linha não é nome de coluna: numerar é mais
+     honesto que oferecer "01/09/2026" como se fosse um rótulo */
   const opt=(sel,vazio)=>(vazio?'<option value="">— nenhuma —</option>':"")+
     cab.map((x,i)=>'<option value="'+i+'"'+(String(i)===String(sel)?" selected":"")+'>'+
-      esc(String(x||"").trim()||("Coluna "+(i+1)))+'</option>').join("");
+      (semCab?"Coluna "+(i+1)+" — "+esc(String(x).slice(0,18))
+             :esc(String(x||"").trim()||("Coluna "+(i+1))))+'</option>').join("");
   const previa=imp.bruto.slice(ci+1,ci+4).map(l=>'<div>'+esc(l.slice(0,5).map(x=>String(x).slice(0,20)).join(" · "))+'</div>').join("");
   return modalHead("Confira as colunas do extrato","Não deu para identificar sozinho")+
   '<div class="help" style="margin-bottom:14px">Diga qual coluna é o quê. Se o seu extrato separa débito e crédito em colunas diferentes, deixe <b>Valor</b> em branco e preencha as duas de baixo.</div>'+

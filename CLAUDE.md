@@ -306,6 +306,32 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   voltar.
 - **Detecção de coluna duvidosa pergunta em vez de errar calado.** É melhor uma
   tela a mais que um extrato inteiro importado na coluna errada.
+- **`TRNTYPE` do OFX manda no tipo, acima do sinal.** Só `DEBIT` e `CREDIT`, que
+  são inequívocos — `PAYMENT` significa coisas opostas no extrato de conta e na
+  fatura. Sem isso, uma fatura OFX com poucas linhas invertia tudo, porque o
+  desempate do sinal predominante não tem como acertar com dois registros.
+- **Linha de saldo não é movimentação.** "SALDO ANTERIOR", "SALDO FINAL",
+  "TOTAL DO PERÍODO" viram erro visível e desmarcado; sem isso um saldo anterior
+  de mil reais entrava como receita e estragava o mês.
+- **Extrato sem cabeçalho nenhum existe** (alguns bancos exportam assim). A
+  primeira linha já é dado: consumi-la como cabeçalho perdia uma transação em
+  silêncio. `acharCabecalhoCSV` devolve `idx: -1` nesse caso, e a tela de
+  mapeamento numera as colunas em vez de fingir que o conteúdo é rótulo.
+
+### Cobertura real da importação
+
+Testado de ponta a ponta com **Nubank** (extrato de conta e fatura, arquivos
+reais). Variações estruturais de outros bancos foram exercitadas com fixtures
+plausíveis, não com arquivos reais — coluna Saldo, débito/crédito separados,
+preâmbulo, colunas extras, sem cabeçalho e OFX de cartão (`CCSTMTRS`) passam.
+
+Limitações conhecidas, todas em aberto:
+- **PDF e XLS/XLSX não são lidos.** Vários bancos só oferecem esses formatos.
+- **Data ambígua é lida como dd/mm.** `10/02/2026` vira 10 de fevereiro, não 2 de
+  outubro. Correto para banco brasileiro, errado para internacional — e é o único
+  caso que falha em silêncio, sem marcar erro.
+- **Descrição com o separador dentro e sem aspas** quebra a linha. Falha visível
+  (a linha fica com "Valor não reconhecido" e desmarcada), não vira lançamento errado.
 
 ### Interface
 
