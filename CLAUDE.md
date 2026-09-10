@@ -271,6 +271,19 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
     i/n de verdade, para a última parcela aparecer igual às irmãs.
   - `imp.criarParcelas` desliga tudo isso e volta ao comportamento de uma linha,
     um lançamento à vista.
+  - Na edição do pré-lançamento dá para **corrigir a parcela** (a atual e o
+    total), e a prévia mostra o que exatamente será criado — parcela, vencimento,
+    valor e total — antes de valer. Deixar os dois campos vazios lança como
+    compra única. O que o parser leu vem preenchido: o banco escreve de formas
+    diferentes, e adivinhar errado sem deixar corrigir seria pior que não tentar.
+
+### Documento do parcelamento
+
+`documentoDoGrupo(t)` desenha, no topo da edição de qualquer lançamento com mais
+de uma ocorrência, a tabela do grupo inteiro: parcela, vencimento, valor e
+situação, com a linha aberta destacada e o quanto falta no rodapé. Vale para
+parcelado e para fixo. Sem isso, saber quanto resta de uma compra em 6x exigia
+caçar seis linhas em seis meses diferentes da lista.
 - **Duas linhas idênticas no mesmo arquivo são duas compras**, não uma repetida —
   acontece quando dois parcelamentos caem no mesmo dia com a mesma loja e o mesmo
   valor (visto numa fatura real: quatro "Gowd - Parcela 5/5", duas delas com o

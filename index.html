@@ -817,6 +817,21 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   font-size:var(--t-sm);color:var(--ink-2)}
 .picked-list b{color:var(--ink);font-variant-numeric:tabular-nums}
 
+/* ---------- documento de parcelamento ---------- */
+.parc-doc{background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:10px 12px;margin:0 0 var(--sp-4);font-size:var(--t-xs)}
+.pd-cap{color:var(--ink-3);font-size:var(--t-xs);margin-bottom:8px}
+.pd-row{display:grid;grid-template-columns:52px 1fr auto auto;gap:8px;align-items:center;
+  padding:5px 0;border-bottom:1px solid var(--line)}
+.pd-row:last-child{border-bottom:none}
+.pd-row .v{font-variant-numeric:tabular-nums;font-weight:650}
+.pd-head{color:var(--ink-4);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.04em;border-bottom-color:var(--line-2)}
+.pd-row.atual{background:var(--grad-v-soft);margin-inline:-6px;padding-inline:6px;
+  border-radius:var(--r-xs)}
+.pd-tot{border-top:1px solid var(--line-2);border-bottom:none;color:var(--ink-2);font-weight:650}
+.parc-doc .chip{justify-self:end}
+
 /* ---------- importar extrato ---------- */
 .imp-alerta{display:flex;gap:9px;align-items:flex-start;background:var(--warn-bg);
   border:1px solid rgba(255,200,87,.28);border-radius:var(--r-sm);
@@ -4286,6 +4301,15 @@ function openPreEdit(id){
     '<option value="inc"'+(l.type==="inc"?" selected":"")+'>Receita</option></select>'+
   '<label style="margin-top:12px">Categoria</label><select id="ieCat">'+impCatOptions(l.type,l.cat)+'</select>'+
   (l.modo==="cartao"
+    ? '<label style="margin-top:12px">Parcelamento</label>'+
+      '<div class="row2"><div><input id="iePn" inputmode="numeric" placeholder="parcela" value="'+
+        (l.parc?l.parc.n:"")+'"></div><div><input id="iePt" inputmode="numeric" placeholder="de quantas" value="'+
+        (l.parc?l.parc.total:"")+'"></div></div>'+
+      '<div class="help">Deixe os dois em branco para lançar como compra única. '+
+      'O que o app leu da fatura vem preenchido — corrija se o banco escreveu diferente.</div>'+
+      '<div id="iePrevia">'+impPreviaParcelas(l)+'</div>'
+    : "")+
+  (l.modo==="cartao"
     ? '<label style="margin-top:12px">Cartão</label><select id="ieCard">'+impCartoes(l.cardId)+'</select>'+
       '<div class="help">Compra de cartão não sai de conta nenhuma agora: ela vence na fatura, e o débito acontece quando você marca a fatura como paga.</div>'
     : '<label style="margin-top:12px">Método</label><select id="ieMet">'+
@@ -4295,6 +4319,30 @@ function openPreEdit(id){
       '<label style="margin-top:12px">Conta</label><select id="ieAcc">'+impContas(l.accId)+'</select>')+
   '<button class="btn" type="submit" style="margin-top:16px">Salvar</button></form>'+
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="imp-voltar">Voltar sem salvar</button></div>');
+}
+/* A prévia responde "o que exatamente vai ser criado" antes de criar: parcela,
+   vencimento e valor, com o total no rodapé. É a mesma conta que
+   criarLancamentoImportado faz, mostrada antes de valer. */
+function impPreviaParcelas(l,pn,pt){
+  const n=pn!=null?pn:(l.parc?l.parc.n:null);
+  const total=pt!=null?pt:(l.parc?l.parc.total:null);
+  if(!n||!total||total<n||total>99) return "";
+  const c=l.cardId?cardOf(l.cardId):null;
+  const base=(c&&l.data)?cardFirstDue(c,l.data):l.data;
+  if(!base) return "";
+  const quantas=(imp&&imp.criarParcelas===false)?1:(total-n+1);
+  let linhas="";
+  for(let k=0;k<quantas;k++)
+    linhas+='<div class="pd-row"><span>'+(n+k)+'/'+total+'</span>'+
+      '<span>'+fmtDate(addMonthsISO(base,k))+'</span>'+
+      '<span class="v">'+fmt(l.amount)+'</span></div>';
+  return '<div class="parc-doc">'+
+    '<div class="pd-cap">'+(quantas>1?quantas+" lançamentos serão criados":"Um lançamento será criado")+
+      (n>1?' · as '+(n-1)+' anteriores já venceram e não entram':"")+'</div>'+
+    '<div class="pd-row pd-head"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>'+
+    linhas+
+    '<div class="pd-row pd-tot"><span>Total</span><span></span><span class="v">'+
+      fmt(Math.round(l.amount*quantas*100)/100)+'</span></div></div>';
 }
 /* sem "criar nova categoria": a importação escolhe entre o que já existe */
 function impCatOptions(tipo,sel){
@@ -4642,6 +4690,28 @@ function openFatura(id){
 }
 
 /* ----- EDITAR (bug corrigido: checkbox funciona + categoria mantida) ----- */
+/* O parcelamento visto como documento: todas as parcelas de uma vez, com
+   vencimento, valor e situação. Sem isso, saber quanto falta de uma compra em
+   6x exige caçar seis linhas em seis meses diferentes da lista. */
+function documentoDoGrupo(t){
+  const grp=aTx().filter(x=>x.gid===t.gid).sort((a,b)=>(a.i||0)-(b.i||0)||(a.due<b.due?-1:1));
+  if(grp.length<2) return "";
+  const quitadas=grp.filter(x=>x.paid).length;
+  const verbo=t.type==="inc"?"recebida":"paga";
+  const falta=sum(grp.filter(x=>!x.paid),val);
+  return '<div class="parc-doc">'+
+    '<div class="pd-cap">'+(t.kind==="fixo"?"Lançamento fixo":"Parcelamento")+' · '+
+      quitadas+' de '+grp.length+' '+verbo+(quitadas===1?"":"s")+'</div>'+
+    '<div class="pd-row pd-head"><span>'+(t.kind==="fixo"?"Mês":"Parcela")+'</span>'+
+      '<span>Vencimento</span><span>Valor</span><span>Situação</span></div>'+
+    grp.map(x=>'<div class="pd-row'+(x.id===t.id?" atual":"")+'">'+
+      '<span>'+(x.i||"—")+(x.n?"/"+x.n:"")+'</span>'+
+      '<span>'+fmtDate(x.due)+'</span>'+
+      '<span class="v">'+fmt(val(x))+'</span>'+
+      '<span>'+stChip(x)+'</span></div>').join("")+
+    '<div class="pd-row pd-tot"><span>Falta</span><span></span>'+
+      '<span class="v">'+fmt(falta)+'</span><span></span></div></div>';
+}
 function openEdit(id){
   const t=S.tx.find(x=>x.id===id); if(!t)return;
   /* transferência não tem categoria, forma nem competência para editar —
@@ -4662,6 +4732,7 @@ function openEdit(id){
   const walletSel=t.method==="ticket"?("ticket:"+t.ticketId):(t.cardId?("card:"+t.cardId):"");
   openModal(modalHead("Editar lançamento",
     (t.kind!=="avista"?(t.kind==="fixo"?"Fixo ":"Parcela ")+t.i+"/"+t.n+" · ":"")+stLabel(t))+
+  documentoDoGrupo(t)+
   '<form id="fEdit" data-id="'+id+'">'+
   '<label>Descrição</label><input id="edDesc" value="'+esc(t.desc)+'">'+
   (t.dest==="savings"?"":'<div class="row2"><div><label>Valor</label><input id="edVal" inputmode="decimal" value="'+String(t.amount).replace(".",",")+'"></div>'+
@@ -5139,6 +5210,13 @@ document.addEventListener("input", e=>{
     redesenhaDet($("#detBox"));
     const i=$("#detSearch"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
     return; }
+  if((e.target.id==="iePn"||e.target.id==="iePt")&&imp){
+    const f=$("#fImpEdit"), box=$("#iePrevia");
+    const l=f&&imp.linhas.find(x=>x.id===f.dataset.id);
+    if(l&&box){ const v=$("#ieVal"); const amt=v?(parseMoney(v.value)||l.amount):l.amount;
+      box.innerHTML=impPreviaParcelas({...l,amount:Math.abs(amt)},
+        parseInt($("#iePn").value)||null,parseInt($("#iePt").value)||null); }
+    return; }
   if(e.target.id==="impBusca"&&imp){ imp.q=e.target.value; impRedesenhaRevisao(); return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
@@ -5243,7 +5321,9 @@ document.addEventListener("submit", async e=>{
     l.desc=$("#ieDesc").value.trim()||l.desc;
     l.data=d; l.amount=Math.abs(v);
     l.type=$("#ieTipo").value; l.cat=$("#ieCat").value;
-    if(l.modo==="cartao"){ if($("#ieCard")) l.cardId=$("#ieCard").value; }
+    if(l.modo==="cartao"){ if($("#ieCard")) l.cardId=$("#ieCard").value;
+      const pn=parseInt($("#iePn")&&$("#iePn").value), pt=parseInt($("#iePt")&&$("#iePt").value);
+      l.parc=(pn>=1&&pt>=pn&&pt<=99)?{n:pn,total:pt}:null; }
     else { if($("#ieMet")) l.method=$("#ieMet").value;
            if($("#ieAcc")) l.accId=$("#ieAcc").value; }
     l.erro=null; l.nota=null; l.selecionado=true;
