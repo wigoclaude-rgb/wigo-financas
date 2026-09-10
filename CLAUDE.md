@@ -326,7 +326,22 @@ plausíveis, não com arquivos reais — coluna Saldo, débito/crédito separado
 preâmbulo, colunas extras, sem cabeçalho e OFX de cartão (`CCSTMTRS`) passam.
 
 Limitações conhecidas, todas em aberto:
-- **PDF e XLS/XLSX não são lidos.** Vários bancos só oferecem esses formatos.
+- **Excel (.xlsx) é lido sem biblioteca.** Um .xlsx é um ZIP de XMLs: o ZIP é
+  percorrido à mão e inflado com `DecompressionStream`, que o navegador tem
+  nativamente. Isso evita uma biblioteca de planilha de ~1 MB por CDN e mantém a
+  regra de que o Firebase é a única dependência externa. Data de planilha vem
+  como número de dias desde 30/12/1899 e é convertida na faixa 20000–60000.
+- **Formato vem dos primeiros bytes, não da extensão.** Banco chama de `.xls` um
+  HTML com `<table>` dentro, e de `.csv` um arquivo separado por tab. `%PDF`,
+  `PK\x03\x04` (xlsx) e `D0CF11E0` (xls binário antigo) são reconhecidos assim.
+- **PDF não é lido, e a recusa é uma tela, não um toast.** Ler PDF exigiria
+  pdf.js por CDN, e o conteúdo não compensa: no extrato do Santander as seis
+  movimentações do mês vêm espalhadas num documento com propaganda, telefone do
+  SAC, cotação de dólar e uma seção de "Comprovantes" que repete os mesmos
+  valores — a data sem o ano (`06/07`), o sinal depois do número (`1.057,08-`),
+  o saldo grudado na linha e o favorecido na linha seguinte. Quem escolheu o PDF
+  não errou: é o formato que o banco oferece primeiro. Por isso a tela explica o
+  motivo, lista o que funciona e ensina a converter.
 - **Data ambígua é lida como dd/mm.** `10/02/2026` vira 10 de fevereiro, não 2 de
   outubro. Correto para banco brasileiro, errado para internacional — e é o único
   caso que falha em silêncio, sem marcar erro.

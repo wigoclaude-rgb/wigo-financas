@@ -3192,12 +3192,101 @@ const IMP_MAX_LISTA=300;            // teto de itens desenhados de uma vez
 
 /* ---------- camada 1: LEITURA ---------- */
 
-function detectarFormatoArquivo(nome,texto){
+/* Pelos primeiros bytes, não pela extensão: banco chama de .xls um HTML com
+   tabela dentro, e de .csv um arquivo separado por tab. A extensão só desempata
+   o que os bytes não resolvem. */
+function detectarFormatoArquivo(nome,bytes){
+  const b=bytes||new Uint8Array();
+  const inicia=(...xs)=>xs.every((x,i)=>b[i]===x);
+  if(inicia(0x25,0x50,0x44,0x46)) return "pdf";               // %PDF
+  if(inicia(0xD0,0xCF,0x11,0xE0)) return "xls-antigo";        // OLE2: .xls binário
+  if(inicia(0x50,0x4B,0x03,0x04)) return "xlsx";              // ZIP: .xlsx
   const ext=(nome||"").toLowerCase().split(".").pop();
+  const inicio=new TextDecoder("utf-8").decode(b.slice(0,3000));
+  if(/<table|<tr[\s>]/i.test(inicio)) return "html";
   if(ext==="ofx"||ext==="qfx") return "ofx";
-  if(/OFXHEADER|<OFX>|<STMTTRN/i.test(texto||"")) return "ofx";
-  if(ext==="csv"||ext==="txt") return "csv";
+  if(/OFXHEADER|<OFX>|<STMTTRN/i.test(inicio)) return "ofx";
+  if(ext==="pdf") return "pdf";
+  if(ext==="csv"||ext==="txt"||ext==="xls"||ext==="tsv") return "csv";
   return null;
+}
+
+/* ---------- XLSX: ZIP de XMLs, lido sem biblioteca ----------
+   Um .xlsx é um ZIP com o texto em xl/sharedStrings.xml e as células em
+   xl/worksheets/sheet1.xml. Ler o ZIP à mão e inflar com DecompressionStream —
+   que o navegador tem desde 2023 — evita uma biblioteca de planilha de ~1 MB por
+   CDN, e a regra do projeto é que o Firebase seja a única dependência externa. */
+async function inflarBruto(dados){
+  const ds=new DecompressionStream("deflate-raw");
+  const buf=await new Response(new Blob([dados]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(buf);
+}
+async function descompactarZip(bytes){
+  const dv=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  /* o índice central fica no fim do arquivo e é achado varrendo de trás */
+  let fim=-1;
+  for(let i=bytes.length-22;i>=0&&i>bytes.length-65558;i--)
+    if(dv.getUint32(i,true)===0x06054b50){ fim=i; break; }
+  if(fim<0) throw new Error("zip");
+  const total=dv.getUint16(fim+10,true);
+  let p=dv.getUint32(fim+16,true);
+  const saida={};
+  for(let n=0;n<total&&p+46<=bytes.length;n++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const metodo=dv.getUint16(p+10,true), tam=dv.getUint32(p+20,true);
+    const nomeLen=dv.getUint16(p+28,true), extraLen=dv.getUint16(p+30,true);
+    const comLen=dv.getUint16(p+32,true), off=dv.getUint32(p+42,true);
+    const nome=new TextDecoder().decode(bytes.slice(p+46,p+46+nomeLen));
+    /* o cabeçalho local repete nome e extra com tamanhos próprios */
+    const lnLen=dv.getUint16(off+26,true), leLen=dv.getUint16(off+28,true);
+    const ini=off+30+lnLen+leLen;
+    const dados=bytes.slice(ini,ini+tam);
+    if(/^xl\/(worksheets\/|sharedStrings)/.test(nome))
+      saida[nome]=metodo===0?dados:await inflarBruto(dados);
+    p+=46+nomeLen+extraLen+comLen;
+  }
+  return saida;
+}
+function colunaExcel(ref){
+  const m=/^([A-Z]+)/.exec(ref||""); if(!m) return 0;
+  let n=0; for(const ch of m[1]) n=n*26+(ch.charCodeAt(0)-64);
+  return n-1;
+}
+async function lerXLSX(bytes){
+  const arq=await descompactarZip(bytes);
+  const texto=n=>arq[n]?new TextDecoder().decode(arq[n]):"";
+  const xml=s=>new DOMParser().parseFromString(s,"application/xml");
+  const tag=(no,t)=>[...no.getElementsByTagName(t)];
+  /* o texto das células mora todo em sharedStrings, referenciado por índice */
+  const compart=[];
+  const ss=texto("xl/sharedStrings.xml");
+  if(ss) tag(xml(ss),"si").forEach(si=>compart.push(tag(si,"t").map(t=>t.textContent).join("")));
+  const nomeAba=Object.keys(arq).filter(n=>/^xl\/worksheets\/.+\.xml$/.test(n)).sort()[0];
+  if(!nomeAba) throw new Error("sheet");
+  const linhas=[];
+  tag(xml(texto(nomeAba)),"row").forEach(row=>{
+    const cels=[];
+    tag(row,"c").forEach(c=>{
+      const col=colunaExcel(c.getAttribute("r")), t=c.getAttribute("t");
+      const v=tag(c,"v")[0];
+      cels[col]= t==="s" ? (compart[+(v?v.textContent:-1)]??"")
+               : t==="inlineStr" ? tag(c,"t").map(x=>x.textContent).join("")
+               : (v?v.textContent:"");
+    });
+    for(let i=0;i<cels.length;i++) if(cels[i]==null) cels[i]="";
+    linhas.push(cels);
+  });
+  return linhas.filter(l=>l.some(c=>String(c).trim()));
+}
+/* .xls que na verdade é HTML com <table> — vários bancos exportam assim */
+function lerTabelaHTML(texto){
+  const d=new DOMParser().parseFromString(texto,"text/html");
+  const tabelas=[...d.getElementsByTagName("table")];
+  if(!tabelas.length) return [];
+  /* a maior tabela é a dos lançamentos; as outras são cabeçalho e layout */
+  const t=tabelas.reduce((a,b)=>b.rows.length>a.rows.length?b:a);
+  return [...t.rows].map(r=>[...r.cells].map(c=>c.textContent.replace(/\s+/g," ").trim()))
+    .filter(l=>l.some(c=>c));
 }
 /* Extrato brasileiro sai em UTF-8 ou Windows-1252 e o arquivo não diz qual é.
    TextDecoder com fatal:true recusa a sequência inválida — é isso que separa os
@@ -3210,7 +3299,7 @@ function lerArquivoImportacao(file){
   return new Promise((ok,falha)=>{
     const r=new FileReader();
     r.onerror=()=>falha(new Error("leitura"));
-    r.onload=()=>{ try{ ok(detectarEncodingCSV(r.result)); }catch(e){ falha(e); } };
+    r.onload=()=>ok(new Uint8Array(r.result));
     r.readAsArrayBuffer(file);
   });
 }
@@ -3255,6 +3344,15 @@ function normalizarValorImportacao(v){
 function normalizarDataImportacao(v){
   const s=String(v??"").trim();
   if(!s) return null;
+  /* planilha guarda data como número de dias desde 30/12/1899. A faixa evita
+     confundir com um valor qualquer: 20000 é 1954 e 60000 é 2064. */
+  if(/^\d{5}(\.\d+)?$/.test(s)){
+    const n=parseFloat(s);
+    if(n>=20000&&n<=60000){
+      const t=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);
+      return toISO(new Date(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate()));
+    }
+  }
   let y,m,d,mm;
   if((mm=s.match(/^(\d{4})(\d{2})(\d{2})/))){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
   else if((mm=s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
@@ -3629,7 +3727,8 @@ function sugerirCategoriaImportacao(desc,tipo){
 function ehLinhaDeSaldo(desc){
   const d=normalizarTextoImportacao(desc);
   return /^saldo\b/.test(d)||/\bsaldo (anterior|final|do dia|em conta|atual)\b/.test(d)||
-    /^total (do periodo|geral|de lancamentos)\b/.test(d);
+    /^total (do periodo|geral|de lancamentos|despesas|debitos|de pagamentos|de creditos)\b/.test(d)||
+    /^valor total\b/.test(d)||/^total a pagar\b/.test(d);
 }
 /* movimentação crua → movimentação validada; erro descrito, nunca silencioso */
 function normalizarMovimentacaoImportada(mov){
@@ -3784,7 +3883,7 @@ function abrirImportacao(){
   imp={ modo:"conta", contaId:S.accounts.length?S.accounts[0].id:null,
     cartaoId:S.cards.length?S.cards[0].id:null,
     arquivo:null, formato:null, encoding:null,
-    etapa:"arquivo", linhas:[], colunas:null, bruto:null, cabIdx:0, sep:null,
+    etapa:"arquivo", motivoRecusa:null, linhas:[], colunas:null, bruto:null, cabIdx:0, sep:null,
     q:"", flt:"todos", resultado:null };
   renderImportacao();
 }
@@ -3817,24 +3916,54 @@ async function processarArquivoImportacao(file){
   if(!imp) return;
   if(!file){ toast("Selecione um arquivo para continuar"); return; }
   if(file.size>IMP_MAX_BYTES){ toast("Arquivo muito grande — o limite é 10 MB"); return; }
-  let lido;
-  try{ lido=await lerArquivoImportacao(file); }
+  let bytes;
+  try{ bytes=await lerArquivoImportacao(file); }
   catch{ toast("Não foi possível ler o arquivo"); return; }
-  const formato=detectarFormatoArquivo(file.name,lido.texto);
-  if(!formato){ toast("Formato não suportado. Selecione um arquivo CSV ou OFX."); return; }
-  imp.arquivo=file.name; imp.formato=formato; imp.encoding=lido.encoding;
+  const formato=detectarFormatoArquivo(file.name,bytes);
+  imp.arquivo=file.name; imp.formato=formato;
 
+  /* PDF é o caso mais comum de recusa, e merece explicação em vez de um toast
+     que some: o usuário não fez nada errado, só baixou o formato que o banco
+     oferece primeiro. */
+  if(formato==="pdf"||formato==="xls-antigo"||!formato){
+    imp.motivoRecusa=formato||"desconhecido"; imp.etapa="naoLido"; renderImportacao(); return;
+  }
+
+  if(formato==="xlsx"){
+    let bruto;
+    try{ bruto=await lerXLSX(bytes); }
+    catch{ imp.motivoRecusa="xlsx"; imp.etapa="naoLido"; renderImportacao(); return; }
+    if(bruto.length<2){ toast("Nenhuma movimentação encontrada na planilha"); return; }
+    imp.encoding="planilha"; imp.sep=null; imp.bruto=bruto;
+    return escolherColunas();
+  }
+
+  const {texto:lidoTexto,encoding}=detectarEncodingCSV(bytes);
+  imp.encoding=encoding;
+
+  if(formato==="html"){
+    const bruto=lerTabelaHTML(lidoTexto);
+    if(bruto.length<2){ imp.motivoRecusa="html"; imp.etapa="naoLido"; renderImportacao(); return; }
+    imp.sep=null; imp.bruto=bruto;
+    return escolherColunas();
+  }
   if(formato==="ofx"){
-    const {movs,erro}=parseOFX(lido.texto);
+    const {movs,erro}=parseOFX(lidoTexto);
     if(erro==="ofx"){ toast("Não foi possível interpretar este arquivo OFX. Exporte direto pelo banco."); return; }
     if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
     imp.linhas=preLancamentosDe(movs,impAlvo(),"ofx");
     imp.etapa="revisao"; renderImportacao(); return;
   }
-  const sep=detectarSeparadorCSV(lido.texto);
-  const bruto=parseCSV(lido.texto,sep);
+  const sep=detectarSeparadorCSV(lidoTexto);
+  const bruto=parseCSV(lidoTexto,sep);
   if(bruto.length<2){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
   imp.sep=sep; imp.bruto=bruto;
+  return escolherColunas();
+}
+/* daqui em diante planilha, HTML e CSV seguem o mesmo caminho: virou tabela, a
+   detecção de colunas não precisa saber de onde veio */
+function escolherColunas(){
+  const bruto=imp.bruto;
   const cab=acharCabecalhoCSV(bruto);
   imp.cabIdx=cab.idx; imp.colunas=cab.cols;
   /* detecção duvidosa não importa em silêncio: pergunta em vez de errar calado */
@@ -3849,9 +3978,45 @@ function aplicarColunasImportacao(cols){
   imp.etapa="revisao"; renderImportacao();
 }
 
+/* O arquivo recusado não é culpa de quem escolheu: PDF costuma ser o primeiro
+   formato que o banco oferece. Explicar o caminho vale mais que um toast que
+   some em dois segundos. */
+const IMP_RECUSA={
+  pdf:["PDF não dá para importar",
+    "O PDF é feito para ser lido por gente, não por programa: no seu extrato as movimentações vêm no meio de propaganda, telefone do SAC e cotação do dólar, sem o ano na data e com o sinal depois do número. Ler isso sem errar não é possível de forma confiável."],
+  "xls-antigo":["Este Excel é do formato antigo (.xls)",
+    "O .xls antigo é um formato binário fechado. Abra no Excel ou no Google Planilhas e salve como <b>.xlsx</b> ou <b>.csv</b> — os dois funcionam aqui."],
+  xlsx:["Não foi possível ler esta planilha",
+    "O arquivo parece um .xlsx, mas não deu para abrir. Pode estar protegido por senha ou corrompido. Salvando de novo como <b>.csv</b> costuma resolver."],
+  html:["Não encontrei uma tabela neste arquivo",
+    "Ele parece uma página salva, mas sem tabela de lançamentos dentro. Baixe de novo em <b>CSV</b>, <b>Excel</b> ou <b>OFX</b>."],
+  desconhecido:["Formato não reconhecido",
+    "Não consegui identificar este arquivo. Baixe o extrato em <b>CSV</b>, <b>Excel (.xlsx)</b> ou <b>OFX</b>."]
+};
+function impTelaNaoLido(){
+  const [titulo,texto]=IMP_RECUSA[imp.motivoRecusa]||IMP_RECUSA.desconhecido;
+  return modalHead(titulo,esc(imp.arquivo||""))+
+  '<div class="imp-alerta" style="align-items:flex-start">'+ic("alert")+'<span>'+texto+'</span></div>'+
+  '<div class="surface" style="padding:16px;margin-bottom:14px">'+
+    '<div class="sec-head" style="margin:0 0 10px"><h2>O que funciona</h2></div>'+
+    '<div class="cap-list">'+
+      [["CSV","o formato mais simples, e o que dá menos problema"],
+       ["Excel (.xlsx)","a planilha que o banco baixa, sem precisar converter"],
+       ["OFX","o melhor de todos: traz o tipo e um identificador por lançamento"]
+      ].map(([t,d])=>'<div class="cap"><b>'+t+'</b><span>'+d+'</span></div>').join("")+
+    '</div>'+
+    '<div class="help" style="margin-top:12px"><b>Só tem PDF?</b> Abra o arquivo no Excel, '+
+    'no LibreOffice ou no Google Planilhas e salve como <b>CSV</b> ou <b>.xlsx</b>. '+
+    'Confira antes se as colunas de data, descrição e valor ficaram separadas — se tudo caiu numa coluna só, a conversão não pegou.</div>'+
+  '</div>'+
+  '<button class="btn" data-action="imp-escolher">'+ic("upload")+' Escolher outro arquivo</button>'+
+  '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt,.xlsx,.xls,.tsv" class="hidden">'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="fechar-importacao">Cancelar</button></div>';
+}
 function renderImportacao(){
   if(!imp) return;
-  if(imp.etapa==="colunas") openModal(impTelaColunas());
+  if(imp.etapa==="naoLido") openModal(impTelaNaoLido());
+  else if(imp.etapa==="colunas") openModal(impTelaColunas());
   else if(imp.etapa==="revisao") openModal(impTelaRevisao());
   else if(imp.etapa==="resultado") openModal(renderResumoImportacao());
   else openModal(impTelaArquivo());
@@ -3874,8 +4039,8 @@ function impTelaArquivo(){
       '<div class="help">Todas as movimentações do arquivo entram nesta conta, como já pagas. Dá para trocar depois, uma a uma.</div>')+
   '<label style="margin-top:16px">Arquivo</label>'+
   '<button type="button" class="btn ghost" data-action="imp-escolher">'+ic("upload")+' Selecionar extrato</button>'+
-  '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt" class="hidden">'+
-  '<div class="help">CSV ou OFX exportado pelo banco, até 10 MB. O arquivo é lido aqui no navegador — não sai do seu aparelho.</div>'+
+  '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt,.xlsx,.xls,.tsv" class="hidden">'+
+  '<div class="help">CSV, Excel (.xlsx) ou OFX exportado pelo banco, até 10 MB. <b>PDF não serve</b> — se for o único formato, abra no Excel ou no Google Planilhas e salve como CSV.<br>O arquivo é lido aqui no navegador, não sai do seu aparelho.</div>'+
   (u&&u.ids&&u.ids.length?'<div class="help" style="margin-top:16px">Última importação: <b>'+u.ids.length+
     '</b> lançamento(s). <b data-action="desfazer-importacao" style="color:var(--v-2);cursor:pointer">Desfazer</b></div>':"")+
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="fechar-importacao">Cancelar</button></div>';
