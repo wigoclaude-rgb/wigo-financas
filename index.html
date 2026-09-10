@@ -3293,7 +3293,7 @@ function parseOFX(texto){
     movs.push({
       data:normalizarDataImportacao(tagOFX(bloco,"DTPOSTED")),
       amount:normalizarValorImportacao(tagOFX(bloco,"TRNAMT")),
-      desc:descOFX(tagOFX(bloco,"NAME"),tagOFX(bloco,"MEMO"),tagOFX(bloco,"TRNTYPE")),
+      desc:limparDescricaoImportacao(descOFX(tagOFX(bloco,"NAME"),tagOFX(bloco,"MEMO"),tagOFX(bloco,"TRNTYPE"))),
       fitid:tagOFX(bloco,"FITID")||null
     });
   });
@@ -3353,7 +3353,12 @@ const IMP_COLS={
   valor:["valor","amount","valor movimentado","valor lancamento","montante","valor r","value"],
   debito:["debito","saida","retirada","valor debito","debitos"],
   credito:["credito","entrada","receita","valor credito","creditos"],
-  tipo:["tipo","tipo lancamento","natureza","tipo movimento","d c","dc"]
+  tipo:["tipo","tipo lancamento","natureza","tipo movimento","d c","dc"],
+  /* identificador único da linha, quando o banco manda: o Nubank manda um UUID
+     por transação, e ele é o melhor sinal de duplicidade que existe — melhor
+     que valor + data + descrição, porque não muda se o lançamento for editado */
+  id:["identificador","id da transacao","transaction id","autenticacao",
+      "codigo da transacao","numero do documento"]
 };
 /* Casa o cabeçalho por igualdade, depois por prefixo, depois por conteúdo —
    nessa ordem, para "valor" não roubar a coluna "valor debito". */
@@ -3369,10 +3374,35 @@ function detectarColunasCSV(cab){
     debito:acha(IMP_COLS.debito), credito:acha(IMP_COLS.credito), tipo:acha(IMP_COLS.tipo) };
   c.valor=acha(IMP_COLS.valor);
   if(c.valor!=null&&(c.valor===c.debito||c.valor===c.credito)) c.valor=null;
+  c.id=acha(IMP_COLS.id);
+  /* "id" sozinho só vale na igualdade: por conteúdo casaria "cidade", "liquidez" */
+  if(c.id==null){ const i=norm.indexOf("id"); c.id=i<0?null:i; }
+  if(c.id!=null&&(c.id===c.data||c.id===c.desc||c.id===c.valor)) c.id=null;
   if(c.desc!=null&&c.desc===c.data) c.desc=null;
   c.confiavel=c.data!=null&&c.desc!=null&&(c.valor!=null||c.debito!=null||c.credito!=null);
   return c;
 }
+/* Descrição de Pix vem com nome, CPF, banco, agência e conta numa linha só —
+   150 caracteres que na lista do app viram reticências e não identificam nada.
+   O que identifica o lançamento é o nome da outra ponta; o resto é ruído de
+   extrato, e continua guardado em descOriginal.
+
+   Só age quando a estrutura é reconhecível ("<o que é> - <NOME> - <resto>"):
+   descrição que não siga esse formato passa intacta. */
+function limparDescricaoImportacao(desc){
+  const s=String(desc||"").trim().replace(/\s+/g," ");
+  const p=s.split(" - ");
+  if(p.length<3) return s;
+  const nome=p[1].trim();
+  if(!nome||nome.length<2||nome.length>60||!/[A-Za-zÀ-ÿ]{2}/.test(nome)) return s;
+  const t=normalizarTextoImportacao(p[0]);
+  let cab=p[0].trim();
+  if(/pix/.test(t)) cab=/receb/.test(t)?"Pix recebido":(/envi/.test(t)?"Pix enviado":"Pix");
+  else if(/transferencia|ted|doc/.test(t)) cab=/receb/.test(t)?"Transferência recebida":"Transferência enviada";
+  else if(/compra|pagamento|debito/.test(t)) cab=p[0].trim();
+  return cab+" · "+nome;
+}
+
 /* Nem todo extrato começa pelo cabeçalho: muito banco põe antes o nome do
    relatório, a agência e o período. Procura nas primeiras linhas a que se
    identifica como cabeçalho de tabela; se nenhuma se identifica, fica com a
@@ -3408,8 +3438,11 @@ function mapearCSV(linhas,cols){
       if(/^(d|debito|debit|saida)$/.test(s)) amount=-Math.abs(amount);
       else if(/^(c|credito|credit|entrada)$/.test(s)) amount=Math.abs(amount);
     }
+    const bruta=String(l[cols.desc]??"").trim();
     movs.push({ data:normalizarDataImportacao(l[cols.data]), amount,
-      desc:String(l[cols.desc]??"").trim()||"Movimentação", fitid:null });
+      desc:limparDescricaoImportacao(bruta)||"Movimentação",
+      descBruta:bruta,
+      fitid:cols.id!=null?(String(l[cols.id]??"").trim()||null):null });
   });
   return movs;
 }
@@ -3570,7 +3603,7 @@ function normalizarMovimentacaoImportada(mov){
 function criarPreLancamento(mov,alvo0,origem,marcas){
   const ctx=ctxImportacao(alvo0);
   const base={ id:uid(), origem, fitid:mov.fitid||null, chave:null,
-    data:mov.data||"", descOriginal:mov.desc||"", desc:mov.desc||"",
+    data:mov.data||"", descOriginal:mov.descBruta||mov.desc||"", desc:mov.desc||"",
     amount:0, type:"exp", method:ctx.modo==="cartao"?"cartao":"debito", cat:"",
     modo:ctx.modo, accId:ctx.accId, cardId:ctx.cardId,
     duplicado:false, motivo:null, igualId:null, nota:null, selecionado:false, erro:null };
@@ -3581,11 +3614,18 @@ function criarPreLancamento(mov,alvo0,origem,marcas){
   /* na fatura, a linha do sinal invertido que fala em pagamento é a quitação da
      fatura anterior: fica visível, mas desmarcada */
   const pgto=ctx.modo==="cartao"&&type==="inc"&&ehPagamentoFatura(mov.desc);
+  /* No extrato da CONTA, "pagamento de fatura" é dinheiro que saiu de verdade —
+     mas quem também importa a fatura do cartão lança as compras uma a uma, e
+     elas debitam a conta quando a fatura é marcada como paga. Lançar os dois
+     cobra o mesmo dinheiro duas vezes. Fica marcado (é o caso de quem não usa a
+     fatura no app), com o aviso à vista. */
+  const fatConta=ctx.modo==="conta"&&type==="exp"&&ehPagamentoFatura(mov.desc);
   return Object.assign(base,{ chave:d.chave, amount:Math.abs(mov.amount), type,
     method:ctx.modo==="cartao"?"cartao":sugerirMetodoImportacao(mov.desc),
     cat:sugerirCategoriaImportacao(mov.desc,type),
     duplicado:d.dup, motivo:d.motivo, igualId:d.igual?d.igual.id:null,
-    nota:pgto?"Pagamento da fatura — já lançado pela conta":null,
+    nota:pgto?"Pagamento da fatura — já lançado pela conta"
+      :(fatConta?"Pagamento de fatura — não lance também as compras do cartão":null),
     selecionado:!d.dup&&!pgto });
 }
 function preLancamentosDe(movs,alvo0,origem){

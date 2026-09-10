@@ -267,6 +267,20 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   mesmo lançamento digitado com outro nome, pode ser coincidência) nasce marcado e
   apenas sinalizado. Rebaixar o segundo a "duplicado" faria o usuário desmarcar
   gasto de verdade; ignorá-lo deixaria passar repetição.
+- **Identificador do banco é a melhor marca de origem que existe.** Quando o
+  arquivo traz uma coluna de id (o extrato do Nubank manda um UUID por
+  transação), ela vira o `impId` — não muda se o lançamento for editado e não
+  depende de valor, data nem descrição casarem.
+- **Descrição de Pix é encurtada para o nome da outra ponta.** O extrato manda
+  150 caracteres com nome, CPF, banco, agência e conta; na lista do app isso vira
+  reticências e não identifica nada. `limparDescricaoImportacao` guarda o que
+  importa ("Pix enviado · FULANO") e a linha crua fica em `descOriginal`. De
+  quebra some um falso positivo de categoria: "PAGSEGURO **INTERNET** IP S.A."
+  virava Internet/Telefone num Pix para pessoa física.
+- **"Pagamento de fatura" no extrato da conta ganha aviso.** Quem também importa
+  a fatura do cartão lança as compras uma a uma, e elas debitam a conta quando a
+  fatura é marcada como paga — lançar os dois cobra o mesmo dinheiro duas vezes.
+  Fica marcado, porque quem não usa a fatura no app quer esse lançamento.
 - **O selo nomeia o lançamento que casou**, com data e valor. Dizer "já está no
   app" sem dizer com o quê obriga a sair da tela para conferir — que é justamente
   o trabalho que a importação existe para poupar.
