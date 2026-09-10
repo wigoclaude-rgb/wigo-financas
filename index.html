@@ -915,6 +915,8 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .parc-doc .chip{justify-self:end}
 .parc-doc .pd-row .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .parc-doc .pd-row .nw{white-space:nowrap;color:var(--ink-3)}
+/* a coluna de 52px do documento de parcelamento cabe "3/12", não uma data inteira */
+.doc-baixa .pd-row{grid-template-columns:82px 1fr auto}
 
 /* ---------- importar extrato ---------- */
 .imp-alerta{display:flex;gap:9px;align-items:flex-start;background:var(--warn-bg);
@@ -4680,8 +4682,9 @@ function consRedesenha(){
    precisa ajustar juros de UM lançamento usa o Pagar da linha. */
 function openConsBaixa(){
   if(!cons) return;
+  /* só o que ainda está em aberto: o que já foi baixado não é assunto desta
+     tela, e sim do saldo da pessoa. */
   const alvo=aTx().filter(t=>cons.sel.has(t.id)&&!t.paid);
-  const jaPagos=cons.sel.size-alvo.length;
   if(!alvo.length){ toast("Os selecionados já estão baixados"); return; }
   const rec=alvo.filter(t=>t.type==="inc"), pag=alvo.filter(t=>t.type!=="inc");
   const vRec=sum(rec,val), vPag=sum(pag,val);
@@ -4695,9 +4698,6 @@ function openConsBaixa(){
     (rec.length?'<div><b class="up">'+fmt(vRec)+'</b><span>'+rec.length+' a receber</span></div>':"")+
     (pag.length?'<div><b class="down">'+fmt(vPag)+'</b><span>'+pag.length+' a pagar</span></div>':"")+
   '</div>'+
-  (jaPagos?'<div class="imp-alerta">'+ic("alert")+'<span>'+jaPagos+
-    ' dos selecionados já estava'+(jaPagos>1?"m":"")+' baixado'+(jaPagos>1?"s":"")+
-    ' e fica'+(jaPagos>1?"m":"")+' como está'+(jaPagos>1?"ão":"")+'.</span></div>':"")+
   '<form id="fConsBaixa">'+
   '<label>Data do pagamento</label><input id="cbData" type="date" value="'+todayISO()+'" required>'+
   '<div class="help">Vale para todos. É esta data que decide em que mês o dinheiro entra ou sai do saldo.</div>'+
@@ -4705,7 +4705,7 @@ function openConsBaixa(){
     '<select id="cbConta"><option value="">Manter a de cada lançamento</option>'+
     S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>'+
     '<div class="help">Só mude se todos saíram (ou entraram) pela mesma conta.</div>':"")+
-  '<div class="parc-doc" style="margin-top:14px">'+
+  '<div class="parc-doc doc-baixa" style="margin-top:14px">'+
     '<div class="pd-cap">O que será baixado</div>'+lista+
     (alvo.length>40?'<div class="pd-row"><span></span><span class="faint">e mais '+
       (alvo.length-40)+'…</span><span></span></div>':"")+
