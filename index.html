@@ -3344,10 +3344,13 @@ function parseCSV(texto,sep){
 
 const IMP_COLS={
   data:["data","dt","date","data lancamento","data movimento","data movimentacao",
-        "data da compra","data operacao","data balancete"],
+        "data da compra","data operacao","data balancete","transaction date","data transacao"],
+  /* "title" e "description" entram porque fintech exporta em inglês — a fatura
+     do Nubank sai como date,title,amount */
   desc:["descricao","historico","lancamento","memo","nome","detalhe","estabelecimento",
-        "descricao lancamento","historico lancamento","transacao"],
-  valor:["valor","amount","valor movimentado","valor lancamento","montante","valor r"],
+        "descricao lancamento","historico lancamento","transacao","title","description",
+        "merchant","local","titulo"],
+  valor:["valor","amount","valor movimentado","valor lancamento","montante","valor r","value"],
   debito:["debito","saida","retirada","valor debito","debitos"],
   credito:["credito","entrada","receita","valor credito","creditos"],
   tipo:["tipo","tipo lancamento","natureza","tipo movimento","d c","dc"]
@@ -3440,15 +3443,23 @@ function compararDescricoesImportacao(a,b){
    Data com folga de um dia porque o banco lança no dia seguinte com frequência.
    Valor igual sozinho NÃO é duplicata: dois cafés de R$ 15 no mesmo dia são
    duas compras, e a descrição é o que separa. */
-function ehDuplicadoImportacao(mov,accId,marcas){
+function ehDuplicadoImportacao(mov,alvo0,marcas){
+  const ctx=ctxImportacao(alvo0);
+  const noCartao=ctx.modo==="cartao";
+  const dono=noCartao?("card:"+ctx.cardId):ctx.accId;
   const chave=mov.fitid||gerarHashImportacao(
-    accId+"|"+mov.data+"|"+Math.abs(mov.amount).toFixed(2)+"|"+normalizarTextoImportacao(mov.desc));
+    dono+"|"+mov.data+"|"+Math.abs(mov.amount).toFixed(2)+"|"+normalizarTextoImportacao(mov.desc));
   if(marcas&&marcas.has(chave))
     return {dup:true,chave,igual:aTx().find(t=>t.impId===chave)||null,motivo:"marca"};
-  const alvo=Math.abs(mov.amount), quando=daysTo(mov.data);
+  /* a linha da fatura traz a data da COMPRA, e o lançamento guarda o
+     VENCIMENTO — comparar as duas cruas nunca casaria. */
+  const cartao=noCartao?cardOf(ctx.cardId):null;
+  const dataComp=(cartao&&mov.data)?cardFirstDue(cartao,mov.data):mov.data;
+  const alvo=Math.abs(mov.amount), quando=daysTo(dataComp);
   let igual=null, confira=null;
   aTx().some(t=>{
-    if(t.accId!==accId&&t.accTo!==accId) return false;
+    if(noCartao){ if(t.cardId!==ctx.cardId) return false; }
+    else if(t.accId!==ctx.accId&&t.accTo!==ctx.accId) return false;
     if(Math.abs(Math.abs(val(t))-alvo)>0.005) return false;
     const dt=t.paid?(t.payDate||t.due):t.due;
     const dif=Math.abs(daysTo(dt)-quando);
@@ -3464,7 +3475,36 @@ function ehDuplicadoImportacao(mov,accId,marcas){
   return {dup:false,chave,igual:null,motivo:null};
 }
 
-function sugerirTipoImportacao(mov){ return mov.amount<0?"exp":"inc"; }
+/* A importação atende dois documentos diferentes, e a diferença não é cosmética:
+   no extrato de CONTA o dinheiro já saiu, e na fatura de CARTÃO ainda não — ele
+   sai quando a fatura é paga. Por isso o alvo pode ser uma conta ou um cartão, e
+   é ele que decide o formato do lançamento lá no fim.
+
+   Aceita uma string como atalho para o caso de conta, que é o mais comum. */
+function ctxImportacao(alvo){
+  if(typeof alvo==="string"||!alvo) return {modo:"conta",accId:alvo||null,cardId:null,sinal:-1};
+  return alvo;
+}
+/* `sinal` é QUAL SINAL REPRESENTA DESPESA, e ele não é o mesmo nos dois
+   documentos: no extrato de conta despesa é negativa (o dinheiro saiu), e numa
+   fatura depende do banco — o Nubank manda a compra positiva, o OFX de cartão
+   manda negativa. Por isso a conta usa -1 fixo e a fatura pergunta à maioria. */
+function sugerirTipoImportacao(mov,sinal){
+  return Math.sign(mov.amount)===(sinal||-1)?"exp":"inc";
+}
+/* Numa fatura a maioria das linhas é compra, então o sinal predominante é o da
+   despesa — e o oposto é estorno ou pagamento da fatura. */
+function sinalFatura(movs){
+  let pos=0,neg=0;
+  movs.forEach(m=>{ if(isNaN(m.amount)||!m.amount) return; m.amount>0?pos++:neg++; });
+  return neg>pos?-1:1;
+}
+/* "PAGAMENTO RECEBIDO" na fatura é a quitação da fatura anterior, que já foi
+   lançada do lado da conta. Importar de novo criaria uma receita que nunca
+   existiu e a fatura do mês pareceria menor do que é. */
+function ehPagamentoFatura(desc){
+  return /\b(pagamento|pgto|pagto)\b/.test(normalizarTextoImportacao(desc));
+}
 
 /* nunca "cartao" nem "ticket": o extrato é da conta, e a fatura do cartão é
    outro lugar do app — atribuir aqui faria o valor sair duas vezes */
@@ -3527,27 +3567,39 @@ function normalizarMovimentacaoImportada(mov){
 /* movimentação validada → pré-lançamento, com as sugestões e o aviso de
    duplicidade já resolvidos. amount é sempre POSITIVO: no WIGO quem carrega o
    sinal é o type, como val() e signed() esperam. */
-function criarPreLancamento(mov,accId,origem,marcas){
+function criarPreLancamento(mov,alvo0,origem,marcas){
+  const ctx=ctxImportacao(alvo0);
   const base={ id:uid(), origem, fitid:mov.fitid||null, chave:null,
     data:mov.data||"", descOriginal:mov.desc||"", desc:mov.desc||"",
-    amount:0, type:"exp", method:"debito", cat:"", accId,
-    duplicado:false, motivo:null, igualId:null, selecionado:false, erro:null };
+    amount:0, type:"exp", method:ctx.modo==="cartao"?"cartao":"debito", cat:"",
+    modo:ctx.modo, accId:ctx.accId, cardId:ctx.cardId,
+    duplicado:false, motivo:null, igualId:null, nota:null, selecionado:false, erro:null };
   const v=normalizarMovimentacaoImportada(mov);
   if(!v.ok) return Object.assign(base,{erro:v.erro});
-  const type=sugerirTipoImportacao(mov);
-  const d=ehDuplicadoImportacao(mov,accId,marcas);
+  const type=sugerirTipoImportacao(mov,ctx.sinal);
+  const d=ehDuplicadoImportacao(mov,ctx,marcas);
+  /* na fatura, a linha do sinal invertido que fala em pagamento é a quitação da
+     fatura anterior: fica visível, mas desmarcada */
+  const pgto=ctx.modo==="cartao"&&type==="inc"&&ehPagamentoFatura(mov.desc);
   return Object.assign(base,{ chave:d.chave, amount:Math.abs(mov.amount), type,
-    method:sugerirMetodoImportacao(mov.desc),
+    method:ctx.modo==="cartao"?"cartao":sugerirMetodoImportacao(mov.desc),
     cat:sugerirCategoriaImportacao(mov.desc,type),
     duplicado:d.dup, motivo:d.motivo, igualId:d.igual?d.igual.id:null,
-    selecionado:!d.dup });
+    nota:pgto?"Pagamento da fatura — já lançado pela conta":null,
+    selecionado:!d.dup&&!pgto });
 }
-function preLancamentosDe(movs,accId,origem){
+function preLancamentosDe(movs,alvo0,origem){
+  const ctx=ctxImportacao(alvo0);
   /* marcas já usadas: o que veio de importação anterior e, conforme a lista
      cresce, o próprio arquivo — extrato repetido dentro do mesmo CSV existe */
   const marcas=new Set(aTx().map(t=>t.impId).filter(Boolean));
+  /* o sinal é do DOCUMENTO, não de quem chamou: no extrato de conta despesa é
+     sempre negativa, e na fatura quem decide é a maioria. Derivar aqui em vez de
+     confiar no parâmetro — um sinal errado inverte tipo, categoria e filtros de
+     uma vez só, e em silêncio. */
+  ctx.sinal=ctx.modo==="cartao"?sinalFatura(movs):-1;
   return movs.map(m=>{
-    const pre=criarPreLancamento(m,accId,origem,marcas);
+    const pre=criarPreLancamento(m,ctx,origem,marcas);
     if(pre.chave) marcas.add(pre.chave);
     return pre;
   });
@@ -3563,11 +3615,26 @@ function preLancamentosDe(movs,accId,origem){
    do extrato e competência no mês em que ocorreu. Sem categoria vira "Outros",
    que existe nas duas listas — cat vazia deixaria um grupo sem nome no donut. */
 function criarLancamentoImportado(pre){
+  const noCartao=pre.modo==="cartao"&&pre.cardId;
+  const c=noCartao?cardOf(pre.cardId):null;
+  /* Extrato de conta e fatura de cartão são documentos diferentes, e o lançamento
+     sai diferente de cada um:
+
+     - conta: o dinheiro JÁ saiu. paid:true, due e payDate na data do extrato.
+     - cartão: o dinheiro AINDA NÃO saiu. A linha traz a data da COMPRA, o
+       vencimento sai do fechamento do cartão, e a compra não pertence a conta
+       nenhuma — quem debita a conta é o pagamento da fatura, em Carteira. Marcar
+       como paga aqui faria o valor sair duas vezes: na compra e na fatura.
+
+     A competência é sempre o mês em que a coisa aconteceu, então uma compra de
+     30/09 que vence em 10/10 continua pesando em setembro na Análise. */
+  const due=(noCartao&&c&&pre.data)?cardFirstDue(c,pre.data):pre.data;
   const gid=createTx({ type:pre.type, dest:null, desc:pre.desc, cat:pre.cat||"Outros",
-    method:pre.method, cardId:null, ticketId:null, goalId:null,
-    accId:pre.accId, pesId:null, comp:mkey(pre.data),
+    method:noCartao?"cartao":pre.method,
+    cardId:noCartao?pre.cardId:null, ticketId:null, goalId:null,
+    accId:noCartao?null:pre.accId, pesId:null, comp:mkey(pre.data),
     kind:"avista", total:pre.amount, n:2, paidCount:0, months:12,
-    firstDue:pre.data, alreadyPaid:true, payDate:pre.data });
+    firstDue:due, alreadyPaid:!noCartao, payDate:pre.data });
   /* marca de origem: é o que impede a próxima importação do mesmo extrato de
      duplicar o que já entrou, mesmo depois de o lançamento ser editado */
   S.tx.forEach(t=>{ if(t.gid===gid) t.impId=pre.chave||null; });
@@ -3608,8 +3675,11 @@ function desfazerUltimaImportacao(){
 /* ---------- camada 4: UI ---------- */
 
 function abrirImportacao(){
-  if(!S.accounts.length){ toast("Cadastre uma conta antes de importar um extrato"); return; }
-  imp={ contaId:S.accounts[0].id, arquivo:null, formato:null, encoding:null,
+  if(!S.accounts.length&&!S.cards.length){
+    toast("Cadastre uma conta ou um cartão antes de importar"); return; }
+  imp={ modo:"conta", contaId:S.accounts.length?S.accounts[0].id:null,
+    cartaoId:S.cards.length?S.cards[0].id:null,
+    arquivo:null, formato:null, encoding:null,
     etapa:"arquivo", linhas:[], colunas:null, bruto:null, cabIdx:0, sep:null,
     q:"", flt:"todos", resultado:null };
   renderImportacao();
@@ -3618,6 +3688,21 @@ function fecharImportacao(){ imp=null; closeModal(); }
 function descartarImportacao(){
   if(imp&&imp.linhas.length&&!confirm("Descartar as movimentações lidas? Nada foi lançado ainda.")) return;
   imp=null; closeModal(); toast("Importação descartada");
+}
+/* o alvo em um lugar só: quem lê o arquivo, quem compara duplicidade e quem
+   cria o lançamento perguntam todos aqui */
+function impAlvo(){
+  return imp.modo==="cartao"
+    ? {modo:"cartao",accId:null,cardId:imp.cartaoId,sinal:1}
+    : {modo:"conta",accId:imp.contaId,cardId:null,sinal:-1};
+}
+function impNomeAlvo(){
+  if(imp.modo==="cartao"){ const c=cardOf(imp.cartaoId); return c?c.nick:"Cartão"; }
+  const a=accOf(imp.contaId); return a?a.name:"Conta";
+}
+function impCartoes(sel){
+  return S.cards.map(c=>'<option value="'+c.id+'"'+(c.id===sel?" selected":"")+'>'+
+    esc(c.nick)+(c.bank?" ("+esc(c.bank)+")":"")+'</option>').join("");
 }
 function impContas(sel){
   return S.accounts.map(a=>'<option value="'+a.id+'"'+(a.id===sel?" selected":"")+'>'+esc(a.name)+'</option>').join("");
@@ -3639,7 +3724,7 @@ async function processarArquivoImportacao(file){
     const {movs,erro}=parseOFX(lido.texto);
     if(erro==="ofx"){ toast("Não foi possível interpretar este arquivo OFX. Exporte direto pelo banco."); return; }
     if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
-    imp.linhas=preLancamentosDe(movs,imp.contaId,"ofx");
+    imp.linhas=preLancamentosDe(movs,impAlvo(),"ofx");
     imp.etapa="revisao"; renderImportacao(); return;
   }
   const sep=detectarSeparadorCSV(lido.texto);
@@ -3656,7 +3741,7 @@ function aplicarColunasImportacao(cols){
   const movs=mapearCSV(imp.bruto.slice((imp.cabIdx||0)+1),cols);
   if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
   imp.colunas=cols;
-  imp.linhas=preLancamentosDe(movs,imp.contaId,"csv");
+  imp.linhas=preLancamentosDe(movs,impAlvo(),"csv");
   imp.etapa="revisao"; renderImportacao();
 }
 
@@ -3669,9 +3754,20 @@ function renderImportacao(){
 }
 function impTelaArquivo(){
   const u=S.ultimaImportacao;
+  const noCartao=imp.modo==="cartao";
   return modalHead("Importar extrato","Vira pré-lançamento, não lançamento: você revisa antes")+
-  '<label>Conta</label><select id="impConta">'+impContas(imp.contaId)+'</select>'+
-  '<div class="help">Todas as movimentações do arquivo entram nesta conta. Dá para trocar depois, uma a uma.</div>'+
+  '<div class="seg">'+
+    '<button type="button" class="'+(noCartao?"":"on")+'" data-action="imp-modo" data-v="conta"'+
+      (S.accounts.length?"":" disabled")+'>'+ic("bank")+' Extrato de conta</button>'+
+    '<button type="button" class="'+(noCartao?"on":"")+'" data-action="imp-modo" data-v="cartao"'+
+      (S.cards.length?"":" disabled")+'>'+ic("card")+' Fatura de cartão</button>'+
+  '</div>'+
+  (noCartao
+    ? '<label>Cartão</label><select id="impCartao">'+impCartoes(imp.cartaoId)+'</select>'+
+      '<div class="help">As compras entram <b>em aberto</b>, vencendo na fatura certa pelo dia de fechamento do cartão. '+
+      'Elas não saem de conta nenhuma agora — quem debita é o pagamento da fatura, em Carteira.</div>'
+    : '<label>Conta</label><select id="impConta">'+impContas(imp.contaId)+'</select>'+
+      '<div class="help">Todas as movimentações do arquivo entram nesta conta, como já pagas. Dá para trocar depois, uma a uma.</div>')+
   '<label style="margin-top:16px">Arquivo</label>'+
   '<button type="button" class="btn ghost" data-action="imp-escolher">'+ic("upload")+' Selecionar extrato</button>'+
   '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt" class="hidden">'+
@@ -3702,9 +3798,9 @@ function impTelaColunas(){
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="descartar-importacao">Cancelar</button></div>';
 }
 function impTelaRevisao(){
-  const a=accOf(imp.contaId);
   return modalHead("Revisar importação",
-    (a?esc(a.name)+" · ":"")+(imp.formato||"").toUpperCase()+(imp.encoding?" · "+imp.encoding:""))+
+    esc(impNomeAlvo())+" · "+(imp.modo==="cartao"?"fatura":"extrato")+" · "+
+    (imp.formato||"").toUpperCase()+(imp.encoding?" · "+imp.encoding:""))+
   '<div id="impStats">'+renderResumoContagem()+'</div>'+
   '<input id="impBusca" placeholder="Buscar movimentação…" autocomplete="off" value="'+esc(imp.q)+'">'+
   '<div class="chips" id="impChips" style="margin-top:10px">'+impChips()+'</div>'+
@@ -3784,6 +3880,7 @@ function renderListaPreLancamentos(){
       '<div class="imp-mid" data-action="editar-pre-lancamento" data-id="'+l.id+'">'+
         '<b>'+esc(l.desc)+'</b><span class="faint">'+esc(meta)+'</span>'+
         impSeloIgual(l)+
+        (l.nota?'<span class="chip proximo">'+esc(l.nota)+'</span>':"")+
         (l.erro?'<span class="chip atrasado">'+esc(l.erro)+'</span>':"")+'</div>'+
       '<div class="imp-rt"><b class="'+(l.type==="inc"?"up":"down")+'">'+
         (l.erro?"—":(l.type==="inc"?"+":"−")+fmt(l.amount))+'</b>'+
@@ -3830,11 +3927,14 @@ function openPreEdit(id){
     '<option value="exp"'+(l.type==="exp"?" selected":"")+'>Gasto</option>'+
     '<option value="inc"'+(l.type==="inc"?" selected":"")+'>Receita</option></select>'+
   '<label style="margin-top:12px">Categoria</label><select id="ieCat">'+impCatOptions(l.type,l.cat)+'</select>'+
-  '<label style="margin-top:12px">Método</label><select id="ieMet">'+
-    Object.entries(METHODS).filter(([k])=>k!=="cartao"&&k!=="ticket")
-      .map(([k,v])=>'<option value="'+k+'"'+(k===l.method?" selected":"")+'>'+esc(v)+'</option>').join("")+'</select>'+
-  '<div class="help">Cartão e ticket não entram por aqui: o extrato é da conta, e a fatura do cartão se paga em Carteira.</div>'+
-  '<label style="margin-top:12px">Conta</label><select id="ieAcc">'+impContas(l.accId)+'</select>'+
+  (l.modo==="cartao"
+    ? '<label style="margin-top:12px">Cartão</label><select id="ieCard">'+impCartoes(l.cardId)+'</select>'+
+      '<div class="help">Compra de cartão não sai de conta nenhuma agora: ela vence na fatura, e o débito acontece quando você marca a fatura como paga.</div>'
+    : '<label style="margin-top:12px">Método</label><select id="ieMet">'+
+        Object.entries(METHODS).filter(([k])=>k!=="cartao"&&k!=="ticket")
+          .map(([k,v])=>'<option value="'+k+'"'+(k===l.method?" selected":"")+'>'+esc(v)+'</option>').join("")+'</select>'+
+      '<div class="help">Cartão e ticket não entram por aqui: o extrato é da conta, e a fatura do cartão se paga em Carteira.</div>'+
+      '<label style="margin-top:12px">Conta</label><select id="ieAcc">'+impContas(l.accId)+'</select>')+
   '<button class="btn" type="submit" style="margin-top:16px">Salvar</button></form>'+
   '<div class="act-row"><button type="button" class="btn small ghost" data-action="imp-voltar">Voltar sem salvar</button></div>');
 }
@@ -4642,6 +4742,7 @@ document.addEventListener("click", async e=>{
     case "confirmar-importacao": confirmarPreLancamentos(); break;
     case "marcar-todos-importacao": marcarTodosImportacao(el.dataset.v==="1"); break;
     case "imp-flt": if(imp){ imp.flt=el.dataset.v; impRedesenhaRevisao(); } break;
+    case "imp-modo": if(imp){ imp.modo=el.dataset.v; renderImportacao(); } break;
     case "editar-pre-lancamento": openPreEdit(id); break;
     case "imp-voltar": if(imp){ imp.etapa="revisao"; renderImportacao(); } break;
     case "desfazer-importacao": desfazerUltimaImportacao(); break;
@@ -4723,10 +4824,11 @@ document.addEventListener("change", e=>{
     if(nm&&!arr.includes(nm.trim()))arr.push(nm.trim());
     save(); t.innerHTML=catOptions(tx.type,nm?nm.trim():tx.cat); }
   if(t.id==="impArquivo"){ const arq=t.files[0]; t.value=""; processarArquivoImportacao(arq); }
+  if(t.id==="impCartao"&&imp) imp.cartaoId=t.value;
   if(t.id==="impConta"&&imp){ imp.contaId=t.value;
     /* trocar a conta refaz a duplicidade: o mesmo valor em outra conta é outro
        lançamento, e o que era duplicado ali pode não ser aqui */
-    imp.linhas.forEach(l=>{ if(l.erro) return;
+    imp.linhas.forEach(l=>{ if(l.erro||l.modo==="cartao") return;
       l.accId=t.value;
       const r=ehDuplicadoImportacao({data:l.data,amount:l.amount,desc:l.desc,fitid:l.fitid},t.value,null);
       l.duplicado=r.dup; l.chave=r.chave; l.motivo=r.motivo;
@@ -4773,14 +4875,17 @@ document.addEventListener("submit", async e=>{
     l.desc=$("#ieDesc").value.trim()||l.desc;
     l.data=d; l.amount=Math.abs(v);
     l.type=$("#ieTipo").value; l.cat=$("#ieCat").value;
-    l.method=$("#ieMet").value; l.accId=$("#ieAcc").value;
-    l.erro=null; l.selecionado=true;
+    if(l.modo==="cartao"){ if($("#ieCard")) l.cardId=$("#ieCard").value; }
+    else { if($("#ieMet")) l.method=$("#ieMet").value;
+           if($("#ieAcc")) l.accId=$("#ieAcc").value; }
+    l.erro=null; l.nota=null; l.selecionado=true;
     /* a marca de origem identifica a LINHA DO ARQUIVO, e não o resultado da
        edição: se mudasse aqui, reimportar o mesmo extrato deixaria de
        reconhecer o que já entrou e criaria tudo de novo. Só é calculada agora
        quando a linha nasceu com erro e nunca chegou a ter uma. */
     if(!l.chave) l.chave=l.fitid||gerarHashImportacao(
-      l.accId+"|"+l.data+"|"+l.amount.toFixed(2)+"|"+normalizarTextoImportacao(l.desc));
+      (l.modo==="cartao"?"card:"+l.cardId:l.accId)+"|"+l.data+"|"+
+      l.amount.toFixed(2)+"|"+normalizarTextoImportacao(l.desc));
     imp.etapa="revisao"; renderImportacao(); toast("Movimentação atualizada ✓"); }
   else if(f.id==="fAcc"){
     const id=f.dataset.id;

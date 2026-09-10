@@ -229,9 +229,23 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   estrutura fora de `S` (`imp`, como `filters` e `rep`), e só a confirmação chama
   `createTx` — o mesmo caminho da criação manual. Uma segunda porta de entrada em
   `S.tx` faria qualquer regra futura de criação valer só para metade do app.
-- **Extrato é dinheiro que já se moveu.** Nasce `paid:true`, com `due` e `payDate`
-  na data do arquivo, `kind:"avista"` e competência no mês em que ocorreu. A
-  importação nunca cria previsão.
+- **Extrato de conta e fatura de cartão são documentos diferentes, e o lançamento
+  sai diferente de cada um.** No extrato de conta o dinheiro já saiu: `paid:true`,
+  `due` e `payDate` na data do arquivo. Na fatura ainda não saiu: a linha traz a
+  data da **compra**, o vencimento sai do `closeDay`/`dueDay` do cartão via
+  `cardFirstDue`, `accId` fica **null** e `paid:false`. Marcar a compra como paga
+  faria o valor sair duas vezes — na compra e de novo quando a fatura for paga.
+  Em ambos, `kind:"avista"` e competência no mês em que a coisa aconteceu, então
+  uma compra de 30/09 que vence em 10/10 continua pesando em setembro na Análise.
+  A importação nunca cria previsão a partir de extrato de conta.
+- **`sinal` é qual sinal representa despesa, e é derivado do documento, nunca
+  recebido por parâmetro.** No extrato de conta despesa é sempre negativa; numa
+  fatura depende do banco (Nubank manda a compra positiva, OFX de cartão manda
+  negativa), então quem decide é a maioria das linhas (`sinalFatura`). Confiar no
+  parâmetro já inverteu tipo, categoria e filtros de uma vez, em silêncio.
+- **A linha de "pagamento" na fatura nasce desmarcada.** É a quitação da fatura
+  anterior, que já foi lançada do lado da conta; importar de novo criaria uma
+  receita que nunca existiu.
 - **Três coisas nunca são inferidas:** transferência (`type:"xfer"`), cartão
   (`cardId`/`method:"cartao"`) e poupança (`dest:"savings"`) — mesmo quando o
   histórico diz "TED", "cartão" ou "reserva". As três dependem de intenção, que o
