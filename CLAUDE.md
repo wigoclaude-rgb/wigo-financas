@@ -357,6 +357,12 @@ baixas ou os dois), período por atalho ou por data, origem e categoria.
   fosse refeita sobre o filtro, "só as baixas" mostraria um saldo que nunca
   existiu. O rodapé separa as duas coisas: soma do filtro de um lado, saldo da
   conta na última linha, e um aviso quando há filtro ativo.
+- **O lado vai pelo sinal do movimento, não pelo tipo do lançamento.** Quem olha
+  a coluna Valor espera achar os `+` em "A receber" e os `−` em "A pagar". Pelo
+  tipo, o recebimento de uma receita (negativo, porque abate a dívida) caía em
+  "A receber", e o pagamento de uma despesa (positivo) em "A pagar". Os rótulos
+  levam o sinal junto — `A receber (+)`, `A pagar (−)` — e os dois lados somados
+  continuam sendo o extrato inteiro.
 - **`razFiltrando()` ignora o período** de propósito: o aviso é sobre linhas
   escondidas, e o período não esconde nada — ele já foi contabilizado no saldo
   anterior.
