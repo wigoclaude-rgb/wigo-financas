@@ -597,6 +597,8 @@ input[type=date],input[type=month]{-webkit-appearance:none}
 .stat .v{font-family:var(--f-display);font-weight:700;font-size:19px;margin-top:5px;
   font-variant-numeric:tabular-nums;letter-spacing:-.025em}
 .stat .s{font-size:var(--t-xs);color:var(--ink-3);margin-top:3px}
+.stat.tap{cursor:pointer;transition:border-color .15s,background .15s}
+.stat.tap:hover{border-color:var(--v-2);background:var(--s-1)}
 .stat.mini{padding:var(--sp-3)}
 .stat.mini .v{font-size:16px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-bottom:var(--sp-4)}
@@ -817,6 +819,172 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
   font-size:var(--t-sm);color:var(--ink-2)}
 .picked-list b{color:var(--ink);font-variant-numeric:tabular-nums}
 
+/* ---------- consulta de contas a receber e a pagar ---------- */
+.cons-tot{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.cons-tot div{flex:1;min-width:108px;background:var(--s-1);border:1px solid var(--line);
+  border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.cons-tot b{font-family:var(--f-display);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.cons-tot b.up{color:var(--up)}
+.cons-tot b.down{color:var(--down)}
+.cons-tot span{font-size:var(--t-xs);color:var(--ink-3)}
+.cons-selects{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:10px}
+.seg .n{background:rgba(255,255,255,.16);padding:1px 6px;border-radius:var(--r-full);
+  font-size:10px;margin-left:4px}
+
+.grade{background:var(--s-1);border:1px solid var(--line);border-radius:var(--r-md)}
+.gr-row{display:grid;
+  grid-template-columns:32px 88px minmax(0,1fr) 110px 108px 118px 48px 104px 118px;
+  gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);
+  font-size:var(--t-sm)}
+.gr-row:last-child{border-bottom:none}
+.gr-row.sel{background:var(--grad-v-soft)}
+.gr-head{color:var(--ink-4);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.04em;background:var(--s-2);border-radius:var(--r-md) var(--r-md) 0 0}
+.gr-row .ttl{font-weight:600;cursor:pointer}
+.gr-row .ttl:hover{color:var(--v-2)}
+.gr-row .ttl,.gr-row .faint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-row .faint{font-size:var(--t-xs)}
+.gr-row .r{text-align:right}
+.gr-row .v{font-variant-numeric:tabular-nums;font-weight:650}
+.gr-row .v.up{color:var(--up)}
+.gr-row .v.down{color:var(--down)}
+.gr-row .nw{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-xs)}
+.gr-row .nw.atraso{color:var(--down);font-weight:700}
+.gr-row .chip{white-space:nowrap}
+/* razão da pessoa: mesma ideia da grade, com as colunas de um extrato de conta */
+.raz{background:var(--s-1);border:1px solid var(--line);border-radius:var(--r-md);margin-top:10px}
+.rz-row{display:grid;grid-template-columns:84px minmax(0,1fr) 124px 106px 112px;
+  gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);
+  font-size:var(--t-sm)}
+.rz-row:last-child{border-bottom:none}
+.rz-head{color:var(--ink-4);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.04em;background:var(--s-2);border-radius:var(--r-md) var(--r-md) 0 0}
+.rz-row.ini,.rz-row.fim{background:var(--s-2)}
+.rz-row.fim{border-radius:0 0 var(--r-md) var(--r-md)}
+.rz-row.ini .ttl,.rz-row.fim .ttl{font-weight:700;color:var(--ink-2)}
+.rz-row .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rz-row .ttl.tap{cursor:pointer}
+.rz-row .ttl.tap:hover{color:var(--v-2)}
+.rz-row .nw{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-xs);color:var(--ink-3)}
+.rz-row .faint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--t-xs)}
+.rz-row .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
+.rz-row .v.up{color:var(--up)}
+.rz-row .v.down{color:var(--down)}
+.rz-row .sd{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.rz-row .sd.neg{color:var(--down)}
+.rz-row .nw.atraso{color:var(--down);font-weight:700}
+.raz-foot{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;
+  padding:9px 4px 0;font-size:var(--t-xs);color:var(--ink-3)}
+.raz-foot b{font-variant-numeric:tabular-nums}
+/* no celular a origem sai e o saldo se identifica sozinho, senão são dois
+   números iguais um do lado do outro sem dizer qual é qual */
+@media (max-width:900px){
+  .rz-head{display:none}
+  .rz-row{grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:11px 12px}
+  .rz-row>span:nth-child(2){grid-column:1;grid-row:1}
+  .rz-row>span:nth-child(1){grid-column:1;grid-row:2}
+  .rz-row>span:nth-child(3){display:none}
+  .rz-row>span:nth-child(4){grid-column:2;grid-row:1}
+  .rz-row>span:nth-child(5){grid-column:2;grid-row:2}
+  .rz-row .sd::before{content:"saldo ";font-size:var(--t-micro);color:var(--ink-4);font-weight:500}
+}
+.gr-ck{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--line-2);display:block}
+.gr-ck.on{background:var(--grad-v);border-color:transparent;position:relative}
+.gr-ck.on::after{content:"";position:absolute;left:5px;top:1.5px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+
+/* fixed, e não sticky: a grade é mais alta que a tela, e uma barra sticky no fim
+   do documento só apareceria depois de rolar até lá — justamente quando já não
+   se precisa dela. Mesmo lugar da barra de seleção da lista. */
+.cons-bar{position:fixed;left:var(--sp-3);right:var(--sp-3);
+  bottom:calc(var(--safe-b) + 84px);z-index:90;
+  display:flex;gap:var(--sp-2);align-items:center;
+  background:rgba(24,24,31,.94);backdrop-filter:blur(26px) saturate(180%);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid var(--line-2);border-radius:var(--r-lg);padding:11px var(--sp-4);
+  box-shadow:var(--e-4);max-width:720px;margin:0 auto;
+  animation:selIn var(--dur-3) var(--ease-out)}
+.cons-bar .si{flex:1;min-width:0}
+.cons-bar .si .n{font-size:var(--t-xs);color:var(--ink-3)}
+.cons-bar .si .v{font-size:var(--t-sm);color:var(--ink-2);margin-top:2px;
+  font-variant-numeric:tabular-nums;line-height:1.5}
+.cons-bar .si .v b{font-family:var(--f-display);font-weight:700}
+.cons-bar .si .v b.up{color:var(--up)}
+.cons-bar .si .v b.down{color:var(--down)}
+.cons-bar .si .n .down{color:var(--down)}
+.cons-bar .si .v i{color:var(--ink-4);font-style:normal;margin:0 2px}
+.cons-bar .btn{width:auto}
+
+/* No celular a grade vira lista: nove colunas em 390px não é tabela, é ilegível.
+   Sobram descrição, data, valor e situação — o que se olha primeiro. */
+@media (max-width:900px){
+  .gr-head{display:none}
+  .gr-row{grid-template-columns:32px minmax(0,1fr) auto;gap:3px 10px;padding:11px 12px}
+  .gr-row>span:nth-child(1){grid-row:1/3;align-self:start;padding-top:2px}
+  .gr-row>span:nth-child(3){grid-column:2;grid-row:1}
+  .gr-row>span:nth-child(2){grid-column:2;grid-row:2}
+  .gr-row>span:nth-child(8){grid-column:3;grid-row:1;text-align:right}
+  .gr-row>span:nth-child(9){grid-column:3;grid-row:2;justify-self:end}
+  .gr-row>span:nth-child(4),.gr-row>span:nth-child(5),
+  .gr-row>span:nth-child(6),.gr-row>span:nth-child(7){display:none}
+  .cons-selects{grid-template-columns:1fr}
+}
+@media (min-width:901px){
+  .grade{overflow-x:auto}
+  .gr-row{min-width:860px}
+}
+@media (min-width:1024px){
+  /* sem dock no desktop, e a sidebar ocupa a esquerda */
+  .cons-bar{bottom:var(--sp-6);left:calc(250px + var(--sp-6));right:var(--sp-6);max-width:900px}
+}
+
+/* ---------- documento de parcelamento ---------- */
+.parc-doc{background:var(--s-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:10px 12px;margin:0 0 var(--sp-4);font-size:var(--t-xs)}
+.pd-cap{color:var(--ink-3);font-size:var(--t-xs);margin-bottom:8px}
+.pd-row{display:grid;grid-template-columns:52px 1fr auto auto;gap:8px;align-items:center;
+  padding:5px 0;border-bottom:1px solid var(--line)}
+.pd-row:last-child{border-bottom:none}
+.pd-row .v{font-variant-numeric:tabular-nums;font-weight:650}
+.pd-head{color:var(--ink-4);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.04em;border-bottom-color:var(--line-2)}
+.pd-row.atual{background:var(--grad-v-soft);margin-inline:-6px;padding-inline:6px;
+  border-radius:var(--r-xs)}
+.pd-tot{border-top:1px solid var(--line-2);border-bottom:none;color:var(--ink-2);font-weight:650}
+.parc-doc .chip{justify-self:end}
+.parc-doc .pd-row .ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.parc-doc .pd-row .nw{white-space:nowrap;color:var(--ink-3)}
+/* a coluna de 52px do documento de parcelamento cabe "3/12", não uma data inteira */
+.doc-baixa .pd-row{grid-template-columns:82px 1fr auto}
+
+/* ---------- importar extrato ---------- */
+.imp-alerta{display:flex;gap:9px;align-items:flex-start;background:var(--warn-bg);
+  border:1px solid rgba(255,200,87,.28);border-radius:var(--r-sm);
+  padding:10px 12px;margin:0 0 var(--sp-3);font-size:var(--t-xs);
+  color:var(--warn);line-height:1.5}
+.imp-alerta .icn{width:16px;height:16px;flex:0 0 16px;margin-top:1px}
+.imp-alerta b[data-action]{cursor:pointer;text-decoration:underline}
+.imp-stats{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin:0 0 var(--sp-3)}
+.imp-stats div{flex:1;min-width:74px;background:var(--s-2);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:9px 10px;display:flex;flex-direction:column;gap:1px}
+.imp-stats b{font-family:var(--f-display);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.imp-stats span{font-size:10.5px;color:var(--ink-3);line-height:1.2}
+.imp-list{max-height:46vh}
+.imp-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.imp-item:last-child{border-bottom:none}
+.imp-item.erro{opacity:.62}
+.imp-pick{flex:0 0 19px;padding-top:2px}
+.imp-pick input{width:19px;height:19px;accent-color:var(--v-1)}
+.imp-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.imp-mid b{font-size:var(--t-sm);font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-mid .faint{font-size:var(--t-xs)}
+.imp-mid .chip{align-self:flex-start;margin-top:2px}
+.imp-rt{flex:0 0 auto;text-align:right;display:flex;flex-direction:column;gap:1px}
+.imp-rt b{font-family:var(--f-display);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.imp-rt b.up{color:var(--up)}
+.imp-rt b.down{color:var(--down)}
+.imp-rt .faint{font-size:10px}
+
 /* ==========================================================================
    SIDEBAR + LAYOUT DESKTOP
    Tudo abaixo vive dentro de @media (min-width:1024px). Abaixo desse ponto
@@ -959,6 +1127,14 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
       <svg class="icn" viewBox="0 0 24 24"><path d="M12 3.8v11.4M7.6 11l4.4 4.3 4.4-4.3"/><path d="M4.2 19.6h15.6"/></svg>
       <span>Relatório PDF</span>
     </button>
+    <button class="side-nav-item" data-action="cons-abrir" data-v="receber">
+      <svg class="icn" viewBox="0 0 24 24"><path d="M5.2 2.8h13.6v18.4l-2.7-1.7-2.3 1.7-2.4-1.7-2.3 1.7-2.4-1.7-1.5 1.1z"/><path d="M8.6 7.8h6.8M8.6 12h6.8"/></svg>
+      <span>Contas a receber</span>
+    </button>
+    <button class="side-nav-item" data-action="cons-abrir" data-v="pagar">
+      <svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M12 7.6v8.6M8.4 12.6 12 16.2l3.6-3.6"/></svg>
+      <span>Contas a pagar</span>
+    </button>
     <button class="side-nav-item" data-action="pes-list" data-tour="pessoas">
       <svg class="icn" viewBox="0 0 24 24"><path d="M11.4 8.4 9 10.8a1.9 1.9 0 0 0 2.7 2.7l1.2-1.2 3 3a1.9 1.9 0 0 0 2.7-2.7"/><path d="M2.6 8.4 6.4 5.6h4L13 7.4M21.4 8.4 17.6 5.6h-3.2"/><path d="M2.6 8.4v6.2l2.4 2.4M21.4 8.4v6.2L19 17"/></svg>
       <span>Pessoas</span>
@@ -1089,6 +1265,7 @@ trash:'<path d="M3.8 6.4h16.4M8.6 6.4V4.8a1.4 1.4 0 0 1 1.4-1.4h4a1.4 1.4 0 0 1 
 restore:'<path d="M3.5 9.5a9 9 0 1 1 .6 5.4"/><path d="M3.2 4.2v5.5h5.5"/>',
 filter:'<path d="M3.5 5.2h17l-6.6 7.8v5.9l-3.8 1.9v-7.8z"/>',
 download:'<path d="M12 3.8v11.4M7.6 11l4.4 4.3 4.4-4.3"/><path d="M4.2 19.6h15.6"/>',
+upload:'<path d="M12 20.2V8.8M7.6 13l4.4-4.3 4.4 4.3"/><path d="M4.2 4.4h15.6"/>',
 copy:'<rect x="8.5" y="8.5" width="12" height="12" rx="2.4"/><path d="M15.5 8.5v-2a2.4 2.4 0 0 0-2.4-2.4H5.9A2.4 2.4 0 0 0 3.5 6.5v7.2a2.4 2.4 0 0 0 2.4 2.4h2"/>',
 swap:'<path d="M4 8.2h13.4M13.6 4.4l3.8 3.8-3.8 3.8"/><path d="M20 15.8H6.6M10.4 12l-3.8 3.8 3.8 3.8"/>',
 calendar:'<rect x="3.5" y="5.2" width="17" height="15.3" rx="2.6"/><path d="M3.5 10h17M8.2 3v4.2M15.8 3v4.2"/>',
@@ -1581,6 +1758,9 @@ function render(){
   else if(tab==="savings") v.innerHTML=renderSavings();
   else if(tab==="report") v.innerHTML=renderReport();
   else if(tab==="settings") v.innerHTML=renderSettings();
+  else if(tab==="consulta"){ if(!cons) cons=novaConsulta(); v.innerHTML=renderConsulta(); }
+  else if(tab==="razao"){ if(!raz||!pesOf(raz.pes)){ tab="home"; v.innerHTML=renderHome(); }
+    else v.innerHTML=renderRazao(); }
   const g=$("#greetEl"); if(g) g.textContent=greetWord();
   const tc=$("#trashCount"); if(tc){ const n=delTx().length;
     tc.textContent=n||""; tc.classList.toggle("on",!!n); }
@@ -1978,7 +2158,8 @@ function renderCards(){
       '<div class="rt"><div class="v">'+fmt(total)+'</div></div></div>'+
     '</div></div>';
   }
-  html+='<div class="sec"><button class="btn ghost" data-action="acc-add">'+ic("plus")+' Adicionar conta</button></div>';
+  html+='<div class="sec"><div class="btn-row"><button class="btn ghost" data-action="acc-add">'+ic("plus")+' Adicionar conta</button>'+
+    (S.accounts.length?'<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button>':"")+'</div></div>';
 
   html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Cartões de crédito</h2>'+
     (S.cards.length>1?'<span class="more" data-action="card-pick-all">'+
@@ -2205,6 +2386,9 @@ function renderSettings(){
     '<div class="act-row" style="flex-direction:column;align-items:stretch;gap:8px">'+
       '<button class="btn ghost" data-action="acc-add">'+ic("bank")+' Adicionar conta</button>'+
       '<button class="btn ghost" data-action="pes-list">'+ic("handshake")+' Pessoas</button>'+
+      '<button class="btn ghost" data-action="cons-abrir" data-v="receber">'+ic("inflow")+' Contas a receber</button>'+
+      '<button class="btn ghost" data-action="cons-abrir" data-v="pagar">'+ic("outflow")+' Contas a pagar</button>'+
+      '<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button>'+
       (S.accounts.length?"":'<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button>')+
     '</div></div></div>'+
   '<div class="sec"><div class="surface" style="padding:20px">'+
@@ -2304,8 +2488,11 @@ const CMD_ACTIONS=[
   {ic:ic("download"),t:"Exportar planilha",s:"CSV / Excel",a:"csv-export"},
   {ic:ic("bank"),t:"Adicionar conta",s:"banco, poupança ou dinheiro",a:"acc-add"},
   {ic:ic("swap"),t:"Transferir entre contas",s:"mover dinheiro de lugar",a:"xfer-open"},
+  {ic:ic("upload"),t:"Importar extrato",s:"CSV ou OFX do banco",a:"abrir-importacao"},
   {ic:ic("handshake"),t:"Pessoas",s:"quem te deve e a quem você deve",a:"pes-list"},
   {ic:ic("coin"),t:"Saldo de abertura",s:"ponto de partida do caixa",a:"open-set"},
+  {ic:ic("inflow"),t:"Contas a receber",s:"tudo que está por entrar",a:"cons-abrir",v:"receber"},
+  {ic:ic("outflow"),t:"Contas a pagar",s:"tudo que está por sair",a:"cons-abrir",v:"pagar"},
   {ic:ic("receipt"),t:"Relatório em PDF",s:"filtrar e imprimir",a:"rep-pdf"},
   {ic:ic("trash"),t:"Abrir lixeira",s:"lançamentos excluídos",a:"trash-open"},
   {ic:ic("book"),t:"Rever tutorial",s:"como usar o app",a:"tut-open"},
@@ -2912,10 +3099,12 @@ function openPesDetail(id){
   detQ=""; detFlt="all"; detSel.clear();
   const f=pesFlow(id);
   openModal(modalHead(esc(p.name),p.note?esc(p.note):(f.lancamentos+" lançamento"+(f.lancamentos===1?"":"s")))+
-  '<div class="stat" style="margin-top:14px"><div class="k">'+
+  /* o saldo abre o extrato: é a pergunta que ele sempre provoca — "de onde
+     veio esse número?" — e a resposta é o razão. */
+  '<div class="stat tap" style="margin-top:14px" data-action="pes-razao" data-id="'+id+'"><div class="k">'+
     (f.saldo>0?"Esta pessoa te deve":f.saldo<0?"Você deve a esta pessoa":"Situação")+'</div>'+
     '<div class="v '+(f.saldo>0?"up":f.saldo<0?"down":"")+'">'+fmt(Math.abs(f.saldo))+'</div>'+
-    '<div class="s">'+(f.saldo===0?"tudo quitado":"em aberto")+'</div></div>'+
+    '<div class="s">'+(f.saldo===0?"tudo quitado":"em aberto")+' · ver extrato ›</div></div>'+
   '<div class="ledger dark" style="margin-top:12px">'+
     '<div class="lg"><span>A receber</span><b class="up">'+fmt(f.aReceber)+'</b></div>'+
     '<div class="lg"><span>A pagar</span><b class="down">'+fmt(f.aPagar)+'</b></div>'+
@@ -2923,7 +3112,8 @@ function openPesDetail(id){
     '<div class="lg"><span>Já pago</span><b>'+fmt(f.pago)+'</b></div>'+
   '</div>'+
   '<div class="act-row" style="margin-top:14px;flex-wrap:wrap">'+
-    '<button class="btn small" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
+    '<button class="btn small" data-action="pes-razao" data-id="'+id+'">'+ic("receipt")+' Extrato da conta</button>'+
+    '<button class="btn small ghost" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
     '<button class="btn small ghost" data-action="pes-edit" data-id="'+id+'">Editar</button>'+
     '<button class="btn small ghost" data-action="pes-pdf" data-id="'+id+'">'+ic("receipt")+' Gerar PDF</button></div>'+
   '<div id="detBox" data-pes="'+id+'">'+pesDetBody(id)+'</div>');
@@ -2988,6 +3178,210 @@ function pesDetBody(id){
           (detSel.has(t.id)?" checked":"")+'>'+
         '<div class="det-row">'+txRow(t)+'</div></label>').join("")+'</div>'
     :'<div class="empty">'+(todos.length?"Nada com esse filtro.":"Nenhum lançamento vinculado ainda.")+'</div>');
+}
+
+/* ----- RAZÃO DA PESSOA (extrato da conta) -----
+   O saldo diz quanto sobrou; o razão mostra como se chegou nele. Cada
+   lançamento entra como documento na data de vencimento e, se já foi baixado,
+   entra de novo como baixa na data do pagamento, com o sinal trocado. É por
+   isso que o acumulado da última linha é exatamente o saldo da pessoa: o que
+   foi quitado se anula sozinho e só o que está em aberto continua de pé.
+
+   A tela cheia, e não o modal: dentro do sheet (460px) as cinco colunas não
+   cabem e a do documento colapsa para zero. */
+let raz=null;
+function novoRazao(id){
+  return {pes:id,q:"",per:"tudo",de:"",ate:"",mov:"all",lado:"all",sit:"all",org:"all",cat:"all"};
+}
+function abrirRazao(id){
+  if(!pesOf(id)) return;
+  raz=novoRazao(id); closeModal(); tab="razao"; render();
+}
+function razOrigem(t){
+  if(t.cardId){ const c=cardOf(t.cardId); if(c) return c.nick+" · cartão"; }
+  const a=accOf(t.accId); if(a) return a.name;
+  return METHODS[t.method]||"—";
+}
+function pesRazao(id){
+  const movs=[];
+  aTx().filter(t=>t.pesId===id&&t.type!=="xfer").forEach(t=>{
+    const inc=t.type==="inc", v=val(t), org=razOrigem(t);
+    const base={id:t.id,desc:t.desc,origem:org,cat:t.cat||"",type:t.type,
+      accId:t.accId||null,cardId:t.cardId||null,paid:!!t.paid,
+      atraso:!t.paid&&statusOf(t)==="atrasado",
+      parc:t.kind==="parcelado"?t.i+"/"+t.n:""};
+    movs.push({...base,data:t.due,ord:0,rot:inc?"A receber":"A pagar",valor:inc?v:-v});
+    if(t.paid) movs.push({...base,data:t.payDate||t.due,ord:1,
+      rot:inc?"Recebimento":"Pagamento",valor:inc?-v:v});
+  });
+  movs.sort((a,b)=>a.data<b.data?-1:a.data>b.data?1:a.ord-b.ord);
+  let acc=0;
+  movs.forEach(m=>{ acc=Math.round((acc+m.valor)*100)/100; m.saldo=acc; });
+  return movs;
+}
+function razPeriodo(v){
+  const hoje=todayISO();
+  if(v==="ano"){ raz.de=hoje.slice(0,4)+"-01-01"; raz.ate=""; }
+  else if(v==="12m"){ raz.de=addMonthsISO(hoje,-12); raz.ate=""; }
+  else { raz.de=""; raz.ate=""; }
+  raz.per=v;
+}
+/* o corte do período não pode zerar o acumulado: o que ficou para trás vira a
+   linha de saldo anterior, como o "SI" de um extrato de verdade. */
+function razFatia(movs){
+  const de=raz.de, ate=raz.ate;
+  if(!de&&!ate) return {antes:0,corte:movs,de:"",ate:""};
+  const atras=de?movs.filter(m=>m.data<de):[];
+  let corte=movs;
+  if(de) corte=corte.filter(m=>m.data>=de);
+  if(ate) corte=corte.filter(m=>m.data<=ate);
+  return {antes:atras.length?atras[atras.length-1].saldo:0,corte,de,ate};
+}
+/* Os demais filtros ESCONDEM linhas, não recalculam nada: a coluna Saldo
+   continua sendo o saldo da conta naquele momento, na ordem das datas. Se ela
+   fosse recalculada sobre o filtro, "só as baixas" mostraria um saldo que
+   nunca existiu. Por isso o rodapé separa o saldo da conta da soma do filtro. */
+function razFiltra(l){
+  const q=raz.q.trim().toLowerCase();
+  if(q){
+    const num=q.replace(/[^\d,]/g,"").replace(",",".");
+    l=l.filter(m=>(m.desc+" "+m.cat+" "+m.origem+" "+m.rot).toLowerCase().includes(q)||
+      (num&&String(Math.abs(m.valor)).includes(num)));
+  }
+  if(raz.mov==="doc") l=l.filter(m=>m.ord===0);
+  else if(raz.mov==="baixa") l=l.filter(m=>m.ord===1);
+  if(raz.lado==="receber") l=l.filter(m=>m.type==="inc");
+  else if(raz.lado==="pagar") l=l.filter(m=>m.type!=="inc");
+  if(raz.sit==="aberto") l=l.filter(m=>!m.paid);
+  else if(raz.sit==="baixado") l=l.filter(m=>m.paid);
+  else if(raz.sit==="atraso") l=l.filter(m=>m.atraso);
+  if(raz.org!=="all") l=l.filter(m=>m.cardId?m.cardId===raz.org:m.accId===raz.org);
+  if(raz.cat!=="all") l=l.filter(m=>m.cat===raz.cat);
+  return l;
+}
+function razFiltrando(){
+  return !!(raz.q.trim())||raz.mov!=="all"||raz.lado!=="all"||raz.sit!=="all"||
+         raz.org!=="all"||raz.cat!=="all";
+}
+function razChip(campo,valor,rotulo){
+  return '<button type="button" class="fchip'+(raz[campo]===valor?" on":"")+
+    '" data-action="raz-set" data-c="'+campo+'" data-v="'+esc(valor)+'">'+rotulo+'</button>';
+}
+function razSelect(id,campo,opcoes){
+  return '<select id="'+id+'" data-raz="'+campo+'">'+opcoes.map(([v,r])=>
+    '<option value="'+esc(v)+'"'+(raz[campo]===v?" selected":"")+'>'+esc(r)+'</option>').join("")+'</select>';
+}
+function renderRazao(){
+  const id=raz.pes, p=pesOf(id);
+  const movs=pesRazao(id), {antes,corte,de,ate}=razFatia(movs);
+  const lista=razFiltra(corte);
+  const saldo=movs.length?movs[movs.length-1].saldo:0;
+  const filtrando=razFiltrando();
+  const cats=[...new Set(movs.map(m=>m.cat).filter(Boolean))].sort();
+  const origens=[["all","Todas as origens"],
+    ...S.accounts.map(a=>[a.id,a.name]),...S.cards.map(c=>[c.id,c.nick+" (cartão)"])];
+
+  const cab='<div class="sec" style="margin-top:4px"><div class="sec-head">'+
+    '<h2 class="t-h2">'+esc(p.name)+'</h2>'+
+    '<span class="more" data-action="tab" data-v="home">'+ic("x")+' Fechar</span></div>'+
+    '<div class="help" style="margin-top:0">Extrato da conta'+(p.note?' · '+esc(p.note):"")+'</div></div>';
+
+  const topo='<div class="sec"><div class="stat"><div class="k">'+
+      (saldo>0?"Saldo — esta pessoa te deve":saldo<0?"Saldo — você deve a esta pessoa":"Saldo")+'</div>'+
+    '<div class="v '+(saldo>0?"up":saldo<0?"down":"")+'">'+fmt(Math.abs(saldo))+'</div>'+
+    '<div class="s">'+movs.length+' movimento'+(movs.length===1?"":"s")+' no total</div></div></div>';
+
+  const filtros='<div class="sec"><div class="surface" style="padding:16px">'+
+    '<input id="razQ" placeholder="Buscar descrição, categoria, origem ou valor…" autocomplete="off" value="'+esc(raz.q)+'">'+
+    '<div class="chips" style="margin:10px 0 0">'+
+      razChip("sit","all","Tudo")+razChip("sit","aberto","Em aberto")+
+      razChip("sit","atraso","Vencidos")+razChip("sit","baixado","Baixados")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 0">'+
+      razChip("lado","all","Os dois lados")+razChip("lado","receber","A receber")+
+      razChip("lado","pagar","A pagar")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 0">'+
+      razChip("mov","all","Documentos e baixas")+razChip("mov","doc","Só documentos")+
+      razChip("mov","baixa","Só baixas")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 10px">'+
+      '<button type="button" class="fchip'+(raz.per==="tudo"?" on":"")+'" data-action="raz-per" data-v="tudo">Qualquer data</button>'+
+      '<button type="button" class="fchip'+(raz.per==="ano"?" on":"")+'" data-action="raz-per" data-v="ano">Este ano</button>'+
+      '<button type="button" class="fchip'+(raz.per==="12m"?" on":"")+'" data-action="raz-per" data-v="12m">12 meses</button>'+
+    '</div>'+
+    '<div class="row2"><div><label>De</label><input id="razDe" type="date" value="'+esc(raz.de)+'"></div>'+
+      '<div><label>até</label><input id="razAte" type="date" value="'+esc(raz.ate)+'"></div></div>'+
+    '<div class="cons-selects">'+
+      razSelect("razConta","org",origens)+
+      razSelect("razCat","cat",[["all","Todas as categorias"],...cats.map(c=>[c,c])])+
+    '</div>'+
+    '<div class="act-row">'+
+      '<button type="button" class="btn small ghost" data-action="raz-limpar">Limpar filtros</button>'+
+      '<button type="button" class="btn small ghost" data-action="raz-csv" data-id="'+id+'">'+ic("download")+' Exportar</button>'+
+      '<button type="button" class="btn small ghost" data-action="raz-voltar" data-id="'+id+'">Voltar à pessoa</button>'+
+    '</div></div></div>';
+
+  return cab+topo+filtros+'<div class="sec" id="razBox">'+
+    razGrade(lista,{antes,de,ate,saldo,filtrando,total:corte.length,bruto:movs.length})+'</div>';
+}
+/* redesenha só a grade: o campo de busca fica de fora e não perde o foco */
+function razRedesenha(){
+  const box=$("#razBox"); if(!box||!raz) return;
+  const movs=pesRazao(raz.pes), {antes,corte,de,ate}=razFatia(movs);
+  box.innerHTML=razGrade(razFiltra(corte),{antes,de,ate,
+    saldo:movs.length?movs[movs.length-1].saldo:0,
+    filtrando:razFiltrando(),total:corte.length,bruto:movs.length});
+}
+function razGrade(lista,ctx){
+  const cab='<div class="rz-row rz-head"><span>Data</span><span>Documento</span>'+
+    '<span>Origem</span><span class="r">Valor</span><span class="r">Saldo</span></div>';
+  const linha=m=>'<div class="rz-row">'+
+    '<span class="nw'+(m.atraso&&m.ord===0?" atraso":"")+'">'+fmtDate(m.data)+'</span>'+
+    '<span class="ttl tap" data-action="tx-edit" data-id="'+m.id+'">'+esc(m.desc)+
+      (m.parc?' <span class="faint">'+m.parc+'</span>':"")+
+      '<div class="faint">'+m.rot+(m.cat?' · '+esc(m.cat):"")+'</div></span>'+
+    '<span class="faint">'+esc(m.origem)+'</span>'+
+    '<span class="v '+(m.valor>0?"up":"down")+'">'+(m.valor>0?"+":"−")+fmt(Math.abs(m.valor))+'</span>'+
+    '<span class="sd'+(m.saldo<0?" neg":"")+'">'+(m.saldo<0?"−":"")+fmt(Math.abs(m.saldo))+'</span></div>';
+  /* "sem movimento" só quando a pessoa não tem nada mesmo — um período vazio
+     é resultado de filtro, e dizer o contrário faria procurar defeito no app */
+  if(!lista.length) return '<div class="empty"><div class="e-ic">'+ic("search")+'</div>'+
+    '<div class="e-t">'+(ctx.bruto?"Nada com esses filtros":"Sem movimento")+'</div>'+
+    (ctx.bruto?"Ajuste os filtros, o período ou limpe a busca.":"Vincule lançamentos a esta pessoa para o extrato aparecer.")+'</div>';
+  const teto=lista.slice(-400);
+  const ent=sum(lista.filter(m=>m.valor>0),m=>m.valor);
+  const sai=sum(lista.filter(m=>m.valor<0),m=>-m.valor);
+  return '<div class="raz">'+cab+
+    (ctx.de?'<div class="rz-row ini"><span class="nw">'+fmtDate(ctx.de)+'</span>'+
+      '<span class="ttl">Saldo anterior</span><span class="faint">—</span>'+
+      '<span class="v">—</span><span class="sd'+(ctx.antes<0?" neg":"")+'">'+
+      (ctx.antes<0?"−":"")+fmt(Math.abs(ctx.antes))+'</span></div>':"")+
+    teto.map(linha).join("")+
+    '<div class="rz-row fim"><span class="nw">—</span>'+
+      '<span class="ttl">Saldo da conta</span><span class="faint">—</span>'+
+      '<span class="v">—</span><span class="sd'+(ctx.saldo<0?" neg":"")+'">'+
+      (ctx.saldo<0?"−":"")+fmt(Math.abs(ctx.saldo))+'</span></div>'+
+  '</div>'+
+  '<div class="raz-foot"><span>'+lista.length+' de '+ctx.total+' movimento'+(ctx.total===1?"":"s")+'</span>'+
+    '<span><b class="up">+'+fmt(ent)+'</b> · <b class="down">−'+fmt(sai)+'</b> · '+
+    'soma <b class="'+((ent-sai)>=0?"up":"down")+'">'+fmt(ent-sai)+'</b></span></div>'+
+  (lista.length>teto.length?'<div class="help" style="text-align:center">Mostrando os '+
+    teto.length+' movimentos mais recentes de '+lista.length+'.</div>':"")+
+  (ctx.filtrando?'<div class="help" style="text-align:center">A coluna Saldo é sempre a da conta inteira, '+
+    'na ordem das datas — o filtro esconde linhas, não refaz o saldo.</div>':"");
+}
+function razExportar(id){
+  const p=pesOf(id); if(!p)return;
+  const lista=razFiltra(razFatia(pesRazao(id)).corte);
+  if(!lista.length){ toast("Nada para exportar"); return; }
+  const limpo=v=>String(v??"").replace(/;/g,",");
+  const cab=["Data","Documento","Parcela","Movimento","Categoria","Origem","Valor","Saldo da conta"];
+  const linhas=lista.map(m=>[fmtDate(m.data),limpo(m.desc),m.parc,m.rot,limpo(m.cat),limpo(m.origem),
+    String(m.valor).replace(".",","),String(m.saldo).replace(".",",")].join(";"));
+  download("WIGO_extrato_"+p.name.replace(/[^\w]+/g,"_")+"_"+todayISO()+".csv",
+    "﻿"+[cab.join(";"),...linhas].join("\n"),"text/csv;charset=utf-8");
+  toast(lista.length+" linha(s) exportada(s) ✓");
 }
 
 /* ----- VINCULAR LANÇAMENTOS EXISTENTES A UMA PESSOA -----
@@ -3133,6 +3527,1455 @@ function openMirror(id){
   '<label class="check-line"><input type="checkbox" id="miPaid"><span>'+
     (novo==="inc"?"Já foi recebido":"Já foi pago")+'</span></label>'+
   '<button class="btn" type="submit">Criar '+rot+'</button></form>');
+}
+
+/* ══════════════════ IMPORTAR EXTRATO ══════════════════
+   Lê um extrato do banco (CSV ou OFX) e transforma cada movimentação em um
+   PRÉ-LANÇAMENTO revisável. Nada entra em S.tx antes de o usuário confirmar —
+   é essa a diferença entre importar e deixar o banco escrever no seu financeiro.
+
+   Quatro camadas, nesta ordem: LEITURA (arquivo → texto), PARSING (texto →
+   movimentações), INTELIGÊNCIA (tipo, método, categoria, duplicidade) e UI.
+   Nenhuma delas conhece a de cima: o parser não monta HTML e a tela não lê
+   arquivo. É o que permite mexer no OFX sem quebrar a revisão.
+
+   O extrato é dinheiro que JÁ se moveu. Todo lançamento nasce paid:true, com
+   due e payDate na data do extrato e kind "avista". A importação nunca cria
+   previsão, nunca infere transferência (type "xfer"), nunca atribui cartão e
+   nunca infere poupança — as três dependem de intenção, que o arquivo não tem.
+
+   O estado da importação vive FORA de S, como filters, rep e selCards: é tela,
+   não dado, e não tem por que viajar para o Firestore a cada save(). */
+
+let imp=null;
+const IMP_MAX_BYTES=10*1024*1024;   // 10 MB: acima disso o navegador engasga
+const IMP_MAX_MOVS=2000;            // teto de movimentações processadas
+const IMP_MAX_LISTA=300;            // teto de itens desenhados de uma vez
+
+/* ---------- camada 1: LEITURA ---------- */
+
+/* Pelos primeiros bytes, não pela extensão: banco chama de .xls um HTML com
+   tabela dentro, e de .csv um arquivo separado por tab. A extensão só desempata
+   o que os bytes não resolvem. */
+function detectarFormatoArquivo(nome,bytes){
+  const b=bytes||new Uint8Array();
+  const inicia=(...xs)=>xs.every((x,i)=>b[i]===x);
+  if(inicia(0x25,0x50,0x44,0x46)) return "pdf";               // %PDF
+  if(inicia(0xD0,0xCF,0x11,0xE0)) return "xls-antigo";        // OLE2: .xls binário
+  if(inicia(0x50,0x4B,0x03,0x04)) return "xlsx";              // ZIP: .xlsx
+  const ext=(nome||"").toLowerCase().split(".").pop();
+  const inicio=new TextDecoder("utf-8").decode(b.slice(0,3000));
+  if(/<table|<tr[\s>]/i.test(inicio)) return "html";
+  if(ext==="ofx"||ext==="qfx") return "ofx";
+  if(/OFXHEADER|<OFX>|<STMTTRN/i.test(inicio)) return "ofx";
+  if(ext==="pdf") return "pdf";
+  if(ext==="csv"||ext==="txt"||ext==="xls"||ext==="tsv") return "csv";
+  return null;
+}
+
+/* ---------- XLSX: ZIP de XMLs, lido sem biblioteca ----------
+   Um .xlsx é um ZIP com o texto em xl/sharedStrings.xml e as células em
+   xl/worksheets/sheet1.xml. Ler o ZIP à mão e inflar com DecompressionStream —
+   que o navegador tem desde 2023 — evita uma biblioteca de planilha de ~1 MB por
+   CDN, e a regra do projeto é que o Firebase seja a única dependência externa. */
+async function inflarBruto(dados){
+  const ds=new DecompressionStream("deflate-raw");
+  const buf=await new Response(new Blob([dados]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(buf);
+}
+async function descompactarZip(bytes){
+  const dv=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  /* o índice central fica no fim do arquivo e é achado varrendo de trás */
+  let fim=-1;
+  for(let i=bytes.length-22;i>=0&&i>bytes.length-65558;i--)
+    if(dv.getUint32(i,true)===0x06054b50){ fim=i; break; }
+  if(fim<0) throw new Error("zip");
+  const total=dv.getUint16(fim+10,true);
+  let p=dv.getUint32(fim+16,true);
+  const saida={};
+  for(let n=0;n<total&&p+46<=bytes.length;n++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const metodo=dv.getUint16(p+10,true), tam=dv.getUint32(p+20,true);
+    const nomeLen=dv.getUint16(p+28,true), extraLen=dv.getUint16(p+30,true);
+    const comLen=dv.getUint16(p+32,true), off=dv.getUint32(p+42,true);
+    const nome=new TextDecoder().decode(bytes.slice(p+46,p+46+nomeLen));
+    /* o cabeçalho local repete nome e extra com tamanhos próprios */
+    const lnLen=dv.getUint16(off+26,true), leLen=dv.getUint16(off+28,true);
+    const ini=off+30+lnLen+leLen;
+    const dados=bytes.slice(ini,ini+tam);
+    if(/^xl\/(worksheets\/|sharedStrings)/.test(nome))
+      saida[nome]=metodo===0?dados:await inflarBruto(dados);
+    p+=46+nomeLen+extraLen+comLen;
+  }
+  return saida;
+}
+function colunaExcel(ref){
+  const m=/^([A-Z]+)/.exec(ref||""); if(!m) return 0;
+  let n=0; for(const ch of m[1]) n=n*26+(ch.charCodeAt(0)-64);
+  return n-1;
+}
+async function lerXLSX(bytes){
+  const arq=await descompactarZip(bytes);
+  const texto=n=>arq[n]?new TextDecoder().decode(arq[n]):"";
+  const xml=s=>new DOMParser().parseFromString(s,"application/xml");
+  const tag=(no,t)=>[...no.getElementsByTagName(t)];
+  /* o texto das células mora todo em sharedStrings, referenciado por índice */
+  const compart=[];
+  const ss=texto("xl/sharedStrings.xml");
+  if(ss) tag(xml(ss),"si").forEach(si=>compart.push(tag(si,"t").map(t=>t.textContent).join("")));
+  const nomeAba=Object.keys(arq).filter(n=>/^xl\/worksheets\/.+\.xml$/.test(n)).sort()[0];
+  if(!nomeAba) throw new Error("sheet");
+  const linhas=[];
+  tag(xml(texto(nomeAba)),"row").forEach(row=>{
+    const cels=[];
+    tag(row,"c").forEach(c=>{
+      const col=colunaExcel(c.getAttribute("r")), t=c.getAttribute("t");
+      const v=tag(c,"v")[0];
+      cels[col]= t==="s" ? (compart[+(v?v.textContent:-1)]??"")
+               : t==="inlineStr" ? tag(c,"t").map(x=>x.textContent).join("")
+               : (v?v.textContent:"");
+    });
+    for(let i=0;i<cels.length;i++) if(cels[i]==null) cels[i]="";
+    linhas.push(cels);
+  });
+  return linhas.filter(l=>l.some(c=>String(c).trim()));
+}
+/* .xls que na verdade é HTML com <table> — vários bancos exportam assim */
+function lerTabelaHTML(texto){
+  const d=new DOMParser().parseFromString(texto,"text/html");
+  const tabelas=[...d.getElementsByTagName("table")];
+  if(!tabelas.length) return [];
+  /* a maior tabela é a dos lançamentos; as outras são cabeçalho e layout */
+  const t=tabelas.reduce((a,b)=>b.rows.length>a.rows.length?b:a);
+  return [...t.rows].map(r=>[...r.cells].map(c=>c.textContent.replace(/\s+/g," ").trim()))
+    .filter(l=>l.some(c=>c));
+}
+/* Extrato brasileiro sai em UTF-8 ou Windows-1252 e o arquivo não diz qual é.
+   TextDecoder com fatal:true recusa a sequência inválida — é isso que separa os
+   dois casos sem depender de procurar acento quebrado no meio do texto. */
+function detectarEncodingCSV(buf){
+  try{ return {texto:new TextDecoder("utf-8",{fatal:true}).decode(buf),encoding:"UTF-8"}; }
+  catch{ return {texto:new TextDecoder("windows-1252").decode(buf),encoding:"Windows-1252"}; }
+}
+function lerArquivoImportacao(file){
+  return new Promise((ok,falha)=>{
+    const r=new FileReader();
+    r.onerror=()=>falha(new Error("leitura"));
+    r.onload=()=>ok(new Uint8Array(r.result));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+/* ---------- camada 2: PARSING ---------- */
+
+function normalizarTextoImportacao(s){
+  return String(s??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+/* 1.234,56 · 1234,56 · 1234.56 · -1.234,56 · R$ 1.234,56 · (150,00) · 150,00 D
+   O separador decimal é o ÚLTIMO que aparece. Com três dígitos depois dele e
+   nenhum outro separador no número, é milhar — 1.234 é mil duzentos e trinta e
+   quatro, que é como o extrato brasileiro escreve. */
+function normalizarValorImportacao(v){
+  if(typeof v==="number") return isFinite(v)?Math.round(v*100)/100:NaN;
+  let s=String(v??"").trim();
+  if(!s) return NaN;
+  let sinal=1;
+  if(/^\(.*\)$/.test(s)){ sinal=-1; s=s.slice(1,-1); }
+  s=s.replace(/R\$/ig,"").replace(/[\s\u00a0]/g,"");
+  const suf=s.match(/([DC])$/i);
+  if(suf&&/[\d)]/.test(s.charAt(s.length-2))){
+    if(suf[1].toUpperCase()==="D") sinal=-1;
+    s=s.slice(0,-1);
+  }
+  if(s.indexOf("-")>=0){ sinal=-1; s=s.replace(/-/g,""); }
+  s=s.replace(/\+/g,"");
+  if(!/^[\d.,]+$/.test(s)||!/\d/.test(s)) return NaN;
+  const ult=Math.max(s.lastIndexOf(","),s.lastIndexOf("."));
+  if(ult>=0){
+    const casas=s.length-ult-1, seps=(s.match(/[.,]/g)||[]).length;
+    if(casas===3&&seps===1) s=s.replace(/[.,]/g,"");
+    else s=s.slice(0,ult).replace(/[.,]/g,"")+"."+s.slice(ult+1);
+  }
+  const n=parseFloat(s);
+  return isNaN(n)?NaN:sinal*Math.round(n*100)/100;
+}
+/* 20260908120000[-03:BRT] · 08/09/2026 · 2026-09-08 · 08/09/26 · 20260908
+   Horário e fuso são descartados: lançamento financeiro tem dia, não hora.
+   Data com barra é lida como dd/mm — é extrato brasileiro. */
+function normalizarDataImportacao(v){
+  const s=String(v??"").trim();
+  if(!s) return null;
+  /* planilha guarda data como número de dias desde 30/12/1899. A faixa evita
+     confundir com um valor qualquer: 20000 é 1954 e 60000 é 2064. */
+  if(/^\d{5}(\.\d+)?$/.test(s)){
+    const n=parseFloat(s);
+    if(n>=20000&&n<=60000){
+      const t=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000);
+      return toISO(new Date(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate()));
+    }
+  }
+  let y,m,d,mm;
+  if((mm=s.match(/^(\d{4})(\d{2})(\d{2})/))){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
+  else if((mm=s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
+  else if((mm=s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/))){
+    d=+mm[1]; m=+mm[2]; y=+mm[3];
+    if(y<100) y+=y<70?2000:1900;
+    if(d>12&&m>12) return null;
+    if(d<=12&&m>12){ const t=d; d=m; m=t; }   // veio mm/dd
+  }
+  else return null;
+  if(!(y>=1900&&y<=2200)||!(m>=1&&m<=12)||!(d>=1&&d<=31)) return null;
+  const t=new Date(y,m-1,d);
+  if(t.getFullYear()!==y||t.getMonth()!==m-1||t.getDate()!==d) return null;  // 31/02
+  return toISO(t);
+}
+
+/* OFX vem em duas roupas: SGML (tag sem fechamento) e XML. Ler "do <TAG> até o
+   próximo <" atende as duas sem precisar de parser de verdade. */
+function tagOFX(bloco,tag){
+  const m=bloco.match(new RegExp("<"+tag+">([^<]*)","i"));
+  return m?m[1].trim():"";
+}
+/* MEMO costuma trazer o histórico completo e NAME a contraparte. Juntar os dois
+   só ajuda quando um não está contido no outro — senão vira repetição. */
+function descOFX(name,memo,tipo){
+  const n=(name||"").trim(), m=(memo||"").trim();
+  if(n&&m){
+    const nn=normalizarTextoImportacao(n), mn=normalizarTextoImportacao(m);
+    if(nn&&mn&&!mn.includes(nn)&&!nn.includes(mn)) return n+" · "+m;
+    return m.length>=n.length?m:n;
+  }
+  return m||n||(tipo||"").trim()||"Movimentação";
+}
+function parseOFX(texto){
+  const t=String(texto||"");
+  if(!/<STMTTRN>/i.test(t)) return {movs:[],erro:"ofx"};
+  const movs=[];
+  t.split(/<STMTTRN>/i).slice(1).forEach(b=>{
+    if(movs.length>=IMP_MAX_MOVS) return;
+    const fim=b.search(/<\/STMTTRN>/i);
+    const bloco=fim>=0?b.slice(0,fim):b;
+    movs.push({
+      data:normalizarDataImportacao(tagOFX(bloco,"DTPOSTED")),
+      amount:normalizarValorImportacao(tagOFX(bloco,"TRNAMT")),
+      desc:limparDescricaoImportacao(descOFX(tagOFX(bloco,"NAME"),tagOFX(bloco,"MEMO"),tagOFX(bloco,"TRNTYPE"))),
+      /* TRNTYPE é o tipo dito pelo banco, e vale mais que qualquer palpite pelo
+         sinal — numa fatura OFX com poucas linhas o palpite chega a inverter */
+      tipo:tagOFX(bloco,"TRNTYPE").toUpperCase()||null,
+      fitid:tagOFX(bloco,"FITID")||null
+    });
+  });
+  return {movs,erro:movs.length?null:"vazio"};
+}
+
+/* Conta separadores fora de aspas nas primeiras linhas. Empate vai para o ";",
+   que é o que sai da maioria dos bancos brasileiros. */
+function detectarSeparadorCSV(texto){
+  const linhas=String(texto||"").split(/\r?\n/).filter(l=>l.trim()).slice(0,15);
+  if(!linhas.length) return ";";
+  let melhor=";", pontos=0;
+  [";","\t",","].forEach(sep=>{
+    const cont=linhas.map(l=>{ let n=0,asp=false;
+      for(const c of l){ if(c==='"') asp=!asp; else if(c===sep&&!asp) n++; }
+      return n; }).filter(n=>n>0);
+    if(!cont.length) return;
+    /* a moda das contagens, e não o mínimo: as linhas de dados têm todas o
+       mesmo número de separadores, e é isso que distingue o separador real de
+       um que aparece por acaso dentro de uma descrição. Exigir que TODAS as
+       linhas tenham o separador zerava a conta em extrato com preâmbulo. */
+    const freq={}; cont.forEach(n=>{ freq[n]=(freq[n]||0)+1; });
+    const moda=Object.entries(freq).sort((a,b)=>b[1]-a[1]||b[0]-a[0])[0];
+    const p=moda[1]*10+Number(moda[0]);
+    if(p>pontos){ pontos=p; melhor=sep; }
+  });
+  return melhor;
+}
+/* Tokenizer próprio: aspas duplas, "" escapado e quebra de linha dentro do
+   campo. split(";") quebraria em qualquer histórico com ponto e vírgula. */
+function parseCSV(texto,sep){
+  const t=String(texto||"").replace(/^\uFEFF/,"");
+  const out=[]; let linha=[], campo="", asp=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(asp){
+      if(c==='"'){ if(t[i+1]==='"'){ campo+='"'; i++; } else asp=false; }
+      else campo+=c;
+    }
+    else if(c==='"') asp=true;
+    else if(c===sep){ linha.push(campo); campo=""; }
+    else if(c==="\n"){ linha.push(campo); out.push(linha); linha=[]; campo=""; }
+    else if(c!=="\r") campo+=c;
+  }
+  if(campo!==""||linha.length){ linha.push(campo); out.push(linha); }
+  return out.filter(l=>l.some(c=>String(c).trim()));
+}
+
+const IMP_COLS={
+  data:["data","dt","date","data lancamento","data movimento","data movimentacao",
+        "data da compra","data operacao","data balancete","transaction date","data transacao"],
+  /* "title" e "description" entram porque fintech exporta em inglês — a fatura
+     do Nubank sai como date,title,amount */
+  desc:["descricao","historico","lancamento","memo","nome","detalhe","estabelecimento",
+        "descricao lancamento","historico lancamento","transacao","title","description",
+        "merchant","local","titulo"],
+  valor:["valor","amount","valor movimentado","valor lancamento","montante","valor r","value"],
+  debito:["debito","saida","retirada","valor debito","debitos"],
+  credito:["credito","entrada","receita","valor credito","creditos"],
+  tipo:["tipo","tipo lancamento","natureza","tipo movimento","d c","dc"],
+  /* identificador único da linha, quando o banco manda: o Nubank manda um UUID
+     por transação, e ele é o melhor sinal de duplicidade que existe — melhor
+     que valor + data + descrição, porque não muda se o lançamento for editado */
+  id:["identificador","id da transacao","transaction id","autenticacao",
+      "codigo da transacao","numero do documento"]
+};
+/* Casa o cabeçalho por igualdade, depois por prefixo, depois por conteúdo —
+   nessa ordem, para "valor" não roubar a coluna "valor debito". */
+function detectarColunasCSV(cab){
+  const norm=(cab||[]).map(normalizarTextoImportacao);
+  const acha=lista=>{
+    let i=norm.findIndex(n=>n&&lista.includes(n));
+    if(i<0) i=norm.findIndex(n=>n&&lista.some(l=>n.startsWith(l)));
+    if(i<0) i=norm.findIndex(n=>n&&lista.some(l=>n.includes(l)));
+    return i<0?null:i;
+  };
+  const c={ data:acha(IMP_COLS.data), desc:acha(IMP_COLS.desc),
+    debito:acha(IMP_COLS.debito), credito:acha(IMP_COLS.credito), tipo:acha(IMP_COLS.tipo) };
+  c.valor=acha(IMP_COLS.valor);
+  if(c.valor!=null&&(c.valor===c.debito||c.valor===c.credito)) c.valor=null;
+  c.id=acha(IMP_COLS.id);
+  /* "id" sozinho só vale na igualdade: por conteúdo casaria "cidade", "liquidez" */
+  if(c.id==null){ const i=norm.indexOf("id"); c.id=i<0?null:i; }
+  if(c.id!=null&&(c.id===c.data||c.id===c.desc||c.id===c.valor)) c.id=null;
+  if(c.desc!=null&&c.desc===c.data) c.desc=null;
+  c.confiavel=c.data!=null&&c.desc!=null&&(c.valor!=null||c.debito!=null||c.credito!=null);
+  return c;
+}
+/* Descrição de Pix vem com nome, CPF, banco, agência e conta numa linha só —
+   150 caracteres que na lista do app viram reticências e não identificam nada.
+   O que identifica o lançamento é o nome da outra ponta; o resto é ruído de
+   extrato, e continua guardado em descOriginal.
+
+   Só age quando a estrutura é reconhecível ("<o que é> - <NOME> - <resto>"):
+   descrição que não siga esse formato passa intacta. */
+function limparDescricaoImportacao(desc){
+  const s=String(desc||"").trim().replace(/\s+/g," ");
+  const p=s.split(" - ");
+  if(p.length<3) return s;
+  const nome=p[1].trim();
+  if(!nome||nome.length<2||nome.length>60||!/[A-Za-zÀ-ÿ]{2}/.test(nome)) return s;
+  /* só age quando a cauda é papelada de banco — CPF, CNPJ, agência ou conta.
+     Descrição de fatura ("Mercado Livre - CUECAS - Parcela 1/2") tem a mesma
+     forma e NÃO é isso: encurtar ali jogava fora justamente a parcela. */
+  if(!/(ag[êe]ncia|conta:|•••|\d{3}\.\d{3}\.\d{3}|\d{2}\.\d{3}\.\d{3}\/)/i.test(p.slice(2).join(" - ")))
+    return s;
+  const t=normalizarTextoImportacao(p[0]);
+  let cab=p[0].trim();
+  if(/pix/.test(t)) cab=/receb/.test(t)?"Pix recebido":(/envi/.test(t)?"Pix enviado":"Pix");
+  else if(/transferencia|ted|doc/.test(t)) cab=/receb/.test(t)?"Transferência recebida":"Transferência enviada";
+  else if(/compra|pagamento|debito/.test(t)) cab=p[0].trim();
+  return cab+" · "+nome;
+}
+
+/* Nem todo extrato começa pelo cabeçalho: muito banco põe antes o nome do
+   relatório, a agência e o período. Procura nas primeiras linhas a que se
+   identifica como cabeçalho de tabela; se nenhuma se identifica, fica com a
+   mais preenchida — é a que dá a melhor tela de mapeamento manual. */
+function pareceLinhaDeDados(l){
+  return (l||[]).some(c=>normalizarDataImportacao(c))&&
+         (l||[]).some(c=>!isNaN(normalizarValorImportacao(c)));
+}
+function acharCabecalhoCSV(bruto){
+  const limite=Math.min(bruto.length,15);
+  for(let i=0;i<limite;i++){
+    const c=detectarColunasCSV(bruto[i]);
+    if(c.confiavel) return {idx:i,cols:c};
+  }
+  /* extrato sem cabeçalho nenhum: a primeira linha JÁ é dado, e consumi-la como
+     cabeçalho perderia uma transação inteira, em silêncio. idx -1 faz o
+     slice(idx+1) começar do zero. */
+  if(pareceLinhaDeDados(bruto[0]))
+    return {idx:-1,cols:detectarColunasCSV(bruto[0].map(()=>"")),semCabecalho:true};
+  let idx=0,mx=-1;
+  for(let i=0;i<limite;i++){
+    const n=bruto[i].filter(x=>String(x).trim()).length;
+    if(n>mx){ mx=n; idx=i; }
+  }
+  return {idx,cols:detectarColunasCSV(bruto[idx])};
+}
+function mapearCSV(linhas,cols){
+  const movs=[];
+  linhas.forEach(l=>{
+    if(movs.length>=IMP_MAX_MOVS) return;
+    let amount=NaN;
+    if(cols.valor!=null) amount=normalizarValorImportacao(l[cols.valor]);
+    if(isNaN(amount)&&(cols.debito!=null||cols.credito!=null)){
+      const d=cols.debito!=null?normalizarValorImportacao(l[cols.debito]):NaN;
+      const c=cols.credito!=null?normalizarValorImportacao(l[cols.credito]):NaN;
+      const dd=isNaN(d)?0:Math.abs(d), cc=isNaN(c)?0:Math.abs(c);
+      if(dd||cc) amount=cc-dd;
+    }
+    /* coluna D/C manda no sinal: muito banco exporta o valor sempre positivo */
+    if(cols.tipo!=null&&!isNaN(amount)){
+      const s=normalizarTextoImportacao(l[cols.tipo]);
+      if(/^(d|debito|debit|saida)$/.test(s)) amount=-Math.abs(amount);
+      else if(/^(c|credito|credit|entrada)$/.test(s)) amount=Math.abs(amount);
+    }
+    const bruta=String(l[cols.desc]??"").trim();
+    movs.push({ data:normalizarDataImportacao(l[cols.data]), amount,
+      desc:limparDescricaoImportacao(bruta)||"Movimentação",
+      descBruta:bruta,
+      fitid:cols.id!=null?(String(l[cols.id]??"").trim()||null):null });
+  });
+  return movs;
+}
+
+/* ---------- camada 3: INTELIGÊNCIA ---------- */
+
+/* FNV-1a de 32 bits: determinística, curta e sem dependência. É a identidade do
+   CSV, que quase nunca traz um id próprio como o FITID do OFX. */
+function gerarHashImportacao(s){
+  let h=0x811c9dc5;
+  const t=String(s||"");
+  for(let i=0;i<t.length;i++){ h^=t.charCodeAt(i); h=Math.imul(h,0x01000193); }
+  return (h>>>0).toString(16).padStart(8,"0");
+}
+/* Duas descrições são a mesma quando uma contém a outra ou quando compartilham
+   a maior parte das palavras longas: "PIX ENVIADO MERCADO X" e "PIX MERCADO X"
+   são o mesmo lançamento visto por dois canais. */
+/* "Parcela 1/3" e "Parcela 2/3" são compras diferentes, mesmo com loja, valor e
+   data da compra idênticos — e a fatura repete a data da compra em toda parcela.
+   Numa fatura brasileira metade das linhas costuma ser parcela, então tratá-las
+   como repetição faria o app engolir a parcela do mês seguinte, silenciosamente.
+
+   Só decide quando AS DUAS declaram parcela: se uma não declara, quem resolve é
+   a comparação normal — senão um lançamento digitado à mão deixaria de casar. */
+function numeroParcela(desc){
+  const s=String(desc||"");
+  let m=/parcela\s*(\d{1,2})\s*\/\s*(\d{1,2})/i.exec(s);
+  if(!m) m=/\b(\d{1,2})\s*\/\s*(\d{1,2})\s*$/.exec(s);
+  return m?(m[1]+"/"+m[2]):null;
+}
+function mesmaParcela(a,b){
+  const pa=numeroParcela(a), pb=numeroParcela(b);
+  if(!pa||!pb) return true;
+  return pa===pb;
+}
+function compararDescricoesImportacao(a,b){
+  if(!mesmaParcela(a,b)) return false;
+  const x=normalizarTextoImportacao(a), y=normalizarTextoImportacao(b);
+  if(!x||!y) return false;
+  if(x===y||x.includes(y)||y.includes(x)) return true;
+  const tx=x.split(" ").filter(p=>p.length>=4), ty=y.split(" ").filter(p=>p.length>=4);
+  if(!tx.length||!ty.length) return false;
+  const comuns=tx.filter(p=>ty.includes(p)).length;
+  return comuns/Math.min(tx.length,ty.length)>=0.6;
+}
+/* Duas camadas de proteção, e nenhuma sozinha basta: a marca de origem (FITID
+   no OFX, assinatura no CSV) não existe no que foi digitado à mão, e a
+   comparação por valor+data+descrição não sobrevive a uma edição posterior.
+
+   Data com folga de um dia porque o banco lança no dia seguinte com frequência.
+   Valor igual sozinho NÃO é duplicata: dois cafés de R$ 15 no mesmo dia são
+   duas compras, e a descrição é o que separa. */
+function ehDuplicadoImportacao(mov,alvo0,marcas){
+  const ctx=ctxImportacao(alvo0);
+  const noCartao=ctx.modo==="cartao";
+  const dono=noCartao?("card:"+ctx.cardId):ctx.accId;
+  const chave=mov.fitid||gerarHashImportacao(
+    dono+"|"+mov.data+"|"+Math.abs(mov.amount).toFixed(2)+"|"+normalizarTextoImportacao(mov.desc));
+  if(marcas&&marcas.has(chave))
+    return {dup:true,chave,igual:aTx().find(t=>t.impId===chave)||null,motivo:"marca"};
+  /* a linha da fatura traz a data da COMPRA, e o lançamento guarda o
+     VENCIMENTO — comparar as duas cruas nunca casaria. */
+  const cartao=noCartao?cardOf(ctx.cardId):null;
+  const dataComp=(cartao&&mov.data)?cardFirstDue(cartao,mov.data):mov.data;
+  const alvo=Math.abs(mov.amount), quando=daysTo(dataComp);
+  let igual=null, confira=null;
+  aTx().some(t=>{
+    if(noCartao){ if(t.cardId!==ctx.cardId) return false; }
+    else if(t.accId!==ctx.accId&&t.accTo!==ctx.accId) return false;
+    if(Math.abs(Math.abs(val(t))-alvo)>0.005) return false;
+    const dt=t.paid?(t.payDate||t.due):t.due;
+    const dif=Math.abs(daysTo(dt)-quando);
+    if(dif>1) return false;
+    if(compararDescricoesImportacao(t.desc,mov.desc)){ igual=t; return true; }
+    /* mesmo valor e mesmo dia, com outro nome: pode ser o mesmo lançamento
+       digitado à mão, e pode ser coincidência. Guarda para avisar, sem afirmar. */
+    if(dif===0&&!confira) confira=t;
+    return false;
+  });
+  if(igual) return {dup:true,chave,igual,motivo:"conteudo"};
+  if(confira) return {dup:false,chave,igual:confira,motivo:"confira"};
+  return {dup:false,chave,igual:null,motivo:null};
+}
+
+/* A importação atende dois documentos diferentes, e a diferença não é cosmética:
+   no extrato de CONTA o dinheiro já saiu, e na fatura de CARTÃO ainda não — ele
+   sai quando a fatura é paga. Por isso o alvo pode ser uma conta ou um cartão, e
+   é ele que decide o formato do lançamento lá no fim.
+
+   Aceita uma string como atalho para o caso de conta, que é o mais comum. */
+function ctxImportacao(alvo){
+  if(typeof alvo==="string"||!alvo) return {modo:"conta",accId:alvo||null,cardId:null,sinal:-1};
+  return alvo;
+}
+/* `sinal` é QUAL SINAL REPRESENTA DESPESA, e ele não é o mesmo nos dois
+   documentos: no extrato de conta despesa é negativa (o dinheiro saiu), e numa
+   fatura depende do banco — o Nubank manda a compra positiva, o OFX de cartão
+   manda negativa. Por isso a conta usa -1 fixo e a fatura pergunta à maioria. */
+function sugerirTipoImportacao(mov,sinal){
+  /* quando o arquivo declara o tipo (TRNTYPE do OFX), ele manda: só DEBIT e
+     CREDIT, que são inequívocos — PAYMENT significa coisas opostas no extrato
+     de conta e na fatura de cartão. */
+  if(mov.tipo==="DEBIT") return "exp";
+  if(mov.tipo==="CREDIT") return "inc";
+  return Math.sign(mov.amount)===(sinal||-1)?"exp":"inc";
+}
+/* Numa fatura a maioria das linhas é compra, então o sinal predominante é o da
+   despesa — e o oposto é estorno ou pagamento da fatura. */
+function sinalFatura(movs){
+  let pos=0,neg=0;
+  movs.forEach(m=>{ if(isNaN(m.amount)||!m.amount) return; m.amount>0?pos++:neg++; });
+  return neg>pos?-1:1;
+}
+/* "PAGAMENTO RECEBIDO" na fatura é a quitação da fatura anterior, que já foi
+   lançada do lado da conta. Importar de novo criaria uma receita que nunca
+   existiu e a fatura do mês pareceria menor do que é. */
+function ehPagamentoFatura(desc){
+  return /\b(pagamento|pgto|pagto)\b/.test(normalizarTextoImportacao(desc));
+}
+
+/* nunca "cartao" nem "ticket": o extrato é da conta, e a fatura do cartão é
+   outro lugar do app — atribuir aqui faria o valor sair duas vezes */
+const IMP_METODO=[
+  [/\bpix\b/,"pix"],
+  [/\b(ted|doc)\b|transferenc/,"transferencia"],
+  [/boleto|titulo de cobranca|cobranca bancaria/,"boleto"],
+  [/saque|em especie|dinheiro/,"dinheiro"]
+];
+function sugerirMetodoImportacao(desc){
+  const d=normalizarTextoImportacao(desc);
+  for(const [re,m] of IMP_METODO) if(re.test(d)) return m;
+  return "debito";
+}
+/* Palavras → categoria. A sugestão só vale se a categoria existir na lista do
+   usuário: a importação nunca cria categoria. Sem correspondência fica vazia —
+   em branco é honesto, chutar não. Chaves curtas ficaram de fora de propósito
+   ("gol", "oi", "max"): o falso positivo custa mais caro que o campo vazio. */
+const IMP_CATS=[
+  [["ifood","uber eats","rappi","restaurante","lanchonete","padaria","pizzaria","hamburgueria",
+    "cafeteria","burguer","burger","lanche","food","acai","sushi"],["Restaurantes/Delivery","Alimentação"]],
+  [["mercado","supermercado","atacadao","hortifruti","acougue","carrefour","assai","pao de acucar"],
+   ["Mercado","Alimentação"],["mercado livre","mercado pago","mercadolivre","mercadopago"]],
+  [["posto","combustivel","gasolina","shell","ipiranga","petrobras"],["Combustível","Transporte"]],
+  [["uber","99app","taxi","onibus","metro","bilhete unico","estacionamento","pedagio"],["Transporte"]],
+  [["farmacia","drogaria","droga raia","drogasil","panvel"],["Farmácia","Saúde"]],
+  [["hospital","clinica","laboratorio","dentista","unimed","amil","plano de saude"],["Saúde"]],
+  [["netflix","spotify","prime video","disney","hbo","youtube premium","deezer","globoplay"],["Assinaturas"]],
+  [["vivo","claro","telefonica","internet","banda larga","telefone"],["Internet/Telefone"]],
+  [["energia","cemig","enel","copel","light","sabesp","saneamento","conta de agua"],["Contas de Casa"]],
+  [["aluguel","condominio","imobiliaria"],["Aluguel","Moradia"]],
+  [["academia","smart fit","smartfit","gympass","crossfit","pilates"],["Academia/Esportes"]],
+  [["escola","faculdade","universidade","mensalidade","udemy","alura"],["Educação","Cursos"]],
+  [["petshop","pet shop","veterinar","petz","cobasi"],["Pets"]],
+  [["cinema","teatro","ingresso","steam","playstation","xbox","nintendo"],["Lazer"]],
+  [["hotel","pousada","airbnb","passagem aerea","latam","decolar"],["Viagens"]],
+  [["tarifa","iof","anuidade","manutencao de conta","cesta de servicos"],["Tarifas Bancárias"]],
+  [["imposto","darf","iptu","ipva","tributo","receita federal"],["Impostos/Taxas"]],
+  [["emprestimo","financiamento","consignado"],["Empréstimos/Dívidas"]],
+  [["salario","folha de pagamento","proventos","remuneracao"],["Salário"]],
+  [["rendimento","dividendo","juros sobre","cdb","tesouro direto","aplicacao"],["Rendimentos"]],
+  [["reembolso","estorno","devolucao"],["Reembolso"]]
+];
+function sugerirCategoriaImportacao(desc,tipo){
+  const d=" "+normalizarTextoImportacao(desc)+" ";
+  const lista=tipo==="inc"?S.incCats:S.expCats;
+  for(const [chaves,cands,excecoes] of IMP_CATS){
+    /* "Mercado Livre" e "Mercado Pago" não são supermercado: sem a exceção,
+       compra de roupa em marketplace entrava como Mercado */
+    if(excecoes&&excecoes.some(k=>d.includes(k))) continue;
+    if(!chaves.some(k=>d.includes(k))) continue;
+    const ok=cands.find(c=>lista.includes(c));
+    if(ok) return ok;
+  }
+  return "";
+}
+
+/* "SALDO ANTERIOR", "SALDO DO DIA", "TOTAL DO PERÍODO" são a régua do extrato,
+   não movimentação. Sem isso viravam lançamento fantasma — e um saldo anterior
+   de mil reais entrando como receita estraga o mês inteiro. */
+function ehLinhaDeSaldo(desc){
+  const d=normalizarTextoImportacao(desc);
+  return /^saldo\b/.test(d)||/\bsaldo (anterior|final|do dia|em conta|atual)\b/.test(d)||
+    /^total (do periodo|geral|de lancamentos|despesas|debitos|de pagamentos|de creditos)\b/.test(d)||
+    /^valor total\b/.test(d)||/^total a pagar\b/.test(d);
+}
+/* movimentação crua → movimentação validada; erro descrito, nunca silencioso */
+function normalizarMovimentacaoImportada(mov){
+  if(ehLinhaDeSaldo(mov.desc)) return {ok:false,erro:"Linha de saldo, não é movimentação"};
+  if(!mov.data) return {ok:false,erro:"Data não reconhecida"};
+  if(isNaN(mov.amount)) return {ok:false,erro:"Valor não reconhecido"};
+  if(!mov.amount) return {ok:false,erro:"Valor zerado"};
+  return {ok:true,erro:null};
+}
+/* movimentação validada → pré-lançamento, com as sugestões e o aviso de
+   duplicidade já resolvidos. amount é sempre POSITIVO: no WIGO quem carrega o
+   sinal é o type, como val() e signed() esperam. */
+function criarPreLancamento(mov,alvo0,origem,marcas){
+  const ctx=ctxImportacao(alvo0);
+  const base={ id:uid(), origem, fitid:mov.fitid||null, chave:null,
+    data:mov.data||"", descOriginal:mov.descBruta||mov.desc||"", desc:mov.desc||"",
+    amount:0, type:"exp", method:ctx.modo==="cartao"?"cartao":"debito", cat:"",
+    modo:ctx.modo, accId:ctx.accId, cardId:ctx.cardId,
+    duplicado:false, motivo:null, igualId:null, nota:null, parc:null, selecionado:false, erro:null };
+  const v=normalizarMovimentacaoImportada(mov);
+  if(!v.ok) return Object.assign(base,{erro:v.erro});
+  const type=sugerirTipoImportacao(mov,ctx.sinal);
+  const d=ehDuplicadoImportacao(mov,ctx,marcas);
+  /* na fatura, a linha do sinal invertido que fala em pagamento é a quitação da
+     fatura anterior: fica visível, mas desmarcada */
+  /* a fatura DECLARA "Parcela 1/3" — não é palpite, é dado. Guardar permite
+     criar as que faltam de uma vez, sem inventar nada. */
+  const np=numeroParcela(mov.desc);
+  const pp=np?np.split("/").map(Number):null;
+  const parc=(pp&&pp[0]>=1&&pp[1]>=pp[0]&&pp[1]<=99)?{n:pp[0],total:pp[1]}:null;
+  const pgto=ctx.modo==="cartao"&&type==="inc"&&ehPagamentoFatura(mov.desc);
+  /* No extrato da CONTA, "pagamento de fatura" é dinheiro que saiu de verdade —
+     mas quem também importa a fatura do cartão lança as compras uma a uma, e
+     elas debitam a conta quando a fatura é marcada como paga. Lançar os dois
+     cobra o mesmo dinheiro duas vezes. Fica marcado (é o caso de quem não usa a
+     fatura no app), com o aviso à vista. */
+  const fatConta=ctx.modo==="conta"&&type==="exp"&&ehPagamentoFatura(mov.desc);
+  return Object.assign(base,{ chave:d.chave, amount:Math.abs(mov.amount), type,
+    method:ctx.modo==="cartao"?"cartao":sugerirMetodoImportacao(mov.desc),
+    cat:sugerirCategoriaImportacao(mov.desc,type),
+    duplicado:d.dup, motivo:d.motivo, igualId:d.igual?d.igual.id:null,
+    parc:ctx.modo==="cartao"?parc:null,
+    nota:pgto?"Pagamento da fatura — já lançado pela conta"
+      :(fatConta?"Pagamento de fatura — não lance também as compras do cartão":null),
+    selecionado:!d.dup&&!pgto });
+}
+function preLancamentosDe(movs,alvo0,origem){
+  const ctx=ctxImportacao(alvo0);
+  /* marcas já usadas: o que veio de importação anterior e, conforme a lista
+     cresce, o próprio arquivo — extrato repetido dentro do mesmo CSV existe */
+  const marcas=new Set(aTx().map(t=>t.impId).filter(Boolean));
+  /* o sinal é do DOCUMENTO, não de quem chamou: no extrato de conta despesa é
+     sempre negativa, e na fatura quem decide é a maioria. Derivar aqui em vez de
+     confiar no parâmetro — um sinal errado inverte tipo, categoria e filtros de
+     uma vez só, e em silêncio. */
+  ctx.sinal=ctx.modo==="cartao"?sinalFatura(movs):-1;
+  /* Duas linhas idênticas no MESMO arquivo são duas compras, não uma repetida:
+     acontece de verdade quando dois parcelamentos caem no mesmo dia com a mesma
+     loja e o mesmo valor. Sem contar a ocorrência, a segunda nascia desmarcada
+     como duplicata da primeira e o gasto sumia.
+
+     A ocorrência entra na marca de origem, e como a ordem do arquivo é estável,
+     reimportar reconhece as duas. Quando o banco manda identificador próprio
+     (fitid) nada disso é preciso: ele já é único por linha. */
+  const vistas={};
+  return movs.map(m=>{
+    const pre=criarPreLancamento(m,ctx,origem,marcas);
+    if(pre.chave&&!pre.fitid){
+      const n=(vistas[pre.chave]=(vistas[pre.chave]||0)+1);
+      if(n>1){
+        const comOcorrencia=pre.chave+"#"+n;
+        const jaEstava=marcas.has(comOcorrencia);
+        pre.chave=comOcorrencia;
+        /* a irmã do mesmo arquivo não é "já no app" — só o que já estava conta */
+        if(pre.motivo==="marca"&&!jaEstava){
+          pre.duplicado=false; pre.motivo=null; pre.igualId=null;
+          pre.selecionado=!pre.nota;
+        }
+      }
+    }
+    if(pre.chave) marcas.add(pre.chave);
+    return pre;
+  });
+}
+
+/* ---------- confirmação: pré-lançamento → lançamento ---------- */
+
+/* Reaproveita createTx, o mesmo caminho da criação manual. Assim o formato do
+   lançamento — e qualquer regra futura de criação — vale também para o que veio
+   do banco, sem uma segunda porta de entrada em S.tx.
+
+   O extrato é dinheiro que já se moveu: alreadyPaid, com due e payDate na data
+   do extrato e competência no mês em que ocorreu. Sem categoria vira "Outros",
+   que existe nas duas listas — cat vazia deixaria um grupo sem nome no donut. */
+function criarLancamentoImportado(pre){
+  const noCartao=pre.modo==="cartao"&&pre.cardId;
+  const c=noCartao?cardOf(pre.cardId):null;
+  /* Extrato de conta e fatura de cartão são documentos diferentes, e o lançamento
+     sai diferente de cada um:
+
+     - conta: o dinheiro JÁ saiu. paid:true, due e payDate na data do extrato.
+     - cartão: o dinheiro AINDA NÃO saiu. A linha traz a data da COMPRA, o
+       vencimento sai do fechamento do cartão, e a compra não pertence a conta
+       nenhuma — quem debita a conta é o pagamento da fatura, em Carteira. Marcar
+       como paga aqui faria o valor sair duas vezes: na compra e na fatura.
+
+     A competência é sempre o mês em que a coisa aconteceu, então uma compra de
+     30/09 que vence em 10/10 continua pesando em setembro na Análise. */
+  const due=(noCartao&&c&&pre.data)?cardFirstDue(c,pre.data):pre.data;
+  /* A fatura traz uma parcela por mês, mas declara o total ("Parcela 1/3"), e
+     com isso dá para lançar as que faltam de uma vez — a atual vence nesta
+     fatura e as seguintes nas próximas.
+
+     As parcelas ANTERIORES não são criadas: já aconteceram, e inventá-las
+     mexeria em meses que o usuário pode já ter conciliado. Uma "Parcela 3/4"
+     cria duas, não quatro. */
+  const p=(noCartao&&imp&&imp.criarParcelas!==false)?pre.parc:null;
+  const quantas=p?(p.total-p.n+1):1;
+  /* mesmo quando resta uma só (uma "Parcela 5/5"), o lançamento entra como
+     parcelado com i/n de verdade: assim a última parcela de uma compra aparece
+     igual às irmãs, e não como uma compra à vista com o número no nome. */
+  const gid=createTx({ type:pre.type, dest:null,
+    desc:p?semSufixoParcela(pre.desc):pre.desc, cat:pre.cat||"Outros",
+    method:noCartao?"cartao":pre.method,
+    cardId:noCartao?pre.cardId:null, ticketId:null, goalId:null,
+    accId:noCartao?null:pre.accId, pesId:null, comp:mkey(pre.data),
+    kind:p?"parcelado":"avista",
+    total:p?Math.round(pre.amount*quantas*100)/100:pre.amount,
+    n:quantas, paidCount:0, months:12,
+    firstDue:due, alreadyPaid:!noCartao, payDate:pre.data });
+  /* marca de origem: é o que impede a próxima importação do mesmo extrato de
+     duplicar o que já entrou, mesmo depois de o lançamento ser editado */
+  S.tx.filter(t=>t.gid===gid).forEach((t,k)=>{
+    if(p){
+      /* createTx numera de 1; a numeração real é a que a fatura declara */
+      t.i=p.n+k; t.n=p.total;
+      /* valor exato da parcela: dividir o total reintroduziria centavo de sobra */
+      t.amount=pre.amount;
+      /* cada parcela recebe a marca da linha como ela virá NA SUA fatura, para
+         que importar o mês seguinte reconheça em vez de criar de novo */
+      t.impId=k===0?(pre.chave||null):chaveDaParcela(pre,p.n+k);
+    } else t.impId=pre.chave||null;
+  });
+  return gid;
+}
+/* a numeração passa a viver em i/n, como no lançamento manual: repetir
+   "Parcela 1/3" em três lançamentos diferentes seria mentira em dois deles */
+function semSufixoParcela(desc){
+  const s=String(desc||"");
+  const limpo=s.replace(/\s*[-–]?\s*parcela\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/i,"")
+               .replace(/\s*[-–]\s*\d{1,2}\s*\/\s*\d{1,2}\s*$/,"").trim();
+  return limpo||s;
+}
+function chaveDaParcela(pre,k){
+  const d=String(pre.descOriginal||pre.desc||"").replace(/(\d{1,2})(\s*\/\s*\d{1,2})/,k+"$2");
+  return gerarHashImportacao("card:"+pre.cardId+"|"+pre.data+"|"+
+    pre.amount.toFixed(2)+"|"+normalizarTextoImportacao(d));
+}
+function confirmarPreLancamentos(){
+  if(!imp) return;
+  const sel=imp.linhas.filter(l=>l.selecionado&&!l.erro);
+  if(!sel.length){ toast("Selecione ao menos uma movimentação"); return; }
+  const antes=S.tx.length;
+  sel.forEach(criarLancamentoImportado);
+  const ids=S.tx.slice(antes).map(t=>t.id);
+  S.ultimaImportacao={ids,quando:Date.now()};
+  /* um save() só para o lote inteiro: o debounce de 700ms existe justamente
+     para 40 lançamentos não virarem 40 escritas no Firestore */
+  save(); render();
+  imp.resultado={ criados:ids.length, linhas:sel.length,
+    dup:imp.linhas.filter(l=>l.duplicado&&!l.selecionado).length,
+    semcat:sel.filter(l=>!l.cat).length,
+    erro:imp.linhas.filter(l=>l.erro).length };
+  imp.etapa="resultado"; renderImportacao();
+}
+/* Desfazer manda para a Lixeira, não remove: excluir de verdade quebraria a
+   regra de que nada some do histórico sem poder voltar. */
+function desfazerUltimaImportacao(){
+  const u=S.ultimaImportacao;
+  if(!u||!u.ids||!u.ids.length){ toast("Nada para desfazer"); return; }
+  const set=new Set(u.ids);
+  const alvo=S.tx.filter(t=>set.has(t.id)&&!t.deleted);
+  if(!alvo.length){ S.ultimaImportacao=null; save(); toast("Esses lançamentos já saíram"); return; }
+  if(!confirm("Mandar para a lixeira os "+alvo.length+" lançamentos da última importação?")) return;
+  markDeleted(alvo);
+  S.ultimaImportacao=null;
+  imp=null; save(); closeModal(); render();
+  toast(alvo.length+" lançamento(s) na lixeira ✓");
+}
+
+/* ---------- camada 4: UI ---------- */
+
+function abrirImportacao(){
+  if(!S.accounts.length&&!S.cards.length){
+    toast("Cadastre uma conta ou um cartão antes de importar"); return; }
+  imp={ modo:"conta", criarParcelas:true, contaId:S.accounts.length?S.accounts[0].id:null,
+    cartaoId:S.cards.length?S.cards[0].id:null,
+    arquivo:null, formato:null, encoding:null,
+    etapa:"arquivo", motivoRecusa:null, linhas:[], colunas:null, bruto:null, cabIdx:0, sep:null,
+    q:"", flt:"todos", resultado:null };
+  renderImportacao();
+}
+function fecharImportacao(){ imp=null; closeModal(); }
+function descartarImportacao(){
+  if(imp&&imp.linhas.length&&!confirm("Descartar as movimentações lidas? Nada foi lançado ainda.")) return;
+  imp=null; closeModal(); toast("Importação descartada");
+}
+/* o alvo em um lugar só: quem lê o arquivo, quem compara duplicidade e quem
+   cria o lançamento perguntam todos aqui */
+function impAlvo(){
+  return imp.modo==="cartao"
+    ? {modo:"cartao",accId:null,cardId:imp.cartaoId,sinal:1}
+    : {modo:"conta",accId:imp.contaId,cardId:null,sinal:-1};
+}
+function impNomeAlvo(){
+  if(imp.modo==="cartao"){ const c=cardOf(imp.cartaoId); return c?c.nick:"Cartão"; }
+  const a=accOf(imp.contaId); return a?a.name:"Conta";
+}
+function impCartoes(sel){
+  return S.cards.map(c=>'<option value="'+c.id+'"'+(c.id===sel?" selected":"")+'>'+
+    esc(c.nick)+(c.bank?" ("+esc(c.bank)+")":"")+'</option>').join("");
+}
+function impContas(sel){
+  return S.accounts.map(a=>'<option value="'+a.id+'"'+(a.id===sel?" selected":"")+'>'+esc(a.name)+'</option>').join("");
+}
+
+/* orquestração: arquivo → texto → movimentações → pré-lançamentos → revisão */
+async function processarArquivoImportacao(file){
+  if(!imp) return;
+  if(!file){ toast("Selecione um arquivo para continuar"); return; }
+  if(file.size>IMP_MAX_BYTES){ toast("Arquivo muito grande — o limite é 10 MB"); return; }
+  let bytes;
+  try{ bytes=await lerArquivoImportacao(file); }
+  catch{ toast("Não foi possível ler o arquivo"); return; }
+  const formato=detectarFormatoArquivo(file.name,bytes);
+  imp.arquivo=file.name; imp.formato=formato;
+
+  /* PDF é o caso mais comum de recusa, e merece explicação em vez de um toast
+     que some: o usuário não fez nada errado, só baixou o formato que o banco
+     oferece primeiro. */
+  if(formato==="pdf"||formato==="xls-antigo"||!formato){
+    imp.motivoRecusa=formato||"desconhecido"; imp.etapa="naoLido"; renderImportacao(); return;
+  }
+
+  if(formato==="xlsx"){
+    let bruto;
+    try{ bruto=await lerXLSX(bytes); }
+    catch{ imp.motivoRecusa="xlsx"; imp.etapa="naoLido"; renderImportacao(); return; }
+    if(bruto.length<2){ toast("Nenhuma movimentação encontrada na planilha"); return; }
+    imp.encoding="planilha"; imp.sep=null; imp.bruto=bruto;
+    return escolherColunas();
+  }
+
+  const {texto:lidoTexto,encoding}=detectarEncodingCSV(bytes);
+  imp.encoding=encoding;
+
+  if(formato==="html"){
+    const bruto=lerTabelaHTML(lidoTexto);
+    if(bruto.length<2){ imp.motivoRecusa="html"; imp.etapa="naoLido"; renderImportacao(); return; }
+    imp.sep=null; imp.bruto=bruto;
+    return escolherColunas();
+  }
+  if(formato==="ofx"){
+    const {movs,erro}=parseOFX(lidoTexto);
+    if(erro==="ofx"){ toast("Não foi possível interpretar este arquivo OFX. Exporte direto pelo banco."); return; }
+    if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
+    imp.linhas=preLancamentosDe(movs,impAlvo(),"ofx");
+    imp.etapa="revisao"; renderImportacao(); return;
+  }
+  const sep=detectarSeparadorCSV(lidoTexto);
+  const bruto=parseCSV(lidoTexto,sep);
+  if(bruto.length<2){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
+  imp.sep=sep; imp.bruto=bruto;
+  return escolherColunas();
+}
+/* daqui em diante planilha, HTML e CSV seguem o mesmo caminho: virou tabela, a
+   detecção de colunas não precisa saber de onde veio */
+function escolherColunas(){
+  const bruto=imp.bruto;
+  const cab=acharCabecalhoCSV(bruto);
+  imp.cabIdx=cab.idx; imp.colunas=cab.cols;
+  /* detecção duvidosa não importa em silêncio: pergunta em vez de errar calado */
+  if(!cab.cols.confiavel){ imp.etapa="colunas"; renderImportacao(); return; }
+  aplicarColunasImportacao(cab.cols);
+}
+function aplicarColunasImportacao(cols){
+  const movs=mapearCSV(imp.bruto.slice((imp.cabIdx||0)+1),cols);
+  if(!movs.length){ toast("Nenhuma movimentação encontrada no arquivo"); return; }
+  imp.colunas=cols;
+  imp.linhas=preLancamentosDe(movs,impAlvo(),"csv");
+  imp.etapa="revisao"; renderImportacao();
+}
+
+/* O arquivo recusado não é culpa de quem escolheu: PDF costuma ser o primeiro
+   formato que o banco oferece. Explicar o caminho vale mais que um toast que
+   some em dois segundos. */
+const IMP_RECUSA={
+  pdf:["PDF não dá para importar",
+    "O PDF é feito para ser lido por gente, não por programa: no seu extrato as movimentações vêm no meio de propaganda, telefone do SAC e cotação do dólar, sem o ano na data e com o sinal depois do número. Ler isso sem errar não é possível de forma confiável."],
+  "xls-antigo":["Este Excel é do formato antigo (.xls)",
+    "O .xls antigo é um formato binário fechado. Abra no Excel ou no Google Planilhas e salve como <b>.xlsx</b> ou <b>.csv</b> — os dois funcionam aqui."],
+  xlsx:["Não foi possível ler esta planilha",
+    "O arquivo parece um .xlsx, mas não deu para abrir. Pode estar protegido por senha ou corrompido. Salvando de novo como <b>.csv</b> costuma resolver."],
+  html:["Não encontrei uma tabela neste arquivo",
+    "Ele parece uma página salva, mas sem tabela de lançamentos dentro. Baixe de novo em <b>CSV</b>, <b>Excel</b> ou <b>OFX</b>."],
+  desconhecido:["Formato não reconhecido",
+    "Não consegui identificar este arquivo. Baixe o extrato em <b>CSV</b>, <b>Excel (.xlsx)</b> ou <b>OFX</b>."]
+};
+function impTelaNaoLido(){
+  const [titulo,texto]=IMP_RECUSA[imp.motivoRecusa]||IMP_RECUSA.desconhecido;
+  return modalHead(titulo,esc(imp.arquivo||""))+
+  '<div class="imp-alerta" style="align-items:flex-start">'+ic("alert")+'<span>'+texto+'</span></div>'+
+  '<div class="surface" style="padding:16px;margin-bottom:14px">'+
+    '<div class="sec-head" style="margin:0 0 10px"><h2>O que funciona</h2></div>'+
+    '<div class="cap-list">'+
+      [["CSV","o formato mais simples, e o que dá menos problema"],
+       ["Excel (.xlsx)","a planilha que o banco baixa, sem precisar converter"],
+       ["OFX","o melhor de todos: traz o tipo e um identificador por lançamento"]
+      ].map(([t,d])=>'<div class="cap"><b>'+t+'</b><span>'+d+'</span></div>').join("")+
+    '</div>'+
+    '<div class="help" style="margin-top:12px"><b>Só tem PDF?</b> Abra o arquivo no Excel, '+
+    'no LibreOffice ou no Google Planilhas e salve como <b>CSV</b> ou <b>.xlsx</b>. '+
+    'Confira antes se as colunas de data, descrição e valor ficaram separadas — se tudo caiu numa coluna só, a conversão não pegou.</div>'+
+  '</div>'+
+  '<button class="btn" data-action="imp-escolher">'+ic("upload")+' Escolher outro arquivo</button>'+
+  '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt,.xlsx,.xls,.tsv" class="hidden">'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="fechar-importacao">Cancelar</button></div>';
+}
+function renderImportacao(){
+  if(!imp) return;
+  if(imp.etapa==="naoLido") openModal(impTelaNaoLido());
+  else if(imp.etapa==="colunas") openModal(impTelaColunas());
+  else if(imp.etapa==="revisao") openModal(impTelaRevisao());
+  else if(imp.etapa==="resultado") openModal(renderResumoImportacao());
+  else openModal(impTelaArquivo());
+}
+function impTelaArquivo(){
+  const u=S.ultimaImportacao;
+  const noCartao=imp.modo==="cartao";
+  return modalHead("Importar extrato","Vira pré-lançamento, não lançamento: você revisa antes")+
+  '<div class="seg">'+
+    '<button type="button" class="'+(noCartao?"":"on")+'" data-action="imp-modo" data-v="conta"'+
+      (S.accounts.length?"":" disabled")+'>'+ic("bank")+' Extrato de conta</button>'+
+    '<button type="button" class="'+(noCartao?"on":"")+'" data-action="imp-modo" data-v="cartao"'+
+      (S.cards.length?"":" disabled")+'>'+ic("card")+' Fatura de cartão</button>'+
+  '</div>'+
+  (noCartao
+    ? '<label>Cartão</label><select id="impCartao">'+impCartoes(imp.cartaoId)+'</select>'+
+      '<div class="help">As compras entram <b>em aberto</b>, vencendo na fatura certa pelo dia de fechamento do cartão. '+
+      'Elas não saem de conta nenhuma agora — quem debita é o pagamento da fatura, em Carteira.</div>'+
+      '<label class="check-line"><input type="checkbox" id="impParc"'+(imp.criarParcelas?" checked":"")+'>'+
+      '<span>Lançar também as parcelas futuras'+
+      '<br><span class="faint" style="font-size:var(--t-xs)">Uma compra "Parcela 1/3" vira três lançamentos: '+
+      'o desta fatura e os das próximas. As parcelas já pagas em faturas anteriores não são criadas.</span></span></label>'
+    : '<label>Conta</label><select id="impConta">'+impContas(imp.contaId)+'</select>'+
+      '<div class="help">Todas as movimentações do arquivo entram nesta conta, como já pagas. Dá para trocar depois, uma a uma.</div>')+
+  '<label style="margin-top:16px">Arquivo</label>'+
+  '<button type="button" class="btn ghost" data-action="imp-escolher">'+ic("upload")+' Selecionar extrato</button>'+
+  '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt,.xlsx,.xls,.tsv" class="hidden">'+
+  '<div class="help">CSV, Excel (.xlsx) ou OFX exportado pelo banco, até 10 MB. <b>PDF não serve</b> — se for o único formato, abra no Excel ou no Google Planilhas e salve como CSV.<br>O arquivo é lido aqui no navegador, não sai do seu aparelho.</div>'+
+  (u&&u.ids&&u.ids.length?'<div class="help" style="margin-top:16px">Última importação: <b>'+u.ids.length+
+    '</b> lançamento(s). <b data-action="desfazer-importacao" style="color:var(--v-2);cursor:pointer">Desfazer</b></div>':"")+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="fechar-importacao">Cancelar</button></div>';
+}
+function impTelaColunas(){
+  const ci=imp.cabIdx==null?0:imp.cabIdx, semCab=ci<0;
+  const cab=(semCab?imp.bruto[0]:imp.bruto[ci])||[], c=imp.colunas||{};
+  /* sem cabeçalho o conteúdo da linha não é nome de coluna: numerar é mais
+     honesto que oferecer "01/09/2026" como se fosse um rótulo */
+  const opt=(sel,vazio)=>(vazio?'<option value="">— nenhuma —</option>':"")+
+    cab.map((x,i)=>'<option value="'+i+'"'+(String(i)===String(sel)?" selected":"")+'>'+
+      (semCab?"Coluna "+(i+1)+" — "+esc(String(x).slice(0,18))
+             :esc(String(x||"").trim()||("Coluna "+(i+1))))+'</option>').join("");
+  const previa=imp.bruto.slice(ci+1,ci+4).map(l=>'<div>'+esc(l.slice(0,5).map(x=>String(x).slice(0,20)).join(" · "))+'</div>').join("");
+  return modalHead("Confira as colunas do extrato","Não deu para identificar sozinho")+
+  '<div class="help" style="margin-bottom:14px">Diga qual coluna é o quê. Se o seu extrato separa débito e crédito em colunas diferentes, deixe <b>Valor</b> em branco e preencha as duas de baixo.</div>'+
+  '<form id="fImpCols">'+
+  '<label>Data</label><select id="icData">'+opt(c.data)+'</select>'+
+  '<label style="margin-top:12px">Descrição</label><select id="icDesc">'+opt(c.desc)+'</select>'+
+  '<label style="margin-top:12px">Valor</label><select id="icValor">'+opt(c.valor,true)+'</select>'+
+  '<div class="row2" style="margin-top:12px">'+
+    '<div><label>Débito</label><select id="icDeb">'+opt(c.debito,true)+'</select></div>'+
+    '<div><label>Crédito</label><select id="icCred">'+opt(c.credito,true)+'</select></div></div>'+
+  '<label style="margin-top:12px">Tipo (D/C)</label><select id="icTipo">'+opt(c.tipo,true)+'</select>'+
+  '<div class="help">Opcional. Só é usada quando o extrato traz o valor sempre positivo.</div>'+
+  (previa?'<div class="help" style="margin-top:14px"><b>Primeiras linhas do arquivo</b>'+previa+'</div>':"")+
+  '<button class="btn" type="submit" style="margin-top:16px">Continuar</button></form>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="descartar-importacao">Cancelar</button></div>';
+}
+/* Fatura importada como extrato de conta entra INTEIRA como receita: o valor da
+   compra vem positivo, e no extrato de conta positivo é entrada. O erro é fácil
+   de cometer (o modo é um clique) e caro de descobrir depois — daí o aviso, que
+   só aparece quando quase tudo virou receita. */
+function impAvisoModo(){
+  if(!imp||imp.modo!=="conta") return "";
+  const vals=imp.linhas.filter(l=>!l.erro);
+  if(vals.length<5) return "";
+  const inc=vals.filter(l=>l.type==="inc").length;
+  if(inc/vals.length<0.9) return "";
+  return '<div class="imp-alerta">'+ic("alert")+'<span><b>'+inc+' de '+vals.length+
+    '</b> entraram como receita. Se este arquivo é uma <b>fatura de cartão</b>, '+
+    '<b data-action="imp-modo" data-v="cartao">troque o tipo e escolha o arquivo de novo</b>.</span></div>';
+}
+function impTelaRevisao(){
+  return modalHead("Revisar importação",
+    esc(impNomeAlvo())+" · "+(imp.modo==="cartao"?"fatura":"extrato")+" · "+
+    (imp.formato||"").toUpperCase()+(imp.encoding?" · "+imp.encoding:""))+
+  impAvisoModo()+
+  '<div id="impStats">'+renderResumoContagem()+'</div>'+
+  '<input id="impBusca" placeholder="Buscar movimentação…" autocomplete="off" value="'+esc(imp.q)+'">'+
+  '<div class="chips" id="impChips" style="margin-top:10px">'+impChips()+'</div>'+
+  '<div class="act-row" style="margin:0 0 10px">'+
+    '<button type="button" class="btn small ghost" data-action="marcar-todos-importacao" data-v="1">Marcar todos</button>'+
+    '<button type="button" class="btn small ghost" data-action="marcar-todos-importacao" data-v="0">Desmarcar</button></div>'+
+  '<div id="impBox">'+renderListaPreLancamentos()+'</div>'+
+  '<div id="impFoot">'+impRodape()+'</div>';
+}
+function impStats(){
+  const l=imp?imp.linhas:[];
+  return { total:l.length,
+    erro:l.filter(x=>x.erro).length,
+    dup:l.filter(x=>x.duplicado&&!x.erro).length,
+    confira:l.filter(x=>x.motivo==="confira"&&!x.erro).length,
+    semcat:l.filter(x=>!x.cat&&!x.erro).length,
+    sel:l.filter(x=>x.selecionado&&!x.erro).length };
+}
+function renderResumoContagem(){
+  const s=impStats();
+  const it=(n,r)=>'<div><b>'+n+'</b><span>'+r+'</span></div>';
+  return '<div class="imp-stats">'+it(s.total,"encontradas")+it(s.sel,"a lançar")+
+    (s.dup?it(s.dup,"já no app"):"")+(s.confira?it(s.confira,"confira"):"")+
+    (s.semcat?it(s.semcat,"sem categoria"):"")+(s.erro?it(s.erro,"com erro"):"")+'</div>';
+}
+function impChips(){
+  const s=impStats(), l=imp.linhas;
+  return [["todos","Todos",s.total],["sel","A lançar",s.sel],
+    ["dup","Já no app",s.dup],["confira","Confira",s.confira],
+    ["semcat","Sem categoria",s.semcat],
+    ["exp","Despesas",l.filter(x=>x.type==="exp"&&!x.erro).length],
+    ["inc","Receitas",l.filter(x=>x.type==="inc"&&!x.erro).length],
+    ["erro","Com erro",s.erro]]
+    .filter(([v,,n])=>n||v==="todos")
+    .map(([v,r,n])=>'<button type="button" class="fchip'+(imp.flt===v?" on":"")+
+      '" data-action="imp-flt" data-v="'+v+'">'+r+'<span class="n">'+n+'</span></button>').join("");
+}
+function impFiltradas(){
+  const q=normalizarTextoImportacao(imp.q);
+  return imp.linhas.filter(l=>{
+    if(imp.flt==="sel"&&!l.selecionado) return false;
+    if(imp.flt==="dup"&&!l.duplicado) return false;
+    if(imp.flt==="confira"&&l.motivo!=="confira") return false;
+    if(imp.flt==="semcat"&&(l.cat||l.erro)) return false;
+    if(imp.flt==="exp"&&(l.type!=="exp"||l.erro)) return false;
+    if(imp.flt==="inc"&&(l.type!=="inc"||l.erro)) return false;
+    if(imp.flt==="erro"&&!l.erro) return false;
+    if(q&&!normalizarTextoImportacao(l.desc+" "+l.data+" "+l.amount).includes(q)) return false;
+    return true;
+  });
+}
+/* Dizer "já está no app" sem dizer COM O QUÊ obriga o usuário a sair da tela
+   para conferir. O selo nomeia o lançamento que casou, com data e valor. */
+function impSeloIgual(l){
+  if(!l.duplicado&&l.motivo!=="confira") return "";
+  const t=l.igualId?S.tx.find(x=>x.id===l.igualId&&!x.deleted):null;
+  const quem=t?esc(t.desc)+" · "+fmtDate(t.paid?(t.payDate||t.due):t.due)+" · "+fmt(val(t)):"";
+  if(l.motivo==="confira")
+    return '<span class="chip proximo">Confira: já existe '+quem+'</span>';
+  /* o rótulo cai em "Já no app" quando o motivo não veio: melhor um selo
+     genérico que nenhum, num aviso cujo papel é justamente não deixar passar */
+  const rot=l.motivo==="marca"?"Já importado antes":"Já no app";
+  return '<span class="chip pop">'+rot+(quem?" — "+quem:"")+'</span>';
+}
+
+/* A lista sai numa string só, e com teto: 2.000 movimentações viram 2.000 nós
+   se cada uma for inserida por vez, e o celular trava antes de terminar. */
+function renderListaPreLancamentos(){
+  const lista=impFiltradas();
+  if(!lista.length) return '<div class="empty">Nenhuma movimentação neste filtro.</div>';
+  const corte=lista.slice(0,IMP_MAX_LISTA);
+  const html='<div class="del-list imp-list">'+corte.map(l=>{
+    const meta=[fmtDate(l.data),METHODS[l.method]||l.method,l.cat||"sem categoria"].join(" · ");
+    return '<div class="imp-item'+(l.erro?" erro":"")+'">'+
+      '<label class="imp-pick"><input type="checkbox" name="impSel" data-id="'+l.id+'"'+
+        (l.selecionado?" checked":"")+(l.erro?" disabled":"")+'></label>'+
+      '<div class="imp-mid" data-action="editar-pre-lancamento" data-id="'+l.id+'">'+
+        '<b>'+esc(l.desc)+'</b><span class="faint">'+esc(meta)+'</span>'+
+        impSeloIgual(l)+
+        (l.parc&&imp.criarParcelas&&l.parc.total>l.parc.n&&!l.erro
+          ?'<span class="chip pop">parcela '+l.parc.n+'/'+l.parc.total+' · cria '+
+            (l.parc.total-l.parc.n+1)+' lançamentos</span>':"")+
+        (l.nota?'<span class="chip proximo">'+esc(l.nota)+'</span>':"")+
+        (l.erro?'<span class="chip atrasado">'+esc(l.erro)+'</span>':"")+'</div>'+
+      '<div class="imp-rt"><b class="'+(l.type==="inc"?"up":"down")+'">'+
+        (l.erro?"—":(l.type==="inc"?"+":"−")+fmt(l.amount))+'</b>'+
+        (l.erro?"":'<span class="faint">editar</span>')+'</div></div>';
+  }).join("")+'</div>';
+  return html+(lista.length>corte.length?'<div class="help" style="text-align:center">Mostrando '+
+    corte.length+' de '+lista.length+'. Use a busca ou os filtros para chegar no resto.</div>':"");
+}
+function impRodape(){
+  const n=impStats().sel;
+  return '<div class="act-row">'+
+    '<button type="button" class="btn small ghost" data-action="descartar-importacao">Descartar</button>'+
+    '<button type="button" class="btn small" data-action="confirmar-importacao"'+(n?"":" disabled")+'>'+
+      (n?"Confirmar "+n+" selecionado"+(n>1?"s":""):"Confirmar selecionados")+'</button></div>';
+}
+/* marcar/desmarcar age sobre o que está VISÍVEL: com um filtro ligado, o que
+   se espera é marcar aquele recorte, não o arquivo inteiro */
+function marcarTodosImportacao(on){
+  impFiltradas().forEach(l=>{ if(!l.erro) l.selecionado=on; });
+  impRedesenhaRevisao();
+}
+/* troca só o miolo: refazer o modal inteiro perderia o foco da busca */
+function impRedesenhaRevisao(){
+  const box=$("#impBox"); if(box) box.innerHTML=renderListaPreLancamentos();
+  impAtualizaContagem();
+}
+function impAtualizaContagem(){
+  const st=$("#impStats"); if(st) st.innerHTML=renderResumoContagem();
+  const ft=$("#impFoot"); if(ft) ft.innerHTML=impRodape();
+  const ch=$("#impChips"); if(ch) ch.innerHTML=impChips();
+}
+function openPreEdit(id){
+  const l=imp&&imp.linhas.find(x=>x.id===id);
+  if(!l) return;
+  const cats=l.type==="inc"?S.incCats:S.expCats;
+  openModal(modalHead("Editar movimentação",esc(l.descOriginal||""))+
+  '<form id="fImpEdit" data-id="'+l.id+'">'+
+  '<label>Descrição</label><input id="ieDesc" value="'+esc(l.desc)+'" required>'+
+  '<div class="row2" style="margin-top:12px">'+
+    '<div><label>Data</label><input id="ieData" type="date" value="'+esc(l.data)+'" required></div>'+
+    '<div><label>Valor</label><input id="ieVal" inputmode="decimal" value="'+
+      esc(String(l.amount).replace(".",","))+'" required></div></div>'+
+  '<label style="margin-top:12px">Tipo</label><select id="ieTipo">'+
+    '<option value="exp"'+(l.type==="exp"?" selected":"")+'>Gasto</option>'+
+    '<option value="inc"'+(l.type==="inc"?" selected":"")+'>Receita</option></select>'+
+  '<label style="margin-top:12px">Categoria</label><select id="ieCat">'+impCatOptions(l.type,l.cat)+'</select>'+
+  (l.modo==="cartao"
+    ? '<label style="margin-top:12px">Parcelamento</label>'+
+      '<div class="row2"><div><input id="iePn" inputmode="numeric" placeholder="parcela" value="'+
+        (l.parc?l.parc.n:"")+'"></div><div><input id="iePt" inputmode="numeric" placeholder="de quantas" value="'+
+        (l.parc?l.parc.total:"")+'"></div></div>'+
+      '<div class="help">Deixe os dois em branco para lançar como compra única. '+
+      'O que o app leu da fatura vem preenchido — corrija se o banco escreveu diferente.</div>'+
+      '<div id="iePrevia">'+impPreviaParcelas(l)+'</div>'
+    : "")+
+  (l.modo==="cartao"
+    ? '<label style="margin-top:12px">Cartão</label><select id="ieCard">'+impCartoes(l.cardId)+'</select>'+
+      '<div class="help">Compra de cartão não sai de conta nenhuma agora: ela vence na fatura, e o débito acontece quando você marca a fatura como paga.</div>'
+    : '<label style="margin-top:12px">Método</label><select id="ieMet">'+
+        Object.entries(METHODS).filter(([k])=>k!=="cartao"&&k!=="ticket")
+          .map(([k,v])=>'<option value="'+k+'"'+(k===l.method?" selected":"")+'>'+esc(v)+'</option>').join("")+'</select>'+
+      '<div class="help">Cartão e ticket não entram por aqui: o extrato é da conta, e a fatura do cartão se paga em Carteira.</div>'+
+      '<label style="margin-top:12px">Conta</label><select id="ieAcc">'+impContas(l.accId)+'</select>')+
+  '<button class="btn" type="submit" style="margin-top:16px">Salvar</button></form>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="imp-voltar">Voltar sem salvar</button></div>');
+}
+/* A prévia responde "o que exatamente vai ser criado" antes de criar: parcela,
+   vencimento e valor, com o total no rodapé. É a mesma conta que
+   criarLancamentoImportado faz, mostrada antes de valer. */
+function impPreviaParcelas(l,pn,pt){
+  const n=pn!=null?pn:(l.parc?l.parc.n:null);
+  const total=pt!=null?pt:(l.parc?l.parc.total:null);
+  if(!n||!total||total<n||total>99) return "";
+  const c=l.cardId?cardOf(l.cardId):null;
+  const base=(c&&l.data)?cardFirstDue(c,l.data):l.data;
+  if(!base) return "";
+  const quantas=(imp&&imp.criarParcelas===false)?1:(total-n+1);
+  let linhas="";
+  for(let k=0;k<quantas;k++)
+    linhas+='<div class="pd-row"><span>'+(n+k)+'/'+total+'</span>'+
+      '<span>'+fmtDate(addMonthsISO(base,k))+'</span>'+
+      '<span class="v">'+fmt(l.amount)+'</span></div>';
+  return '<div class="parc-doc">'+
+    '<div class="pd-cap">'+(quantas>1?quantas+" lançamentos serão criados":"Um lançamento será criado")+
+      (n>1?' · as '+(n-1)+' anteriores já venceram e não entram':"")+'</div>'+
+    '<div class="pd-row pd-head"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>'+
+    linhas+
+    '<div class="pd-row pd-tot"><span>Total</span><span></span><span class="v">'+
+      fmt(Math.round(l.amount*quantas*100)/100)+'</span></div></div>';
+}
+/* sem "criar nova categoria": a importação escolhe entre o que já existe */
+function impCatOptions(tipo,sel){
+  const cats=tipo==="inc"?S.incCats:S.expCats;
+  return '<option value="">— sem categoria —</option>'+
+    cats.map(c=>'<option value="'+esc(c)+'"'+(c===sel?" selected":"")+'>'+esc(c)+'</option>').join("");
+}
+function renderResumoImportacao(){
+  const r=imp.resultado||{};
+  const li=(t,s)=>'<div class="ni"><b>'+t+'</b><span>'+s+'</span></div>';
+  const pl=(n,a,b)=>n+" "+(n>1?b:a);
+  return modalHead("Importação concluída","Os lançamentos já estão no seu financeiro")+
+  '<div class="news">'+
+  li(pl(r.criados,"lançamento importado","lançamentos importados"),
+     r.linhas&&r.criados>r.linhas
+       ? "De "+r.linhas+" linhas do arquivo — as parcelas futuras entraram junto."
+       : (imp.modo==="cartao"?"Entraram em aberto, vencendo na fatura.":"Entraram como pagos, na data do extrato."))+
+  (r.dup?li(pl(r.dup,"ignorado","ignorados"),"Possíveis duplicados que ficaram desmarcados."):"")+
+  (r.semcat?li(pl(r.semcat,"sem categoria","sem categoria"),"Entraram em Outros — dá para ajustar na lista de lançamentos."):"")+
+  (r.erro?li(pl(r.erro,"com erro","com erro"),"Linhas que o arquivo não deixou entender. Nada foi criado para elas."):"")+
+  '</div>'+
+  '<button class="btn" data-action="fechar-importacao">Concluir</button>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="desfazer-importacao">Desfazer importação</button></div>';
+}
+
+
+/* ══════════════════ CONSULTA DE CONTAS ══════════════════
+   Uma visão transversal do que está em aberto: todos os meses de uma vez, com
+   filtro por período, pessoa, conta e situação, e os totais sempre à vista.
+
+   As abas do app olham UM mês — é o recorte certo para o dia a dia. Esta olha o
+   compromisso inteiro, que é a pergunta de quem vai cobrar ou programar
+   pagamento: quanto tenho a receber, de quem, e o que já venceu. */
+
+let cons=null;
+function novaConsulta(lado){
+  return { lado:lado||"receber", sit:"aberto", de:"", ate:"",
+    pes:"all", conta:"all", cat:"all", q:"", ord:"due", sel:new Set() };
+}
+function abrirConsulta(lado){ cons=novaConsulta(lado); tab="consulta"; render(); }
+
+function consLinhas(){
+  if(!cons) return [];
+  let l=aTx().filter(t=>t.type!=="xfer");
+  if(cons.lado==="receber") l=l.filter(t=>t.type==="inc");
+  else if(cons.lado==="pagar") l=l.filter(t=>t.type==="exp"&&t.dest!=="savings");
+  if(cons.sit==="aberto") l=l.filter(t=>!t.paid);
+  else if(cons.sit==="vencido") l=l.filter(t=>!t.paid&&statusOf(t)==="atrasado");
+  else if(cons.sit==="avencer") l=l.filter(t=>!t.paid&&statusOf(t)!=="atrasado");
+  else if(cons.sit==="pago") l=l.filter(t=>t.paid);
+  if(cons.de) l=l.filter(t=>t.due>=cons.de);
+  if(cons.ate) l=l.filter(t=>t.due<=cons.ate);
+  /* "none" é quem não tem pessoa vinculada: é uma resposta, não a ausência de filtro */
+  if(cons.pes==="none") l=l.filter(t=>!t.pesId);
+  else if(cons.pes!=="all") l=l.filter(t=>t.pesId===cons.pes);
+  if(cons.conta!=="all") l=l.filter(t=>t.accId===cons.conta||t.cardId===cons.conta);
+  if(cons.cat!=="all") l=l.filter(t=>t.cat===cons.cat);
+  if(cons.q){
+    const q=normalizarTextoImportacao(cons.q);
+    l=l.filter(t=>normalizarTextoImportacao(
+      t.desc+" "+(t.cat||"")+" "+(pesOf(t.pesId)?pesOf(t.pesId).name:"")+" "+val(t)).includes(q));
+  }
+  const por={
+    due:(a,b)=>a.due<b.due?-1:(a.due>b.due?1:0),
+    valor:(a,b)=>val(b)-val(a),
+    desc:(a,b)=>String(a.desc).localeCompare(String(b.desc),"pt-BR"),
+    pessoa:(a,b)=>String(pesOf(a.pesId)?pesOf(a.pesId).name:"~").localeCompare(
+                  String(pesOf(b.pesId)?pesOf(b.pesId).name:"~"),"pt-BR")||(a.due<b.due?-1:1)
+  };
+  return l.slice().sort(por[cons.ord]||por.due);
+}
+function consTotais(l){
+  const rec=l.filter(t=>t.type==="inc"), pag=l.filter(t=>t.type!=="inc");
+  const sel=l.filter(t=>cons.sel.has(t.id));
+  return { n:l.length,
+    aReceber:sum(rec.filter(t=>!t.paid),val), aPagar:sum(pag.filter(t=>!t.paid),val),
+    recebido:sum(rec.filter(t=>t.paid),val), pago:sum(pag.filter(t=>t.paid),val),
+    vencido:sum(l.filter(t=>!t.paid&&statusOf(t)==="atrasado"),val),
+    nVencido:l.filter(t=>!t.paid&&statusOf(t)==="atrasado").length,
+    /* a seleção é totalizada pelos DOIS lados: somar receita com despesa num
+       número só daria um valor sem significado, e no modo Tudo a seleção
+       mistura os dois de propósito */
+    selN:sel.length,
+    selRec:sum(sel.filter(t=>t.type==="inc"),val),
+    selPag:sum(sel.filter(t=>t.type!=="inc"),val),
+    selAberto:sel.filter(t=>!t.paid).length,
+    selVenc:sel.filter(t=>!t.paid&&statusOf(t)==="atrasado").length };
+}
+/* atalhos de período: a pergunta quase sempre é "o que vence este mês" ou
+   "o que já venceu", e não uma data digitada */
+function consPeriodo(v){
+  const hoje=todayISO();
+  if(v==="vencidos"){ cons.de=""; cons.ate=addMonthsISO(hoje,0); cons.ate=hoje; cons.sit="vencido"; }
+  else if(v==="mes"){ cons.de=viewMonth+"-01";
+    cons.ate=toISO(new Date(+viewMonth.slice(0,4),+viewMonth.slice(5,7),0)); }
+  else if(v==="30"){ cons.de=hoje; cons.ate=addMonthsISO(hoje,1); }
+  else if(v==="90"){ cons.de=hoje; cons.ate=addMonthsISO(hoje,3); }
+  else { cons.de=""; cons.ate=""; }
+}
+
+
+/* ---------- a tela ---------- */
+function consChip(campo,valor,rotulo,n){
+  return '<button type="button" class="fchip'+(cons[campo]===valor?" on":"")+
+    '" data-action="cons-set" data-c="'+campo+'" data-v="'+esc(valor)+'">'+rotulo+
+    (n!=null?'<span class="n">'+n+'</span>':"")+'</button>';
+}
+function consSelect(id,campo,opcoes){
+  return '<select id="'+id+'" data-campo="'+campo+'">'+opcoes.map(([v,r])=>
+    '<option value="'+esc(v)+'"'+(String(cons[campo])===String(v)?" selected":"")+'>'+esc(r)+'</option>').join("")+'</select>';
+}
+function renderConsulta(){
+  const l=consLinhas(), tt=consTotais(l);
+  const todos=aTx().filter(x=>x.type!=="xfer");
+  const nRec=todos.filter(x=>x.type==="inc"&&!x.paid).length;
+  const nPag=todos.filter(x=>x.type==="exp"&&x.dest!=="savings"&&!x.paid).length;
+  const cats=[...new Set(todos.map(x=>x.cat).filter(Boolean))].sort();
+  const origens=[["all","Todas as origens"],
+    ...S.accounts.map(a=>[a.id,a.name]),...S.cards.map(c=>[c.id,c.nick+" (cartão)"])];
+  const pessoas=[["all","Todas as pessoas"],["none","Sem pessoa"],
+    ...S.people.map(p=>[p.id,p.name])];
+
+  const cab='<div class="sec" style="margin-top:4px"><div class="sec-head">'+
+    '<h2 class="t-h2">Contas a '+(cons.lado==="pagar"?"pagar":(cons.lado==="tudo"?"receber e pagar":"receber"))+'</h2>'+
+    '<span class="more" data-action="tab" data-v="home">'+ic("x")+' Fechar</span></div></div>';
+
+  const abas='<div class="sec"><div class="seg">'+
+    '<button type="button" class="'+(cons.lado==="receber"?"on":"")+'" data-action="cons-set" data-c="lado" data-v="receber">'+
+      ic("inflow")+' A receber'+(nRec?' <span class="n">'+nRec+'</span>':"")+'</button>'+
+    '<button type="button" class="'+(cons.lado==="pagar"?"on":"")+'" data-action="cons-set" data-c="lado" data-v="pagar">'+
+      ic("outflow")+' A pagar'+(nPag?' <span class="n">'+nPag+'</span>':"")+'</button>'+
+    '<button type="button" class="'+(cons.lado==="tudo"?"on":"")+'" data-action="cons-set" data-c="lado" data-v="tudo">Tudo</button>'+
+    '</div></div>';
+
+  const cx=(rot,v,cls)=>'<div><b class="'+(cls||"")+'">'+fmt(v)+'</b><span>'+rot+'</span></div>';
+  const totais='<div class="sec"><div class="cons-tot">'+
+    (cons.lado!=="pagar"?cx("a receber",tt.aReceber,"up"):"")+
+    (cons.lado!=="receber"?cx("a pagar",tt.aPagar,"down"):"")+
+    (cons.lado==="tudo"?cx("saldo",tt.aReceber-tt.aPagar,(tt.aReceber-tt.aPagar)>=0?"up":"down"):"")+
+    (tt.vencido?cx(tt.nVencido+" vencida"+(tt.nVencido>1?"s":""),tt.vencido,"down"):"")+
+    '<div><b>'+tt.n+'</b><span>lançamento'+(tt.n===1?"":"s")+'</span></div>'+
+    '</div></div>';
+
+  const filtros='<div class="sec"><div class="surface" style="padding:16px">'+
+    '<input id="consQ" placeholder="Buscar descrição, categoria, pessoa ou valor…" autocomplete="off" value="'+esc(cons.q)+'">'+
+    '<div class="chips" style="margin:10px 0 0">'+
+      consChip("sit","aberto","Em aberto")+consChip("sit","vencido","Vencidas")+
+      consChip("sit","avencer","A vencer")+consChip("sit","pago","Baixadas")+
+      consChip("sit","todos","Todas")+
+    '</div>'+
+    '<div class="chips" style="margin:2px 0 10px">'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="todos">Qualquer data</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="vencidos">Já venceu</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="mes">'+esc(monthLabel(viewMonth))+'</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="30">Próximos 30 dias</button>'+
+      '<button type="button" class="fchip" data-action="cons-per" data-v="90">Próximos 90 dias</button>'+
+    '</div>'+
+    '<div class="row2"><div><label>Vence de</label><input id="consDe" type="date" value="'+esc(cons.de)+'"></div>'+
+      '<div><label>até</label><input id="consAte" type="date" value="'+esc(cons.ate)+'"></div></div>'+
+    '<div class="cons-selects">'+
+      consSelect("consPes","pes",pessoas)+
+      consSelect("consConta","conta",origens)+
+      consSelect("consCat","cat",[["all","Todas as categorias"],...cats.map(c=>[c,c])])+
+      consSelect("consOrd","ord",[["due","Ordenar por vencimento"],["valor","Por valor"],
+        ["desc","Por descrição"],["pessoa","Por pessoa"]])+
+    '</div>'+
+    '<div class="act-row">'+
+      /* marcar todos vive AQUI, e não só no cabeçalho da grade: no celular o
+         cabeçalho não existe, e sem isto não havia como selecionar tudo */
+      '<button type="button" class="btn small ghost" data-action="cons-todos">'+
+        ic("checkSquare")+' Marcar todos</button>'+
+      '<button type="button" class="btn small ghost" data-action="cons-limpar">Limpar filtros</button>'+
+      '<button type="button" class="btn small ghost" data-action="cons-csv">'+ic("download")+' Exportar</button>'+
+    '</div></div></div>';
+
+  return cab+abas+totais+filtros+
+    '<div class="sec"><div id="consBox">'+renderConsGrade(l)+'</div></div>'+
+    '<div id="consFoot">'+consRodape(tt)+'</div>';
+}
+/* A grade sai numa string só e com teto: quem tem anos de histórico e pede
+   "todas" não pode travar o aparelho para descobrir isso. */
+function renderConsGrade(l){
+  if(!l.length) return '<div class="empty"><div class="e-ic">'+ic("search")+'</div>'+
+    '<div class="e-t">Nada encontrado</div>Ajuste os filtros ou limpe a busca.</div>';
+  const corte=l.slice(0,400);
+  const marcados=corte.length&&corte.every(t=>cons.sel.has(t.id));
+  const cab='<div class="gr-row gr-head">'+
+    '<span><button type="button" class="gr-ck'+(marcados?" on":"")+'" data-action="cons-todos"></button></span>'+
+    '<span>Vencimento</span><span>Descrição</span><span>Pessoa</span><span>Categoria</span>'+
+    '<span>Origem</span><span>Parc.</span><span class="r">Valor</span><span>Situação</span></div>';
+  return '<div class="grade">'+cab+corte.map(t=>{
+    const p=pesOf(t.pesId), c=t.cardId?cardOf(t.cardId):null, a=accOf(t.accId);
+    const origem=c?(c.nick+" · cartão"):(a?a.name:(METHODS[t.method]||""));
+    return '<div class="gr-row'+(cons.sel.has(t.id)?" sel":"")+'">'+
+      '<span><button type="button" class="gr-ck'+(cons.sel.has(t.id)?" on":"")+
+        '" data-action="cons-pick" data-id="'+t.id+'"></button></span>'+
+      '<span class="nw'+(!t.paid&&statusOf(t)==="atrasado"?" atraso":"")+'">'+fmtDate(t.due)+'</span>'+
+      '<span class="ttl" data-action="tx-edit" data-id="'+t.id+'">'+esc(t.desc)+'</span>'+
+      '<span class="faint">'+(p?esc(p.name):"—")+'</span>'+
+      '<span class="faint">'+esc(t.cat||"—")+'</span>'+
+      '<span class="faint">'+esc(origem||"—")+'</span>'+
+      '<span class="faint">'+(t.kind==="parcelado"?t.i+"/"+t.n:(t.kind==="fixo"?"fixo":"—"))+'</span>'+
+      '<span class="r v '+(t.type==="inc"?"up":"down")+'">'+fmt(val(t))+'</span>'+
+      '<span>'+stChip(t)+'</span></div>';
+  }).join("")+'</div>'+
+  (l.length>corte.length?'<div class="help" style="text-align:center">Mostrando '+corte.length+
+    ' de '+l.length+'. Refine os filtros para ver o resto.</div>':"");
+}
+function consRodape(tt){
+  if(!tt.selN) return "";
+  const dois=tt.selRec>0&&tt.selPag>0;
+  const linha=[];
+  if(tt.selRec) linha.push('<b class="up">+'+fmt(tt.selRec)+'</b> a receber');
+  if(tt.selPag) linha.push('<b class="down">−'+fmt(tt.selPag)+'</b> a pagar');
+  const saldo=tt.selRec-tt.selPag;
+  return '<div class="cons-bar"><div class="si">'+
+    '<div class="n">'+tt.selN+' selecionado'+(tt.selN>1?"s":"")+
+      (tt.selVenc?' · <span class="down">'+tt.selVenc+' vencida'+(tt.selVenc>1?"s":"")+'</span>':"")+
+      (tt.selAberto<tt.selN?' · '+(tt.selN-tt.selAberto)+' já baixada'+((tt.selN-tt.selAberto)>1?"s":""):"")+
+    '</div>'+
+    '<div class="v">'+linha.join(' <i>·</i> ')+
+      (dois?' <i>·</i> saldo <b class="'+(saldo>=0?"up":"down")+'">'+fmt(saldo)+'</b>':"")+'</div></div>'+
+    '<button class="btn small" data-action="cons-baixar"'+(tt.selAberto?"":" disabled")+'>'+
+      ic("check")+' Dar baixa'+(tt.selAberto&&tt.selAberto!==tt.selN?" ("+tt.selAberto+")":"")+'</button>'+
+    '<button class="btn small ghost" data-action="cons-limpar-sel">Limpar</button></div>';
+}
+function consRedesenha(){
+  const l=consLinhas(), tt=consTotais(l);
+  const box=$("#consBox"); if(box) box.innerHTML=renderConsGrade(l);
+  const ft=$("#consFoot"); if(ft) ft.innerHTML=consRodape(tt);
+}
+/* Baixar em lote é uma decisão com data e destino, não um sim/não: o botão
+   Pagar da lista abre uma tela para ajustar data e valor, e a versão em lote não
+   podia ser um confirm() que decide tudo por conta própria.
+
+   Valor não entra aqui de propósito: em lote ele é o de cada lançamento, e um
+   campo único sobrescreveria oito valores diferentes com o mesmo número. Quem
+   precisa ajustar juros de UM lançamento usa o Pagar da linha. */
+function openConsBaixa(){
+  if(!cons) return;
+  /* só o que ainda está em aberto: o que já foi baixado não é assunto desta
+     tela, e sim do saldo da pessoa. */
+  const alvo=aTx().filter(t=>cons.sel.has(t.id)&&!t.paid);
+  if(!alvo.length){ toast("Os selecionados já estão baixados"); return; }
+  const rec=alvo.filter(t=>t.type==="inc"), pag=alvo.filter(t=>t.type!=="inc");
+  const vRec=sum(rec,val), vPag=sum(pag,val);
+  const lista=alvo.slice(0,40).map(t=>
+    '<div class="pd-row"><span class="nw">'+fmtDate(t.due)+'</span>'+
+    '<span class="ttl">'+esc(t.desc)+'</span>'+
+    '<span class="v '+(t.type==="inc"?"up":"down")+'">'+(t.type==="inc"?"+":"−")+fmt(val(t))+'</span></div>').join("");
+  openModal(modalHead("Dar baixa em "+alvo.length+" lançamento"+(alvo.length>1?"s":""),
+    "Confirma que o dinheiro se moveu")+
+  '<div class="cons-tot" style="margin-bottom:14px">'+
+    (rec.length?'<div><b class="up">'+fmt(vRec)+'</b><span>'+rec.length+' a receber</span></div>':"")+
+    (pag.length?'<div><b class="down">'+fmt(vPag)+'</b><span>'+pag.length+' a pagar</span></div>':"")+
+  '</div>'+
+  '<form id="fConsBaixa">'+
+  '<label>Data do pagamento</label><input id="cbData" type="date" value="'+todayISO()+'" required>'+
+  '<div class="help">Vale para todos. É esta data que decide em que mês o dinheiro entra ou sai do saldo.</div>'+
+  (S.accounts.length?'<label style="margin-top:14px">Conta</label>'+
+    '<select id="cbConta"><option value="">Manter a de cada lançamento</option>'+
+    S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>'+
+    '<div class="help">Só mude se todos saíram (ou entraram) pela mesma conta.</div>':"")+
+  '<div class="parc-doc doc-baixa" style="margin-top:14px">'+
+    '<div class="pd-cap">O que será baixado</div>'+lista+
+    (alvo.length>40?'<div class="pd-row"><span></span><span class="faint">e mais '+
+      (alvo.length-40)+'…</span><span></span></div>':"")+
+  '</div>'+
+  '<button class="btn" type="submit">'+ic("check")+' Confirmar baixa</button></form>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="close-modal">Cancelar</button></div>');
+}
+function consExportar(){
+  const l=consLinhas();
+  if(!l.length){ toast("Nada para exportar"); return; }
+  const cab=["Vencimento","Descrição","Pessoa","Categoria","Origem","Parcela","Tipo","Valor","Situação"];
+  const limpo=v=>String(v??"").replace(/;/g,",");
+  const linhas=l.map(t=>{
+    const p=pesOf(t.pesId), c=t.cardId?cardOf(t.cardId):null, a=accOf(t.accId);
+    return [fmtDate(t.due),limpo(t.desc),limpo(p?p.name:""),limpo(t.cat),
+      limpo(c?c.nick+" (cartão)":(a?a.name:METHODS[t.method]||"")),
+      t.kind==="parcelado"?t.i+"/"+t.n:"",
+      t.type==="inc"?"A receber":"A pagar",
+      String(val(t)).replace(".",","), stLabel(t)].join(";");
+  });
+  download("WIGO_contas_"+todayISO()+".csv","﻿"+[cab.join(";"),...linhas].join("\n"),"text/csv;charset=utf-8");
+  toast(l.length+" linha(s) exportada(s) ✓");
 }
 
 /* ══════════════════ TOUR GUIADO ══════════════════
@@ -3349,8 +5192,19 @@ function openTutorial(){ startTour(TOUR_BASIC,"tutorialSeen"); }
    S.seenVersion guarda a última versão que o usuário já viu. Quando publico
    algo novo, subo APP_VERSION e escrevo os itens aqui — não dá para deduzir
    isso do código sozinho. */
-const APP_VERSION="2.1";
+const APP_VERSION="2.2";
 const WHATS_NEW=[
+ {v:"2.2",d:"Setembro de 2026",itens:[
+   ["Importar extrato e fatura","Traga o extrato do banco ou a fatura do cartão em CSV, Excel ou OFX. O app lê, sugere tipo, categoria e forma, e você confere antes de lançar."],
+   ["Sabe o que já está no app","Cada linha importada é comparada com o que você já tem: o que for repetido vem marcado, dizendo com qual lançamento casou. Nada entra duas vezes sem você mandar."],
+   ["Parcelas futuras da fatura","Uma compra que diz 3/10 na fatura vira as oito parcelas que faltam, já com os vencimentos certos."],
+   ["Editar antes de lançar","Dá para corrigir descrição, valor, categoria, conta e parcelamento de cada linha antes de confirmar. E desfazer a importação inteira pela Lixeira."],
+   ["PDF não serve, e o app avisa","Extrato em PDF não é lido. A tela explica o motivo e ensina a baixar em CSV ou Excel no seu banco."],
+   ["Contas a receber e a pagar","Tela nova para consultar todos os meses de uma vez: filtros de período, pessoa, origem, categoria e situação, com totais no topo."],
+   ["Baixa em lote","Marque vários e dê baixa de uma vez, escolhendo a data do pagamento e a conta."],
+   ["Extrato da conta da pessoa","O saldo de cada pessoa agora abre um extrato: cada cobrança, cada pagamento e o saldo correndo linha a linha, com filtros e exportação."],
+   ["Documento do parcelamento","Ao abrir uma parcela, o grupo inteiro aparece em cima: número, vencimento, valor e situação de cada uma."]
+ ]},
  {v:"2.1",d:"Agosto de 2026",itens:[
    ["Contas","Cadastre banco, poupança e dinheiro em espécie. Cada conta tem saldo próprio e o total é a soma delas."],
    ["Transferência entre contas","Mover dinheiro de uma conta para outra sem virar receita nem despesa — o total não muda."],
@@ -3457,6 +5311,28 @@ function openFatura(id){
 }
 
 /* ----- EDITAR (bug corrigido: checkbox funciona + categoria mantida) ----- */
+/* O parcelamento visto como documento: todas as parcelas de uma vez, com
+   vencimento, valor e situação. Sem isso, saber quanto falta de uma compra em
+   6x exige caçar seis linhas em seis meses diferentes da lista. */
+function documentoDoGrupo(t){
+  const grp=aTx().filter(x=>x.gid===t.gid).sort((a,b)=>(a.i||0)-(b.i||0)||(a.due<b.due?-1:1));
+  if(grp.length<2) return "";
+  const quitadas=grp.filter(x=>x.paid).length;
+  const verbo=t.type==="inc"?"recebida":"paga";
+  const falta=sum(grp.filter(x=>!x.paid),val);
+  return '<div class="parc-doc">'+
+    '<div class="pd-cap">'+(t.kind==="fixo"?"Lançamento fixo":"Parcelamento")+' · '+
+      quitadas+' de '+grp.length+' '+verbo+(quitadas===1?"":"s")+'</div>'+
+    '<div class="pd-row pd-head"><span>'+(t.kind==="fixo"?"Mês":"Parcela")+'</span>'+
+      '<span>Vencimento</span><span>Valor</span><span>Situação</span></div>'+
+    grp.map(x=>'<div class="pd-row'+(x.id===t.id?" atual":"")+'">'+
+      '<span>'+(x.i||"—")+(x.n?"/"+x.n:"")+'</span>'+
+      '<span>'+fmtDate(x.due)+'</span>'+
+      '<span class="v">'+fmt(val(x))+'</span>'+
+      '<span>'+stChip(x)+'</span></div>').join("")+
+    '<div class="pd-row pd-tot"><span>Falta</span><span></span>'+
+      '<span class="v">'+fmt(falta)+'</span><span></span></div></div>';
+}
 function openEdit(id){
   const t=S.tx.find(x=>x.id===id); if(!t)return;
   /* transferência não tem categoria, forma nem competência para editar —
@@ -3477,6 +5353,7 @@ function openEdit(id){
   const walletSel=t.method==="ticket"?("ticket:"+t.ticketId):(t.cardId?("card:"+t.cardId):"");
   openModal(modalHead("Editar lançamento",
     (t.kind!=="avista"?(t.kind==="fixo"?"Fixo ":"Parcela ")+t.i+"/"+t.n+" · ":"")+stLabel(t))+
+  documentoDoGrupo(t)+
   '<form id="fEdit" data-id="'+id+'">'+
   '<label>Descrição</label><input id="edDesc" value="'+esc(t.desc)+'">'+
   (t.dest==="savings"?"":'<div class="row2"><div><label>Valor</label><input id="edVal" inputmode="decimal" value="'+String(t.amount).replace(".",",")+'"></div>'+
@@ -3775,6 +5652,12 @@ document.addEventListener("click", async e=>{
     case "pes-list": openPeople(); break;
     case "pes-add": openPesForm(); break;
     case "pes-open": openPesDetail(id); break;
+    case "pes-razao": abrirRazao(id); break;
+    case "raz-per": razPeriodo(el.dataset.v); render(); break;
+    case "raz-set": raz[el.dataset.c]=el.dataset.v; render(); break;
+    case "raz-limpar": raz=novoRazao(raz.pes); render(); break;
+    case "raz-csv": razExportar(id); break;
+    case "raz-voltar": tab="home"; render(); openPesDetail(id); break;
     case "pes-edit": openPesForm(id); break;
     case "pes-delete": { const emUso=aTx().some(t=>t.pesId===id);
       if(!confirm(emUso?"Esta pessoa tem lançamentos vinculados. Excluir mesmo? Os lançamentos ficam sem pessoa.":"Excluir esta pessoa?"))break;
@@ -3910,6 +5793,36 @@ document.addEventListener("click", async e=>{
       save(); render(); break; }
     // backup
     case "backup-export": exportBackup(); break;
+    /* ----- consulta de contas ----- */
+    case "cons-abrir": closeCmd(); abrirConsulta(el.dataset.v); break;
+    case "cons-set": if(cons){ cons[el.dataset.c]=el.dataset.v; cons.sel.clear(); render(); } break;
+    case "cons-per": if(cons){ consPeriodo(el.dataset.v); render(); } break;
+    case "cons-limpar": if(cons){ const lado=cons.lado; cons=novaConsulta(lado); render(); } break;
+    case "cons-pick": if(cons){ cons.sel.has(id)?cons.sel.delete(id):cons.sel.add(id); consRedesenha(); } break;
+    case "cons-todos": if(cons){ const l=consLinhas().slice(0,400);
+      const todos=l.length&&l.every(t=>cons.sel.has(t.id));
+      l.forEach(t=>todos?cons.sel.delete(t.id):cons.sel.add(t.id)); consRedesenha(); } break;
+    case "cons-limpar-sel": if(cons){ cons.sel.clear(); consRedesenha(); } break;
+    case "cons-csv": consExportar(); break;
+    case "cons-baixar": openConsBaixa(); break;
+
+    /* ----- importar extrato ----- */
+    case "abrir-importacao": abrirImportacao(); break;
+    case "imp-escolher": { const inp=$("#impArquivo"); if(inp) inp.click(); break; }
+    case "fechar-importacao": fecharImportacao(); break;
+    case "descartar-importacao": descartarImportacao(); break;
+    case "confirmar-importacao": confirmarPreLancamentos(); break;
+    case "marcar-todos-importacao": marcarTodosImportacao(el.dataset.v==="1"); break;
+    case "imp-flt": if(imp){ imp.flt=el.dataset.v; impRedesenhaRevisao(); } break;
+    case "imp-modo": if(imp){ imp.modo=el.dataset.v;
+      /* as linhas já foram interpretadas com a regra do modo antigo: manter
+         qualquer uma delas aqui daria um estado meio conta, meio cartão */
+      if(imp.etapa!=="arquivo"){ imp.linhas=[]; imp.bruto=null; imp.colunas=null;
+        imp.cabIdx=0; imp.q=""; imp.flt="todos"; imp.etapa="arquivo"; }
+      renderImportacao(); } break;
+    case "editar-pre-lancamento": openPreEdit(id); break;
+    case "imp-voltar": if(imp){ imp.etapa="revisao"; renderImportacao(); } break;
+    case "desfazer-importacao": desfazerUltimaImportacao(); break;
     case "backup-import": $("#importFile").click(); break;
     case "csv-export": exportCSV(); break;
     // settings gear
@@ -3937,6 +5850,20 @@ document.addEventListener("input", e=>{
     redesenhaDet($("#detBox"));
     const i=$("#detSearch"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }
     return; }
+  if((e.target.id==="iePn"||e.target.id==="iePt")&&imp){
+    const f=$("#fImpEdit"), box=$("#iePrevia");
+    const l=f&&imp.linhas.find(x=>x.id===f.dataset.id);
+    if(l&&box){ const v=$("#ieVal"); const amt=v?(parseMoney(v.value)||l.amount):l.amount;
+      box.innerHTML=impPreviaParcelas({...l,amount:Math.abs(amt)},
+        parseInt($("#iePn").value)||null,parseInt($("#iePt").value)||null); }
+    return; }
+  if(e.target.id==="consQ"&&cons){ cons.q=e.target.value; consRedesenha(); return; }
+  if((e.target.id==="consDe"||e.target.id==="consAte")&&cons){
+    cons[e.target.id==="consDe"?"de":"ate"]=e.target.value; consRedesenha(); return; }
+  if(e.target.id==="razQ"&&raz){ raz.q=e.target.value; razRedesenha(); return; }
+  if((e.target.id==="razDe"||e.target.id==="razAte")&&raz){
+    raz[e.target.id==="razDe"?"de":"ate"]=e.target.value; raz.per="custom"; razRedesenha(); return; }
+  if(e.target.id==="impBusca"&&imp){ imp.q=e.target.value; impRedesenhaRevisao(); return; }
   if(e.target.id==="fltQ"){ clearTimeout(searchTimer);
     const val=e.target.value; searchTimer=setTimeout(()=>{ filters.q=val;
       // re-render mantendo foco
@@ -3986,6 +5913,26 @@ document.addEventListener("change", e=>{
     const nm=prompt("Nome da nova categoria:"); const arr=tx.type==="inc"?S.incCats:S.expCats;
     if(nm&&!arr.includes(nm.trim()))arr.push(nm.trim());
     save(); t.innerHTML=catOptions(tx.type,nm?nm.trim():tx.cat); }
+  if(t.id==="impArquivo"){ const arq=t.files[0]; t.value=""; processarArquivoImportacao(arq); }
+  if(t.dataset.campo&&cons&&t.closest("#view")){ cons[t.dataset.campo]=t.value; cons.sel.clear(); consRedesenha(); }
+  if(t.dataset.raz&&raz&&t.closest("#view")){ raz[t.dataset.raz]=t.value; razRedesenha(); }
+  if(t.id==="impCartao"&&imp) imp.cartaoId=t.value;
+  if(t.id==="impParc"&&imp){ imp.criarParcelas=t.checked;
+    if(imp.etapa==="revisao") impRedesenhaRevisao(); }
+  if(t.id==="impConta"&&imp){ imp.contaId=t.value;
+    /* trocar a conta refaz a duplicidade: o mesmo valor em outra conta é outro
+       lançamento, e o que era duplicado ali pode não ser aqui */
+    imp.linhas.forEach(l=>{ if(l.erro||l.modo==="cartao") return;
+      l.accId=t.value;
+      const r=ehDuplicadoImportacao({data:l.data,amount:l.amount,desc:l.desc,fitid:l.fitid},t.value,null);
+      l.duplicado=r.dup; l.chave=r.chave; l.motivo=r.motivo;
+      l.igualId=r.igual?r.igual.id:null; l.selecionado=!r.dup; });
+    if(imp.etapa==="revisao") impRedesenhaRevisao(); }
+  if(t.name==="impSel"&&imp){ const l=imp.linhas.find(x=>x.id===t.dataset.id);
+    if(l){ l.selecionado=t.checked; impAtualizaContagem(); } }
+  if(t.id==="ieTipo"&&imp){ const fe=$("#fImpEdit");
+    const l=fe&&imp.linhas.find(x=>x.id===fe.dataset.id);
+    if($("#ieCat")) $("#ieCat").innerHTML=impCatOptions(t.value,l?l.cat:""); }
   if(t.id==="importFile"){ const f=t.files[0]; if(!f)return; const r=new FileReader();
     r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p.tx)throw 0;
         if(!confirm("Importar backup? Substitui os dados atuais."))return;
@@ -4005,6 +5952,52 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fConsBaixa"){
+    if(!cons) return;
+    const data=$("#cbData").value;
+    if(!data){ toast("Informe a data do pagamento"); return; }
+    const conta=$("#cbConta")?$("#cbConta").value:"";
+    const alvo=aTx().filter(t=>cons.sel.has(t.id)&&!t.paid);
+    if(!alvo.length){ toast("Nada a baixar"); return; }
+    alvo.forEach(t=>{
+      /* a conta escolhida vale antes do applyPaid, que só preenche quando está
+         vazia — do contrário a conta do cartão venceria a escolha do usuário */
+      if(conta) t.accId=conta;
+      applyPaid(t,data,t.amount);
+    });
+    cons.sel.clear(); save(); closeModal(); render();
+    toast(alvo.length+" lançamento"+(alvo.length>1?"s":"")+" baixado"+(alvo.length>1?"s":"")+" ✓"); }
+  else if(f.id==="fImpCols"){
+    if(!imp||!imp.bruto) return;
+    const col=x=>{ const el=$(x); const v=el?el.value:""; return v===""?null:+v; };
+    const cols={ data:col("#icData"), desc:col("#icDesc"), valor:col("#icValor"),
+      debito:col("#icDeb"), credito:col("#icCred"), tipo:col("#icTipo") };
+    if(cols.data==null||cols.desc==null){ toast("Escolha as colunas de data e descrição"); return; }
+    if(cols.valor==null&&cols.debito==null&&cols.credito==null){
+      toast("Escolha a coluna de valor, ou as de débito e crédito"); return; }
+    aplicarColunasImportacao(cols); }
+  else if(f.id==="fImpEdit"){
+    const l=imp&&imp.linhas.find(x=>x.id===f.dataset.id); if(!l) return;
+    const v=parseMoney($("#ieVal").value), d=$("#ieData").value;
+    if(!v){ toast("Informe um valor válido"); return; }
+    if(!d){ toast("Informe uma data válida"); return; }
+    l.desc=$("#ieDesc").value.trim()||l.desc;
+    l.data=d; l.amount=Math.abs(v);
+    l.type=$("#ieTipo").value; l.cat=$("#ieCat").value;
+    if(l.modo==="cartao"){ if($("#ieCard")) l.cardId=$("#ieCard").value;
+      const pn=parseInt($("#iePn")&&$("#iePn").value), pt=parseInt($("#iePt")&&$("#iePt").value);
+      l.parc=(pn>=1&&pt>=pn&&pt<=99)?{n:pn,total:pt}:null; }
+    else { if($("#ieMet")) l.method=$("#ieMet").value;
+           if($("#ieAcc")) l.accId=$("#ieAcc").value; }
+    l.erro=null; l.nota=null; l.selecionado=true;
+    /* a marca de origem identifica a LINHA DO ARQUIVO, e não o resultado da
+       edição: se mudasse aqui, reimportar o mesmo extrato deixaria de
+       reconhecer o que já entrou e criaria tudo de novo. Só é calculada agora
+       quando a linha nasceu com erro e nunca chegou a ter uma. */
+    if(!l.chave) l.chave=l.fitid||gerarHashImportacao(
+      (l.modo==="cartao"?"card:"+l.cardId:l.accId)+"|"+l.data+"|"+
+      l.amount.toFixed(2)+"|"+normalizarTextoImportacao(l.desc));
+    imp.etapa="revisao"; renderImportacao(); toast("Movimentação atualizada ✓"); }
   else if(f.id==="fAcc"){
     const id=f.dataset.id;
     const v=$("#acAmt").value.trim();
