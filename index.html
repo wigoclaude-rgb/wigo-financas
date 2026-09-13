@@ -1557,6 +1557,15 @@ function temAbertura(acc){
   if(acc){ const a=accOf(acc); return !!(a&&a.opening); }
   return S.accounts.some(a=>a.opening)||!!S.opening;
 }
+/* Contas que já têm movimento e nunca disseram de onde partiram. Cada uma
+   soma o histórico inteiro a partir de zero e puxa o total para baixo — basta
+   uma para o saldo não bater com o banco. O aviso do topo sumia assim que
+   QUALQUER conta tivesse abertura, então quem tem duas contas e preencheu só
+   uma ficava com o total errado e sem nenhum sinal do porquê. */
+function contasSemAbertura(){
+  return S.accounts.filter(a=>!a.opening&&
+    aTx().some(t=>t.accId===a.id||t.accTo===a.id));
+}
 
 /* soma de tudo que já se moveu, do início da abertura até o fim de mk */
 function cashRealized(mk,acc){
@@ -1619,7 +1628,10 @@ function cashFlow(mk,acc){
   return { mk, acc:acc||null, inicial, entrou, saiu, atual, aReceber, aPagar, final, fechado,
     /* quanto do pendente já venceu — o que explica saldo final menor que o atual */
     atrasado:sum(pend.filter(t=>statusOf(t)==="atrasado"&&signedFor(t,acc)<0),val),
-    semAbertura:!temAbertura(acc) };
+    semAbertura:!temAbertura(acc),
+    /* no total, quais contas ainda faltam — no detalhe de uma conta só, não
+       faz sentido apontar as outras */
+    faltando:acc?[]:contasSemAbertura() };
 }
 /* saldo dos pendentes até mk, usado para encadear os meses */
 function pendSaldo(mk,acc){ return cashPending(mk,acc).reduce((a,t)=>a+signedFor(t,acc),0); }
@@ -1956,6 +1968,12 @@ function renderHome(){
     (cx.semAbertura
       ? '<div class="sub"><span class="open-warn" data-action="open-set">'+ic("alert")+
         ' Informe seu saldo de abertura para bater com o banco</span></div>'
+      : cx.faltando.length
+      ? '<div class="sub"><span class="open-warn" data-action="acc-edit" data-id="'+cx.faltando[0].id+'">'+ic("alert")+
+        (cx.faltando.length===1
+          ? ' '+esc(cx.faltando[0].name)+' ainda não tem saldo de abertura'
+          : ' '+cx.faltando.length+' contas ainda não têm saldo de abertura')+
+        ' — o total não bate com o banco</span></div>'
       : '<div class="sub">'+deltaChip(pctDelta(incT-expT,prev.inc-prev.exp))+
         '<span>'+(cx.fechado
           ? 'Foi com isso que '+shortMonth(addMonthsISO(viewMonth+"-01",1).slice(0,7))+' começou'

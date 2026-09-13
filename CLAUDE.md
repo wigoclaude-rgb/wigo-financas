@@ -199,6 +199,13 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
 - **Saldo por pessoa:** positivo = a pessoa te deve; negativo = você deve a ela
   (`pesFlow`).
 
+- **O aviso de saldo de abertura é por conta, não do app inteiro.**
+  `contasSemAbertura()` lista as contas que já têm movimento e nunca disseram de
+  onde partiram — cada uma soma o histórico inteiro a partir de zero e puxa o
+  total para baixo. Antes o aviso sumia assim que *qualquer* conta tivesse
+  abertura, então quem preencheu só uma das duas ficava com o total errado e sem
+  nenhum sinal do porquê. O aviso nomeia a conta e abre o cadastro dela.
+
 ### Lançamentos
 
 - **`aTx()` é o único caminho para ler lançamentos** em cálculo ou listagem. Ler
