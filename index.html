@@ -1398,7 +1398,10 @@ async function load(){
     } else S=defaultState();
   }catch(e){ console.error(e); toast("Não foi possível carregar seus dados"); }
   // estica os fixos "sempre" para cobrir os próximos meses
-  if(migraContas()||extendPerpetual()) save();
+  const adotados=adotaOrfaos();
+  if(migraContas()||adotados||extendPerpetual()) save();
+  if(adotados) setTimeout(()=>toast(adotados+" lançamento"+(adotados>1?"s":"")+
+    " sem conta "+(adotados>1?"foram":"foi")+" para "+S.accounts[0].name),900);
   updateAppName(); render();
   if(!window.__onboarded){ window.__onboarded=true; setTimeout(decidirOnboarding,500); }
 }
@@ -1538,6 +1541,12 @@ function signedFor(t,acc){
   return (t.type==="inc"?1:-1)*val(t);
 }
 function accOf(id){ return S.accounts.find(a=>a.id===id); }
+/* a conta do lançamento: a escolhida quando há escolha, a única quando não há */
+function contaPadrao(){
+  const sel=$("#txAcc");
+  if(S.accounts.length>1&&sel&&sel.value) return sel.value;
+  return S.accounts.length?S.accounts[0].id:null;
+}
 function pesOf(id){ return S.people.find(p=>p.id===id); }
 
 /* mês a partir do qual os movimentos passam a contar. Antes dele, o valor já
@@ -1651,6 +1660,25 @@ function migraContas(){
   let n=0;
   S.tx.forEach(t=>{ if(!t.accId&&t.type!=="xfer"){ t.accId=conta.id; n++; } });
   S.opening=null;   // o valor agora vive na conta
+  return n;
+}
+/* Com UMA conta só não existe escolha a fazer: todo lançamento é dela. Quem
+   usou o app antes de cadastrar a conta ficou com lançamentos sem conta — eles
+   entram no total mas não no saldo daquela conta, e é isso que faz o número do
+   app não bater com o do banco.
+
+   Cartão e ticket ficam de fora de propósito: a compra no crédito não sai da
+   conta no dia da compra, e o ticket não é dinheiro do banco. Transferência
+   também não, que já nasce com origem e destino. */
+function adotaOrfaos(){
+  if(S.accounts.length!==1) return 0;
+  const id=S.accounts[0].id;
+  let n=0;
+  S.tx.forEach(t=>{
+    if(t.accId||t.type==="xfer") return;
+    if(t.method==="cartao"||t.method==="ticket") return;
+    t.accId=id; n++;
+  });
   return n;
 }
 
@@ -2596,13 +2624,17 @@ function openAdd(){
   '<div id="wrapBuy" class="hidden"><label>Data da compra</label><input id="txBuy" type="date" value="'+todayISO()+'">'+
     '<div class="help">Uso o fechamento do cartão para calcular o vencimento da fatura.</div></div>'+
   '<label id="lblDue">Vencimento</label><input id="txDue" data-tour="f-venc" type="date" value="'+todayISO()+'" required>'+
-  '<div id="wrapAcc" class="'+(S.accounts.length?"":"hidden")+'" data-tour="f-conta"><label>Conta</label>'+
+  /* com uma conta só não há o que escolher: o campo seria uma pergunta de
+     resposta única. Ele aparece quando existe uma segunda conta. */
+  '<div id="wrapAcc" class="'+(S.accounts.length>1?"":"hidden")+'" data-tour="f-conta"><label>Conta</label>'+
     '<select id="txAcc">'+S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>'+
     '<div class="help">De qual conta o dinheiro sai ou entra. No cartão de crédito, a conta só é debitada quando você paga a fatura.</div></div>'+
-  /* obrigatório de propósito: força decidir de quem é o lançamento em vez de
-     deixar em branco por descuido. "Ninguém" é uma resposta válida. */
+  /* SEM `required`: "Ninguém — é meu" é a resposta padrão e vale como decisão,
+     mas o valor dela é vazio — e um select obrigatório com valor vazio é
+     inválido para o navegador, que barrava o envio do formulário inteiro sem
+     que houvesse o que corrigir. Quem quiser vincular escolhe na lista. */
   '<div id="wrapPes" data-tour="f-pessoa"><label>Pessoa</label>'+
-    '<select id="txPes" required><option value="" selected>Ninguém — é meu</option>'+
+    '<select id="txPes"><option value="" selected>Ninguém — é meu</option>'+
     S.people.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join("")+
     '<option value="__new">＋ Cadastrar pessoa…</option></select>'+
     '<div class="help">Vinculando a alguém, o WIGO acompanha quanto essa pessoa deve ou lhe é devida.</div></div>'+
@@ -2651,7 +2683,8 @@ function syncAddForm(){
   if($("#wrapAcc")){
     const forma=showMethod?$("#txMethod").value:"";
     const semConta=forma==="cartao"||forma==="ticket";
-    $("#wrapAcc").classList.toggle("hidden",!S.accounts.length||semConta);
+    /* com uma conta só não há escolha: o campo some e o lançamento vai para ela */
+    $("#wrapAcc").classList.toggle("hidden",S.accounts.length<2||semConta);
   }
   if(showMethod){ const mv=$("#txMethod").value;
     const isCard=mv==="cartao", isTicket=mv==="ticket";
@@ -2685,7 +2718,8 @@ function submitTx(){
     comp:(addType!=="savings"&&$("#txComp")&&$("#txComp").value)?$("#txComp").value:null,
     /* compra no cartão ou no vale nasce sem conta: ela só ganha uma quando a
        fatura for paga, e aí é a conta de débito do cartão */
-    accId:(method==="cartao"||method==="ticket")?null:(($("#txAcc")&&$("#txAcc").value)||null),
+    /* o select some quando só existe uma conta, e aí ela é o destino de tudo */
+    accId:(method==="cartao"||method==="ticket")?null:contaPadrao(),
     pesId:($("#txPes")&&$("#txPes").value)||null,
     kind:addKind, total:val, n:Math.max(2,parseInt($("#txN").value)||2),
     perp:addKind==="fixo"&&$("#txPerp")&&$("#txPerp").checked,
@@ -4482,8 +4516,11 @@ function impTelaArquivo(){
       '<span>Lançar também as parcelas futuras'+
       '<br><span class="faint" style="font-size:var(--t-xs)">Uma compra "Parcela 1/3" vira três lançamentos: '+
       'o desta fatura e os das próximas. As parcelas já pagas em faturas anteriores não são criadas.</span></span></label>'
-    : '<label>Conta</label><select id="impConta">'+impContas(imp.contaId)+'</select>'+
-      '<div class="help">Todas as movimentações do arquivo entram nesta conta, como já pagas. Dá para trocar depois, uma a uma.</div>')+
+    : (S.accounts.length>1
+        ? '<label>Conta</label><select id="impConta">'+impContas(imp.contaId)+'</select>'+
+          '<div class="help">Todas as movimentações do arquivo entram nesta conta, como já pagas. Dá para trocar depois, uma a uma.</div>'
+        : '<div class="help">Tudo entra em <b>'+esc(S.accounts[0].name)+
+          '</b>, sua única conta, como já pago.</div>'))+
   '<label style="margin-top:16px">Arquivo</label>'+
   '<button type="button" class="btn ghost" data-action="imp-escolher">'+ic("upload")+' Selecionar extrato</button>'+
   '<input type="file" id="impArquivo" accept=".csv,.ofx,.qfx,.txt,.xlsx,.xls,.tsv" class="hidden">'+
@@ -4967,7 +5004,7 @@ function openConsBaixa(){
   '<form id="fConsBaixa">'+
   '<label>Data do pagamento</label><input id="cbData" type="date" value="'+todayISO()+'" required>'+
   '<div class="help">Vale para todos. É esta data que decide em que mês o dinheiro entra ou sai do saldo.</div>'+
-  (S.accounts.length?'<label style="margin-top:14px">Conta</label>'+
+  (S.accounts.length>1?'<label style="margin-top:14px">Conta</label>'+
     '<select id="cbConta"><option value="">Manter a de cada lançamento</option>'+
     S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>'+
     '<div class="help">Só mude se todos saíram (ou entraram) pela mesma conta.</div>':"")+
@@ -5391,7 +5428,7 @@ function openEdit(id){
       Object.entries(METHODS).filter(([k])=>k!=="ticket"||S.tickets.length).map(([k,v])=>'<option value="'+k+'"'+(t.method===k?" selected":"")+'>'+v+'</option>').join("")+'</select></div>'+
     '<div id="edWrapWallet" class="'+((t.method==="cartao"||t.method==="ticket")?"":"hidden")+'"><label id="edLblWallet">'+(t.method==="ticket"?"Ticket":"Cartão")+'</label>'+walletSelect("edWallet",walletSel)+'</div></div>':"")+
   '<label>Vencimento</label><input id="edDue" type="date" value="'+t.due+'">'+
-  (S.accounts.length?'<label>Conta</label><select id="edAcc">'+
+  (S.accounts.length>1?'<label>Conta</label><select id="edAcc">'+
     S.accounts.map(a=>'<option value="'+a.id+'"'+(t.accId===a.id?" selected":"")+'>'+esc(a.name)+'</option>').join("")+
     '</select>':"")+
   '<label>Pessoa</label><select id="edPes">'+
@@ -5427,10 +5464,12 @@ function openCardForm(id){
   '<div><label>Vence dia</label><input id="cdDue" type="number" min="1" max="31" value="'+(c?c.dueDay:10)+'"></div></div>'+
   /* a compra no cartão não sai de conta nenhuma; quem debita é o pagamento da
      fatura, e é sempre a mesma conta — por isso ela pertence ao cartão */
-  (S.accounts.length?'<label>Fatura debitada em</label><select id="cdAcc">'+
+  (S.accounts.length>1?'<label>Fatura debitada em</label><select id="cdAcc">'+
     '<option value="">— escolher na hora de pagar</option>'+
     S.accounts.map(a=>'<option value="'+a.id+'"'+(c&&c.accId===a.id?" selected":"")+'>'+esc(a.name)+'</option>').join("")+
-    '</select><div class="help">Ao marcar a fatura como paga, o valor sai desta conta. Ex.: cartão Nubank debitando na conta Nubank.</div>':"")+
+    '</select><div class="help">Ao marcar a fatura como paga, o valor sai desta conta. Ex.: cartão Nubank debitando na conta Nubank.</div>'
+   :(S.accounts.length===1?'<div class="help">A fatura debita em <b>'+esc(S.accounts[0].name)+
+     '</b>, sua única conta. Cadastre outra conta para poder escolher.</div>':""))+
   '<button class="btn" type="submit">'+(c?"Salvar":"Adicionar cartão")+'</button>'+
   (c?'<button type="button" class="btn danger" data-action="card-delete" data-id="'+id+'">Excluir cartão</button>':"")+'</form>');
 }
@@ -6130,6 +6169,8 @@ document.addEventListener("submit", async e=>{
     t.method=nMethod; t.cardId=nCard; t.ticketId=nTicket;
     if($("#edComp")) t.comp=$("#edComp").value||null;
     if($("#edAcc")) t.accId=$("#edAcc").value||null;
+    /* sem select (uma conta só): quem não é cartão nem ticket é dela */
+    else if(S.accounts.length===1&&t.method!=="cartao"&&t.method!=="ticket") t.accId=S.accounts[0].id;
     if($("#edPes")&&$("#edPes").value!=="__new") t.pesId=$("#edPes").value||null;
     if(t.paid&&$("#edPayDate")){ t.payDate=$("#edPayDate").value; t.payAmt=parseMoney($("#edPayAmt").value)||t.amount;
       if(t.dest==="savings"&&t.goalId){ const g=goalOf(t.goalId); if(g&&g.moves){ const mv=g.moves.find(m=>m.txId===t.id); if(mv){ mv.date=t.payDate; mv.amount=t.payAmt; } } } }
@@ -6140,7 +6181,8 @@ document.addEventListener("submit", async e=>{
       limit:noLimit?0:parseMoney($("#cdLimit").value),
       closeDay:noLimit?1:Math.min(31,Math.max(1,parseInt($("#cdClose").value)||1)),
       dueDay:Math.min(31,Math.max(1,parseInt($("#cdDue").value)||10)),
-      accId:($("#cdAcc")&&$("#cdAcc").value)||null };
+      /* sem select (uma conta só) a fatura debita nela, e não fica pendente */
+      accId:($("#cdAcc")?$("#cdAcc").value:(S.accounts.length===1?S.accounts[0].id:""))||null };
     if(f.dataset.id){ Object.assign(cardOf(f.dataset.id),data); toast("Cartão atualizado ✓"); }
     else { S.cards.push(Object.assign({id:uid()},data)); toast("Cartão adicionado ✓"); }
     save(); closeModal(); render(); }

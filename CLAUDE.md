@@ -199,6 +199,25 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
 - **Saldo por pessoa:** positivo = a pessoa te deve; negativo = você deve a ela
   (`pesFlow`).
 
+- **Com uma conta só, o campo Conta não aparece — e tudo vai para ela.**
+  Perguntar de qual conta saiu o dinheiro quando existe uma única é uma pergunta
+  de resposta forçada. O campo (no novo lançamento, na edição, na importação, no
+  cartão e na baixa em lote) só existe a partir da segunda conta. `contaPadrao()`
+  devolve a escolhida quando há escolha e a única quando não há; `syncAddForm`
+  usa a mesma regra (`S.accounts.length<2`), senão ele reexibiria o campo.
+- **`adotaOrfaos()` leva para a conta única os lançamentos que não têm conta.**
+  Quem usou o app antes de cadastrar a conta ficou com lançamentos órfãos: eles
+  entram no total mas não no saldo daquela conta, e é isso que faz o número do
+  app não bater com o do banco. Roda a cada carga (depois da primeira é no-op) e
+  avisa por toast quantos moveu — corrigir saldo em silêncio seria pior.
+  **Cartão, ticket e transferência ficam de fora de propósito:** a compra no
+  crédito não sai da conta no dia da compra, o ticket não é dinheiro do banco, e
+  a transferência já nasce com origem e destino.
+- **O campo Pessoa do novo lançamento não pode ser `required`.** "Ninguém — é
+  meu" é a resposta padrão e vale como decisão, mas o valor dela é vazio — e um
+  `<select required>` com valor vazio é inválido para o navegador, que barrava o
+  envio do formulário inteiro sem que houvesse o que corrigir. Esteve assim na
+  `main` de 30/08 (v2.1) até 13/09.
 - **O aviso de saldo de abertura é por conta, não do app inteiro.**
   `contasSemAbertura()` lista as contas que já têm movimento e nunca disseram de
   onde partiram — cada uma soma o histórico inteiro a partir de zero e puxa o
