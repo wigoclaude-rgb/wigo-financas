@@ -286,7 +286,7 @@ export function confirmar(L,{arquivo,formato,modo,conta,cartao,faturaRef,linhas,
           const restantes=p?p.de-p.n+1:1;
           criarDocumento(L,{id:d,tipo:DOC.COMPRA,cartao,descricao:p?semParcela(l.descricao):l.descricao,
             valor:l.valor*restantes,data:l.data,competencia:mesDe(l.data),categoria:l.categoria||null,parceiro:l.parceiro||null,
-            parcelas:Array.from({length:restantes},()=>({valor:l.valor})),parcelaInicial:p?{n:p.n,de:p.de}:null,
+            parcelas:Array.from({length:restantes},()=>({valor:l.valor})),parcelaInicial:p?{n:p.n,de:p.de}:null,valorOriginal:p?l.valor*p.de:null,
             fatura:faturaRef,origem:"IMPORTACAO",importacao:imp,silencioso:true},m);
           if(p){ const doc=m.obter("documentos",d); m.set("documentos",d,{...doc,chaveCompra:chaveCompra(cartao,l.data,l.descricao,l.valor,p.de)}); }
         }

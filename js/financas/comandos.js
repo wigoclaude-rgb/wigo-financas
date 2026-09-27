@@ -459,6 +459,32 @@ function sincronizarReembolso(L,m,antes,novo,specT,mud){
   m.auditar("ALTERAR","documento",r.id,r.numero,r.numero+" acompanhou a alteração de "+novo.numero,mudR);
 }
 
+/* Compra antiga lançada agora ("TV em 10x, já paguei 5"): só nascem as que
+   faltam, 6/10 a 10/10, cada uma na sua fatura. As pagas ficam de fora — o
+   dinheiro delas saiu antes do saldo inicial, e lançá-las deixaria faturas
+   antigas vencidas e o limite comido; pagá-las no WIGO tiraria o dinheiro
+   de novo. É o mesmo que a importação faz com "Parcela 6/10". O documento
+   vale o que falta; `valorOriginal` guarda o total da compra. */
+function parcelasQueFaltam(L,d,spec){
+  if(d.tipo!==DOC.COMPRA) erro("Parcelas já pagas só vale para compra no cartão.");
+  const n=parseInt(spec.parcelas)||1, k=parseInt(spec.parcelasPagas)||0;
+  if(k<0||k>=n) erro("As parcelas já pagas precisam ser menos que o total ("+n+"x).");
+  const vs=dividir(d.valor,n).slice(k);
+  d.valorOriginal=d.valor; d.valor=soma(vs);
+  return {...spec,parcelas:vs.map(v=>({valor:v})),parcelaInicial:{n:k+1,de:n},
+    fatura:spec.fatura||addMesesMes(faturaDaCompra(L.cartoes.get(d.cartao),d.data),k)};
+}
+/* A fatura da primeira parcela que o documento tem, ao refazer as parcelas
+   numa edição. Compra que começa no meio (importada "6/10", ou lançada com
+   parcelas já pagas) não pode voltar para a fatura do mês da compra: com a
+   mesma data e o mesmo cartão, fica a fatura que tinha; com data ou cartão
+   novos, conta a partir da fatura da compra pulando as que ficaram de fora. */
+function faturaInicial(L,antes,novo,ini){
+  if(!DO_CARTAO.has(novo.tipo)) return undefined;
+  if(novo.data===antes.data&&novo.cartao===antes.cartao&&antes.parcelas[0]?.fatura) return antes.parcelas[0].fatura;
+  return addMesesMes(faturaDaCompra(L.cartoes.get(novo.cartao),novo.data),ini-1);
+}
+
 /* Cria o documento, as parcelas e a provisão. Com `quitar`, paga tudo na
    hora (a despesa à vista no Pix); com `quitarPrimeiras`, paga as N
    primeiras nos seus vencimentos (o "já paguei 2 de 10" do 2.2). */
@@ -472,10 +498,12 @@ export function criarDocumento(L,spec,m){
     obs:spec.obs||"", origem:spec.origem||"MANUAL", recorrencia:spec.recorrencia||null, sequencia:spec.sequencia||null,
     importacao:spec.importacao||null, legado:spec.legado||null, parcelas:[],
     criadoEm:agora(), atualizadoEm:agora() };
+  if(spec.valorOriginal) d.valorOriginal=spec.valorOriginal;
   const t=spec.terceiro?lerTerceiro(L,m,spec.terceiro):null;
   if(t&&d.tipo!==DOC.COMPRA&&d.tipo!==DOC.PAGAR) erro("Só despesa e compra no cartão podem ser de outra pessoa.");
   if(t&&d.recorrencia) erro("Despesa de outra pessoa não se repete sozinha: lance cada uma.");
   validarDocumento(L,d);
+  if(spec.parcelasPagas) spec=parcelasQueFaltam(L,d,spec);
   d.parcelas=montarParcelas(L,d,spec);
   m.set("documentos",id,d);   /* a compra entra no lote antes da conta a receber que ela gera */
   if(t){ const r=criarReembolso(L,m,d,t); d.terceiro={pessoa:t.pessoa,receber:r.id,modo:t.modo}; }
@@ -538,9 +566,11 @@ export function editarDocumento(L,id,patch,m0){
     const primeiro=patch.primeiroVencimento||(("data" in patch)&&v0===d.data?novo.data:v0);
     const ini=d.parcelas[0]?.n||1;
     if(estrutural) novo.parcelas=montarParcelas(L,novo,{parcelas:patch.parcelas??d.parcelas.length,
-      primeiroVencimento:primeiro, fatura:patch.fatura,
+      primeiroVencimento:primeiro, fatura:patch.fatura||faturaInicial(L,d,novo,ini),
       parcelaInicial:{n:ini,de:patch.parcelas!=null?undefined:d.parcelas[0]?.de}});
     else novo.parcelas=d.parcelas.map(p=>({...p}));
+    /* o que foi pago antes de entrar no WIGO não muda com a edição */
+    if(d.valorOriginal&&novo.valor!==d.valor) novo.valorOriginal=d.valorOriginal-d.valor+novo.valor;
     /* vencimento de parcela em aberto pode mudar sempre: não mexe em dinheiro */
     for(const v of (patch.vencimentos||[])){
       const p=novo.parcelas.find(x=>x.id===v.parcela); if(!p) continue;

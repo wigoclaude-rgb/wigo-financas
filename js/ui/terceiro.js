@@ -82,16 +82,22 @@ function linhasPersonalizado(){
 /* ── a prévia do cronograma, com as mesmas regras do motor ── */
 const nParcelas=f=>Math.max(1,parseInt(f?.parcelas?.value)||1);
 const totalDoForm=f=>centavos(f?.valor?.value);
+/* compra antiga com parcelas já pagas: só o que falta é lançado — e é o
+   que a pessoa ainda tem a devolver */
+const pagasDoForm=f=>f?.pagas&&!f.pagas.disabled?Math.max(0,parseInt(f.pagas.value)||0):0;
+const aReceber=f=>{ const k=pagasDoForm(f), t=totalDoForm(f); return k&&t>0?soma(dividir(t,nParcelas(f)).slice(k)):t; };
 /* as parcelas da própria compra: as do documento, se o que as define não
    mudou na edição; senão, calculadas como o motor calcula */
 function parcelasDaCompra(f){
   const total=totalDoForm(f), n=nParcelas(f), d=tf.doc, data=f?.data?.value;
   if(d&&d.valor===total&&d.parcelas.length===n&&d.data===data&&(!f.cartao||f.cartao.value===d.cartao)) return d.parcelas.map(p=>({valor:p.valor,vencimento:p.vencimento}));
   if(!(total>0)||!valida(data||"")) return [];
-  const vs=dividir(total,n);
+  const k=pagasDoForm(f), vs=dividir(total,n).slice(k);
   if(tf.tipo==="COMPRA_CARTAO"){
     const c=app.L.cartoes.get(f.cartao?.value||d?.cartao); if(!c) return [];
-    const f0=faturaDaCompra(c,data);
+    /* igual ao motor: na edição, mesma data e cartão mantêm a fatura da
+       primeira parcela; senão conta da fatura da compra, pulando as pagas */
+    const f0=d&&d.data===data&&c.id===d.cartao?d.parcelas[0].fatura:addMesesMes(faturaDaCompra(c,data),k+(d?d.parcelas[0].n-1:0));
     return vs.map((v,i)=>({valor:v,vencimento:datasFatura(c,addMesesMes(f0,i)).vencimento}));
   }
   const pago=f.jaPago?f.jaPago.checked:false;
@@ -100,13 +106,13 @@ function parcelasDaCompra(f){
 }
 const vencPadrao=()=>parcelasDaCompra(formEl())[0]?.vencimento||formEl()?.data?.value||"";
 function linhasIniciais(){
-  const f=formEl(), resto=totalDoForm(f)-soma(tf.presas,p=>p.valor), base=parcelasDaCompra(f);
+  const f=formEl(), resto=aReceber(f)-soma(tf.presas,p=>p.valor), base=parcelasDaCompra(f);
   if(base.length>1&&!tf.presas.length) return base.map(p=>({valor:numero(p.valor),vencimento:p.vencimento}));
   const v0=vencPadrao(), vs=resto>0?dividir(resto,2):[0,0];
   return vs.map((v,i)=>({valor:v?numero(v):"",vencimento:v0?addMeses(v0,i):""}));
 }
 function plano(){
-  const f=formEl(), total=totalDoForm(f), jaTem=soma(tf.presas,p=>p.valor), resto=total-jaTem;
+  const f=formEl(), total=aReceber(f), jaTem=soma(tf.presas,p=>p.valor), resto=total-jaTem;
   if(!(total>0)) return {linhas:[],erro:null,vazio:true};
   if(resto<0) return {linhas:[],erro:"O que já teve recebimento ("+formatar(jaTem)+") passa do novo valor."};
   if(tf.modo==="PARCELAS"){ let coberto=jaTem; const out=[];
@@ -123,7 +129,7 @@ function plano(){
 }
 function resumo(){
   const f=formEl(); if(!f||tf.resp!=="TERCEIRO") return "";
-  const L=app.L, total=totalDoForm(f), n=nParcelas(f), cartao=tf.tipo==="COMPRA_CARTAO";
+  const L=app.L, total=totalDoForm(f), n=nParcelas(f), k=pagasDoForm(f), receber=aReceber(f), cartao=tf.tipo==="COMPRA_CARTAO";
   const p=plano(), nome=nomePessoa();
   const nova=nome&&!L.parceirosAtivos().some(x=>normalizar(x.nome)===normalizar(nome));
   const cat=f.categoria?.value?L.nomeCategoria(f.categoria.value):"";
@@ -131,9 +137,9 @@ function resumo(){
     :fmtData(p.linhas[0].vencimento)+" a "+fmtData(p.linhas[p.linhas.length-1].vencimento);
   return h`<div class="card pad tf-resumo">
     <div class="cap" style="margin-bottom:6px">Resumo antes de salvar</div>
-    <div>${cartao?"Compra no cartão "+(L.cartoes.get(f.cartao?.value||tf.doc?.cartao)?.nome||""):"Despesa"}: <b>${R(total)}</b>${n>1?" em "+n+"x":""}${cat?" · "+cat:""}</div>
+    <div>${cartao?"Compra no cartão "+(L.cartoes.get(f.cartao?.value||tf.doc?.cartao)?.nome||""):"Despesa"}: <b>${R(total)}</b>${n>1?" em "+n+"x":""}${k?h` · ${k} já paga${k>1?"s":""}, entram <b>${R(receber)}</b>`:""}${cat?" · "+cat:""}</div>
     <div>Responsável: <b>${nome||"—"}</b>${nova?h` <span class="fraco">(nova pessoa, cadastrada ao salvar)</span>`:""}</div>
-    ${p.vazio?"":h`<div>Contas a receber: <b>${R(total)}</b>${p.linhas.length?h` — ${p.linhas.length>1?p.linhas.length+" parcelas":"de uma vez"}${tf.presas.length?" (além do que já teve recebimento)":""}: ${datas}`:""}</div>`}
+    ${p.vazio?"":h`<div>Contas a receber: <b>${R(receber)}</b>${p.linhas.length?h` — ${p.linhas.length>1?p.linhas.length+" parcelas":"de uma vez"}${tf.presas.length?" (além do que já teve recebimento)":""}: ${datas}`:""}</div>`}
     ${p.erro?h`<div class="down" style="margin-top:6px">${p.erro}</div>`:p.ok?h`<div class="up" style="margin-top:6px">${I("check","p")} Soma certa: ${R(soma(p.linhas,x=>x.valor))}</div>`:""}
     <div class="fraco peq" style="margin-top:8px">${cartao?"A fatura continua com o valor total. ":""}Não entra nas suas despesas. Quando ${nome||"a pessoa"} devolver, registre o recebimento na conta a receber: é dinheiro que volta, não receita.</div></div>`;
 }

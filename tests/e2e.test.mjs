@@ -495,5 +495,37 @@ g("terceiro: compra no cartão para outra pessoa gera a conta a receber, mostra 
   t("sem erro de JS", erros, []);
   await ctx.close(); }
 
+/* ─────────── 22. compra antiga com parcelas já pagas ─────────── */
+g("compra antiga no cartão: informando as já pagas, só entram as que faltam, nas faturas certas");
+{ ({p,erros,ctx}=await abrir({legado:legadoDemo("2026-09-27"),hoje:HOJE}));
+  await p.waitForSelector("#painel.on",{timeout:15000}); await p.click('#painel [data-a="painel-fechar"]');
+  await ir(p,"visao");
+  await p.click('.conteudo [data-a="doc-novo"][data-v="COMPRA_CARTAO"]'); await p.waitForSelector("#fNovo");
+  t("à vista: não há o que marcar como pago", await p.locator('#fNovo [name="pagas"][disabled]').count(), 1);
+  await p.fill('#fNovo [name="descricao"]',"TV da sala"); await p.fill('#fNovo [name="valor"]',"1000");
+  await p.fill('#fNovo [name="data"]',"2026-05-05");
+  await p.selectOption('#fNovo [name="parcelas"]',"3"); await p.waitForTimeout(100);
+  t("as opções acompanham o número de parcelas", await p.locator('#fNovo [name="pagas"] option').count(), 3);
+  await p.selectOption('#fNovo [name="parcelas"]',"10"); await p.waitForTimeout(100);
+  await p.selectOption('#fNovo [name="pagas"]',"5"); await p.waitForTimeout(150);
+  const pv=await p.textContent("#novoPrevia");
+  t("a prévia diz o que entra e em que fatura", [/entram 6\/10 a 10\/10, R\$\s*500,00/.test(pv), /A 6\/10 entra na fatura de outubro de 2026/.test(pv)], [true,true]);
+  t("salvo", await enviar(p,'#fNovo button[type="submit"]'), "Compra registrada na fatura · 5 parcelas a pagar");
+  const tv=await p.evaluate(()=>{ const L=window.__app.L; const d=[...L.documentos.values()].find(x=>x.descricao==="TV da sala");
+    return {id:d.id,parc:d.parcelas.map(x=>x.n+"/"+x.de+"@"+x.fatura),valor:d.valor,orig:d.valorOriginal}; });
+  t("só as que faltam, cada uma na sua fatura", tv.parc, ["6/10@2026-10","7/10@2026-11","8/10@2026-12","9/10@2027-01","10/10@2027-02"]);
+  t("vale o que falta, guarda o total", [tv.valor,tv.orig], [50000,100000]);
+  await p.evaluate(id=>window.__app.abrirDocumento(id),tv.id); await p.waitForTimeout(300);
+  t("o documento mostra a compra original", /R\$\s*1\.000,00 em 10x · 5 pagas antes de entrar no WIGO/.test(await p.textContent("#painel")), true);
+  await p.click('#painel [data-a="painel-fechar"]');
+  t("integridade", await integridade(p), []);
+  await p.setViewportSize({width:390,height:844});
+  await ir(p,"visao"); await p.click('.conteudo [data-a="doc-novo"][data-v="COMPRA_CARTAO"]'); await p.waitForSelector("#fNovo");
+  await p.selectOption('#fNovo [name="parcelas"]',"12"); await p.selectOption('#fNovo [name="pagas"]',"11"); await p.fill('#fNovo [name="valor"]',"1234,56"); await p.waitForTimeout(200);
+  t("celular: o formulário continua dentro da tela", await vazamentos(p), []);
+  t("as regras aceitam", await p.evaluate(()=>window.__recusas), []);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
 await encerrar();
 fim();

@@ -67,6 +67,7 @@ app.abrirDocumento=function(id){
       <div><span class="cap">Data</span><b>${fmtData(d.data)}</b></div></div>`;
   const meta=[
     [origem?"Pessoa":noCartao?"Estabelecimento":"Parceiro",d.parceiro?h`<a class="link" data-a="ir" data-v="parceiros" data-p="${d.parceiro}">${L.nomeParceiro(d.parceiro)}</a>`:"—"],
+    d.valorOriginal?["Compra original",R(d.valorOriginal)+" em "+d.parcelas[0].de+"x · "+(d.parcelas[0].n-1)+" paga"+(d.parcelas[0].n>2?"s":"")+" antes de entrar no WIGO"]:null,
     d.terceiro?["Responsável",h`<a class="link" data-a="ir" data-v="parceiros" data-p="${d.terceiro.pessoa}">${L.nomeParceiro(d.terceiro.pessoa)}</a> (terceiro)`]:null,
     origem?null:["Categoria",L.nomeCategoria(d.categoria)||"—"],
     ["Data do documento",fmtData(d.data)],["Competência",rotuloMes(d.competencia)],

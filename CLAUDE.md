@@ -27,11 +27,11 @@ e é público de propósito (ver "Netlify e repositório").
 ### Testes
 
 ```bash
-node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno, terceiros… (202)
+node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno, terceiros… (220)
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
 node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (78)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (39)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (157)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (168)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -151,6 +151,18 @@ de saldo gravado em lugar nenhum.
   gasto contaria duas vezes.
 - **Limite disponível = limite − toda a dívida do cartão**, parcelas futuras
   inclusive.
+- **Compra antiga com parcelas já pagas** ("TV em 10x, já paguei 5", campo
+  "Já pagas" na compra no cartão, `parcelasPagas`): só nascem 6/10 a 10/10,
+  a primeira na fatura da compra + 5 meses. O documento vale o que falta;
+  `valorOriginal` guarda o total. Lançar as pagas deixaria faturas antigas
+  vencidas e o limite comido, e pagá-las no WIGO tiraria o dinheiro de novo
+  de uma conta que começou com o saldo de hoje. A importação de "Parcela 6/10"
+  faz o mesmo e também grava `valorOriginal`.
+- **Editar compra que começa no meio não a devolve à fatura do mês da
+  compra** (`faturaInicial`): mesma data e cartão mantêm a fatura da primeira
+  parcela; data ou cartão novos contam da fatura da compra pulando as que
+  ficaram de fora. Antes, mudar o valor de uma compra importada como "6/10"
+  jogava as parcelas em maio a setembro, já vencidas.
 - **Recorrência gera documentos de verdade** numa janela de 24 meses
   (`JANELA_MESES`), esticada a cada abertura por `gerarPendentes`. Editar pode
   valer só para os futuros; encerrar pode cancelar os futuros.

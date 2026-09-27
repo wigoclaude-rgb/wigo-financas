@@ -56,7 +56,7 @@ function detalhe(L,cid,ref){
         {rot:"Compra",cel:i=>h`<div class="t">${i.doc.descricao}</div><div class="sub"><span class="num-doc">${i.doc.numero}</span>${i.doc.parceiro?" · "+L.nomeParceiro(i.doc.parceiro):""}${i.doc.terceiro?h` · <span class="terc">${I("handshake","p")} de ${L.nomeParceiro(i.doc.terceiro.pessoa)}</span>`:""}</div>`},
         {rot:"Parcela",nw:true,cel:i=>i.doc.parcelas.length>1||i.p.de>1?i.p.n+"/"+i.p.de:"à vista"},
         {rot:"Categoria",oc:true,cel:i=>L.nomeCategoria(i.doc.categoria)||"—"},
-        {rot:"Total da compra",r:true,oc:true,cel:i=>i.p.de>1?R(i.doc.valor):"—"},
+        {rot:"Total da compra",r:true,oc:true,cel:i=>i.p.de>1?R(i.doc.valorOriginal||i.doc.valor):"—"},
         {rot:"Valor",r:true,cel:i=>h`<b class="${i.sinal<0?"up":""}">${i.sinal<0?"−":""}${R(i.p.valor)}</b>`}]})}</div></div>
     <div class="secao"><div class="sec-cab"><h2 class="t2">Pagamentos desta fatura</h2></div>
       ${pags.length?h`<div class="card lista">${juntar(pags,p=>h`<div class="clic"${clic("pag-abrir",p.id)}><span class="bola ${p.estornoDe?"warn":"down"}">${I(p.estornoDe?"undo":"check","p")}</span>

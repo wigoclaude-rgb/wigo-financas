@@ -164,7 +164,7 @@ cartoes(L){
       ${tabela({linhas:rc,cartoes:false,colunas:[{rot:"Cartão",cel:x=>x.cartao.nome},...meses.map(m=>({rot:rotuloMesCurto(m),r:true,cel:x=>{ const f=x.faturas.find(y=>y.ref===m); return f&&f.restante>0?R(f.restante):"—"; }})),{rot:"Total",r:true,cel:x=>h`<b>${R(x.comprometido)}</b>`}]})}</div>
     <div class="card"><div class="card-cab"><h2 class="t2">Compras parceladas em aberto</h2></div>
       ${tabela({linhas:rc.flatMap(x=>x.comprasParceladas.map(d=>({d,c:x.cartao}))),vazioTxt:"Nenhuma",clic:x=>String(clic("doc-abrir",x.d.id)),
-        colunas:[{rot:"Compra",cel:x=>h`<div class="t">${x.d.descricao}</div><div class="sub">${x.c.nome} · <span class="num-doc">${x.d.numero}</span></div>`},{rot:"Total",r:true,oc:true,cel:x=>R(x.d.valor)},
+        colunas:[{rot:"Compra",cel:x=>h`<div class="t">${x.d.descricao}</div><div class="sub">${x.c.nome} · <span class="num-doc">${x.d.numero}</span></div>`},{rot:"Total",r:true,oc:true,cel:x=>R(x.d.valorOriginal||x.d.valor)},
           {rot:"Parcelas restantes",r:true,cel:x=>{ const e=L.estadoDocumento(x.d); return e.parcelas.filter(p=>p.e.restante>0).length+" de "+x.d.parcelas[0].de; }},{rot:"Falta",r:true,cel:x=>h`<b>${R(L.estadoDocumento(x.d).restante)}</b>`}]})}</div>`;
 },
 /* ── PARCEIROS ── */

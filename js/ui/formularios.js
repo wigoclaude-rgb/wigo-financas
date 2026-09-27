@@ -10,8 +10,8 @@ import { DOC, TIPO_CONTA, TIPO_PN, DISPONIVEL, ErroFinanceiro } from "../financa
 import * as C from "../financas/comandos.js";
 import { criarRecorrencia } from "../financas/recorrencias.js";
 import { faturaDaCompra, datasFatura, fatura as faturaDe } from "../financas/cartoes.js";
-import { centavos, numero, dividir } from "../nucleo/dinheiro.js";
-import { hoje, mesDe } from "../nucleo/datas.js";
+import { centavos, numero, dividir, soma } from "../nucleo/dinheiro.js";
+import { hoje, mesDe, addMesesMes } from "../nucleo/datas.js";
 import { normalizar } from "../nucleo/texto.js";
 import { iniciarTerceiro, blocoTerceiro, atualizarTerceiro, terceiroAtivo, terceiroMudou, nomePessoa, specTerceiro, problemaTerceiro } from "./terceiro.js";
 
@@ -57,7 +57,8 @@ function formNovo(){
     <div class="linha2">${campo(receita?"Categoria":"Categoria",h`<select name="categoria" data-c="novo-previa">${opcoesCategoria(receita?"RECEITA":"DESPESA",p.categoria)}</select>`)}
       ${campo(receita?"Quem paga":cartao?"Estabelecimento":"Para quem",h`<input name="parceiro" list="pnLista" placeholder="Opcional" value="${p.parceiro?L.nomeParceiro(p.parceiro):""}" autocomplete="off">${listaParceiros()}`)}</div>
     <div class="linha2">${campo("Parcelas",h`<select name="parcelas" data-c="novo-previa">${juntar(Array.from({length:24},(_,i)=>i+1),n=>h`<option value="${n}"${n===(p.parcelas||1)?raw(" selected"):""}>${n===1?"À vista":n+"x"}</option>`)}</select>`)}
-      ${!cartao?campo(receita?"Forma de recebimento":"Forma de pagamento",h`<select name="forma">${opcoesFormas(p.forma||"pix")}</select>`):h`<div></div>`}</div>
+      ${!cartao?campo(receita?"Forma de recebimento":"Forma de pagamento",h`<select name="forma">${opcoesFormas(p.forma||"pix")}</select>`)
+        :campo("Já pagas",h`<select name="pagas" data-c="novo-previa"${(p.parcelas||1)<2?raw(" disabled"):""}>${opcoesPagas(p.parcelas||1,0)}</select>`,"Compra antiga? Só as que faltam entram.")}</div>
     <div id="novoPrevia" class="fraco peq" style="margin:-4px 0 14px"></div>
     ${!cartao?h`<label class="check" style="margin-bottom:12px"><input type="checkbox" name="jaPago" data-c="novo-pago" checked> ${receita?"Já recebi":"Já paguei"}</label>
       <div id="novoPago">${campoConta({rotulo:receita?"Entrou em":"Saiu de",valor:p.conta})}</div>
@@ -75,13 +76,21 @@ acao("novo-tipo",el=>{ novo={tipo:el.dataset.v,pre:null}; formNovo(); });
 aoMudar("novo-pago",el=>{ document.getElementById("novoPago").hidden=!el.checked; document.getElementById("novoAberto").hidden=el.checked; atualizarTerceiro(); });
 aoMudar("novo-repetir",el=>{ document.getElementById("novoRepetir").hidden=!el.checked; });
 aoMudar("novo-previa",()=>previaNovo()); aoDigitar("novo-previa",()=>previaNovo());
+/* "Já pagas": de nenhuma até uma a menos que o total (todas pagas não é
+   compra a lançar) */
+function opcoesPagas(n,sel){
+  return juntar(Array.from({length:Math.max(1,n)},(_,k)=>k),k=>h`<option value="${k}"${k===sel?raw(" selected"):""}>${k===0?"Nenhuma":k===1?"1 parcela":k+" parcelas"}</option>`);
+}
 function previaNovo(){
   const f=document.getElementById("fNovo"); if(!f) return;
   const v=centavos(f.valor.value), n=+f.parcelas.value||1, alvo=document.getElementById("novoPrevia");
+  if(f.pagas&&f.pagas.options.length!==n){ const k=Math.min(+f.pagas.value||0,n-1); f.pagas.innerHTML=String(opcoesPagas(n,k)); f.pagas.disabled=n<2; }
+  const k=f.pagas&&!f.pagas.disabled?+f.pagas.value||0:0;
   let txt="";
-  if(v&&n>1){ const ps=dividir(v,n); txt=n+"x de "+R(ps[1])+(ps[0]!==ps[1]?" (a primeira "+R(ps[0])+")":""); }
-  if(f.cartao&&f.data.value){ const c=app.L.cartoes.get(f.cartao.value); if(c){ const ref=faturaDaCompra(c,f.data.value);
-    txt+=(txt?" · ":"")+"Entra na fatura de "+rotuloMes(ref)+" (vence "+fmtData(datasFatura(c,ref).vencimento)+")"; } }
+  if(v&&n>1){ const ps=dividir(v,n); txt=n+"x de "+R(ps[1])+(ps[0]!==ps[1]&&!k?" (a primeira "+R(ps[0])+")":"");
+    if(k) txt+=" · "+k+(k>1?" já pagas ficam":" já paga fica")+" de fora: entram "+(k+1)+"/"+n+" a "+n+"/"+n+", "+R(soma(ps.slice(k))); }
+  if(f.cartao&&f.data.value){ const c=app.L.cartoes.get(f.cartao.value); if(c){ const ref=addMesesMes(faturaDaCompra(c,f.data.value),k);
+    txt+=(txt?" · ":"")+(k?"A "+(k+1)+"/"+n+" entra":"Entra")+" na fatura de "+rotuloMes(ref)+" (vence "+fmtData(datasFatura(c,ref).vencimento)+")"; } }
   alvo.textContent=txt;
   atualizarTerceiro();
 }
@@ -106,7 +115,9 @@ form("novo-doc",async(f,d)=>{
       quantidade:meses,quitarPrimeiras:pago?1:0,contaQuitacao:d.get("conta")||contaPadrao()}),{ok:"Lançamento mensal criado"});
   }
   const okTerc=terc?" · conta a receber de "+nomePessoa()+" criada":"";
-  if(t==="COMPRA_CARTAO") return executar(()=>C.criarDocumento(app.L,{...base,cartao:d.get("cartao"),parcelas:n,terceiro}),{ok:"Compra registrada na fatura"+okTerc});
+  const pagas=t==="COMPRA_CARTAO"&&n>1?(+d.get("pagas")||0):0;
+  if(t==="COMPRA_CARTAO") return executar(()=>C.criarDocumento(app.L,{...base,cartao:d.get("cartao"),parcelas:n,parcelasPagas:pagas,terceiro}),
+    {ok:"Compra registrada na fatura"+(pagas?" · "+(n-pagas)+" parcela"+(n-pagas>1?"s":"")+" a pagar":"")+okTerc});
   const pago=!!d.get("jaPago");
   const conta=d.get("conta")||contaPadrao();
   return executar(()=>C.criarDocumento(app.L,{...base,parcelas:n,conta,terceiro,

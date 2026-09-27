@@ -475,4 +475,38 @@ g("Terceiro — perdoar parte da dívida vira despesa minha (desconto)");
   t("quitado, entrou 80, 20 de desconto concedido", [L.estadoDocumento(r).status,L.saldoConta(a),L.saldoChave("E:#desconto")], ["PAGA",R(1080),R(20)]);
   integro(L); }
 
+g("Compra antiga no cartão: com parcelas já pagas, só entram as que faltam");
+{ const L=novoLivro(); const a=conta(L,"Nubank",5000,"2026-09-27"); const nu=cartao(L,"Roxinho",{limite:10000});
+  const d=doc(L,{tipo:"COMPRA_CARTAO",descricao:"TV",valor:R(1000),data:"2026-05-05",cartao:nu,parcelas:10,parcelasPagas:5});
+  t("nascem 6/10 a 10/10", d.parcelas.map(p=>p.n+"/"+p.de), ["6/10","7/10","8/10","9/10","10/10"]);
+  t("cada uma na sua fatura, a partir de outubro", d.parcelas.map(p=>p.fatura), ["2026-10","2026-11","2026-12","2027-01","2027-02"]);
+  t("o documento vale o que falta; o total da compra fica guardado", [d.valor,d.valorOriginal], [R(500),R(1000)]);
+  t("o cartão deve só o que falta, e o limite também", [L.dividaCartao(nu),limiteCartao(L,nu).disponivel], [R(500),R(9500)]);
+  t("nenhuma fatura antiga vencida", ["2026-05","2026-06","2026-07","2026-08","2026-09"].map(r=>fatura(L,nu,r).status), ["VAZIA","VAZIA","VAZIA","VAZIA","VAZIA"]);
+  t("o banco não mexe", L.saldoConta(a), R(5000));
+  integro(L);
+  ex(L,C.editarDocumento(L,d.id,{valor:R(600)}));
+  const d2=L.documentos.get(d.id);
+  t("editar o valor não joga as parcelas para as faturas antigas", d2.parcelas.map(p=>p.n+"@"+p.fatura), ["6@2026-10","7@2026-11","8@2026-12","9@2027-01","10@2027-02"]);
+  t("o total da compra acompanha (o que foi pago antes não muda)", [d2.valor,d2.valorOriginal], [R(600),R(1100)]);
+  ex(L,C.editarDocumento(L,d.id,{data:"2026-06-05"}));
+  t("data nova: conta da fatura da compra, pulando as já pagas", L.documentos.get(d.id).parcelas[0].fatura, "2026-11");
+  integro(L);
+  t("centavos: a sobra fica na primeira, que já foi paga", doc(L,{tipo:"COMPRA_CARTAO",descricao:"X",valor:100001,data:"2026-09-01",cartao:nu,parcelas:3,parcelasPagas:1}).parcelas.map(p=>p.valor), [33333,33333]);
+  t("todas pagas é recusado", tenta(()=>C.criarDocumento(L,{tipo:"COMPRA_CARTAO",descricao:"Y",valor:R(100),data:"2026-09-01",cartao:nu,parcelas:3,parcelasPagas:3})), "As parcelas já pagas precisam ser menos que o total (3x).");
+  t("só vale para cartão", tenta(()=>C.criarDocumento(L,{tipo:"PAGAR",descricao:"Y",valor:R(100),data:"2026-09-01",parcelas:3,parcelasPagas:1})), "Parcelas já pagas só vale para compra no cartão.");
+  const {joao}={joao:pn(L,"João")};
+  const dt=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Celular do João",valor:R(1200),data:"2026-06-05",cartao:nu,parcelas:12,parcelasPagas:4,terceiro:{pessoa:joao,modo:"PARCELAS"}});
+  const r=L.documentos.get(dt.terceiro.receber);
+  t("de terceiro: o reembolso cobre o que falta, parcela a parcela", [r.valor,r.parcelas.length,r.parcelas[0].vencimento], [R(800),8,dt.parcelas[0].vencimento]);
+  integro(L); }
+
+g("Importação de fatura \"Parcela 6/10\" guarda o total da compra");
+{ const L=novoLivro(); const nu=cartao(L,"Roxinho");
+  const d=doc(L,{tipo:"COMPRA_CARTAO",descricao:"TV",valor:R(500),data:"2026-05-05",cartao:nu,
+    parcelas:Array.from({length:5},()=>({valor:R(100)})),parcelaInicial:{n:6,de:10},fatura:"2026-10",valorOriginal:R(1000)});
+  ex(L,C.editarDocumento(L,d.id,{valor:R(550)}));
+  t("editar não volta para a fatura de maio", L.documentos.get(d.id).parcelas[0].fatura, "2026-10");
+  integro(L); }
+
 fim();
