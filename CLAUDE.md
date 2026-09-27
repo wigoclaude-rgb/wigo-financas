@@ -31,7 +31,7 @@ node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, e
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
 node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (77)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (39)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (111)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (114)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -317,6 +317,13 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
     porque com `overflow-x:clip` no html o `scrollWidth` não denuncia mais;
   - **campos com 16px no celular**: com menos, o iPhone dá zoom ao tocar no
     campo e não volta, e o usuário tinha de afastar o zoom com os dedos;
+  - **no iOS, `maximum-scale=1`** (script no `index.html`): trava só o zoom
+    automático — a pinça continua, porque o iOS ignora a trava para o gesto.
+    No Android travaria a pinça, então não entra lá;
+  - **áreas do sistema** (`env(safe-area-inset-*)`): com `viewport-fit=cover`
+    o app vai até a borda, e no iPhone o relógio e a bateria ficavam por cima
+    do título e do botão de busca. Topo, login, menu de baixo, avisos, barra
+    de seleção e painel reservam esse espaço.
   - `overflow-x:clip` em html e body (não `hidden`, que quebraria a barra do
     topo presa) e `overflow-wrap:anywhere` nos textos: descrição de banco sem
     espaço quebra a linha em vez de alargar a tela.

@@ -364,5 +364,17 @@ t("filtros: nenhum campo abaixo de 16px", await pequenos(), []);
 t("sem erro de JS", erros, []);
 await ctx.close();
 
+/* ─────────── 19. iPhone: sem zoom automático; Android: pinça livre ─────────── */
+g("iPhone trava só o zoom automático; Android continua com a pinça; topo do tamanho certo");
+{ const vp=async ua=>{ const x=await abrir({largura:390,altura:844,usuario:{uid:"u9",email:"a@b.c"},hoje:HOJE,userAgent:ua});
+    await x.p.waitForSelector("#conteudo .hero",{timeout:15000});
+    const r=await x.p.evaluate(()=>({meta:document.querySelector("meta[name=viewport]").content,topo:document.querySelector(".barra-topo").getBoundingClientRect().height}));
+    await x.ctx.close(); return r; };
+  const ios=await vp("Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1");
+  const and=await vp("Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36");
+  t("iPhone: maximum-scale=1 (o Safari não dá zoom ao tocar no campo)", /maximum-scale=1/.test(ios.meta), true);
+  t("Android: sem trava, a pinça continua livre", /maximum-scale/.test(and.meta), false);
+  t("sem entalhe (área do sistema = 0), o topo continua com 58px", ios.topo, 58); }
+
 await encerrar();
 fim();

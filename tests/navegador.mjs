@@ -19,8 +19,8 @@ export async function iniciar(){
 }
 export async function encerrar(){ await navegador?.close(); servidor?.kill(); }
 /* abre o app com um usuário logado e, opcionalmente, o JSON do 2.2 */
-export async function abrir({largura=1366,altura=900,legado=null,fs=null,usuario={uid:"u1",email:"voce@exemplo.com"},hoje=null,tema="escuro",globais={}}={}){
-  const ctx=await navegador.newContext({viewport:{width:largura,height:altura},deviceScaleFactor:2,locale:"pt-BR",timezoneId:"America/Sao_Paulo"});
+export async function abrir({largura=1366,altura=900,legado=null,fs=null,usuario={uid:"u1",email:"voce@exemplo.com"},hoje=null,tema="escuro",globais={},userAgent=null}={}){
+  const ctx=await navegador.newContext({viewport:{width:largura,height:altura},deviceScaleFactor:2,locale:"pt-BR",timezoneId:"America/Sao_Paulo",...(userAgent?{userAgent}:{})});
   const p=await ctx.newPage();
   const erros=[];
   p.on("pageerror",e=>erros.push(String(e.message||e)));

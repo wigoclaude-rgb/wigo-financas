@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>
+/* iPhone e iPad: o Safari dá zoom sozinho ao tocar num campo e não volta.
+   maximum-scale=1 impede só esse zoom automático — a pinça com dois dedos
+   continua funcionando no iOS, que ignora a trava para o gesto do usuário.
+   No Android a mesma trava bloquearia a pinça, então ela fica só no iOS. */
+(function(){ var ua=navigator.userAgent;
+  if(/iP(hone|ad|od)/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)){
+    var vp=document.querySelector('meta[name=viewport]'); if(vp) vp.content+=",maximum-scale=1"; } })();
+</script>
 <meta name="theme-color" content="#0a0a0e">
 <title>WIGO Finanças</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0812'/%3E%3Cpath d='M18 46V18h6l16 20V18h6v28h-6L24 26v20h-6z' fill='%238b5cf6'/%3E%3C/svg%3E">
