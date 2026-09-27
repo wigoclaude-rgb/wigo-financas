@@ -915,6 +915,40 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
 .cons-bar .si .v i{color:var(--ink-4);font-style:normal;margin:0 2px}
 .cons-bar .btn{width:auto}
 
+/* ---------- baixa por pessoa (tela do SAP) ---------- */
+.bx-row{display:grid;grid-template-columns:32px 88px minmax(0,1fr) 56px 82px 112px 128px;
+  gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);
+  font-size:var(--t-sm)}
+.bx-row:last-child{border-bottom:none}
+.bx-row.sel{background:var(--grad-v-soft)}
+.bx-row.gr-head{color:var(--ink-4);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.04em;background:var(--s-2);border-radius:var(--r-md) var(--r-md) 0 0}
+.bx-row .ttl{font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bx-row .ttl:hover{color:var(--v-2)}
+.bx-row .nw{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-xs)}
+.bx-row .faint{font-size:var(--t-xs);white-space:nowrap}
+.bx-row .atraso{color:var(--down);font-weight:700}
+.bx-row .r{text-align:right;font-variant-numeric:tabular-nums}
+.bx-row input.bx-val{margin:0;padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums;
+  font-weight:650;min-width:0}
+.bx-row input.bx-val.mudou{border-color:var(--warn,#f5b841)}
+@media (max-width:900px){
+  .bx-row.gr-head{display:none}
+  .bx-row{grid-template-columns:32px minmax(0,1fr) 112px;gap:3px 10px;padding:11px 12px}
+  .bx-row>span:nth-child(1){grid-row:1/3;align-self:start;padding-top:2px}
+  .bx-row>span:nth-child(3){grid-column:2;grid-row:1}
+  .bx-row>span:nth-child(2){grid-column:2;grid-row:2}
+  .bx-row>span:nth-child(6){grid-column:3;grid-row:1}
+  .bx-row>span:nth-child(7){grid-column:3;grid-row:2}
+  .bx-row>span:nth-child(4),.bx-row>span:nth-child(5){display:none}
+}
+/* "Meio de pagamento" é longo demais para dividir a linha com o total no celular */
+@media (max-width:600px){
+  .cons-bar.bx-bar{flex-wrap:wrap}
+  .cons-bar.bx-bar .si{flex-basis:100%}
+  .cons-bar.bx-bar .btn:first-of-type{flex:1}
+}
+
 /* No celular a grade vira lista: nove colunas em 390px não é tabela, é ilegível.
    Sobram descrição, data, valor e situação — o que se olha primeiro. */
 @media (max-width:900px){
@@ -1134,6 +1168,14 @@ h3{font-size:var(--t-h3);font-weight:700;letter-spacing:-.02em}
     <button class="side-nav-item" data-action="cons-abrir" data-v="pagar">
       <svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M12 7.6v8.6M8.4 12.6 12 16.2l3.6-3.6"/></svg>
       <span>Contas a pagar</span>
+    </button>
+    <button class="side-nav-item" data-action="bx-abrir" data-v="receber">
+      <svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M8.2 12.3l2.6 2.6 5-5.2"/></svg>
+      <span>Baixar recebimento</span>
+    </button>
+    <button class="side-nav-item" data-action="bx-abrir" data-v="pagar">
+      <svg class="icn" viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3.2"/><path d="M8.2 12.3l2.6 2.6 5-5.2"/></svg>
+      <span>Baixar pagamento</span>
     </button>
     <button class="side-nav-item" data-action="pes-list" data-tour="pessoas">
       <svg class="icn" viewBox="0 0 24 24"><path d="M11.4 8.4 9 10.8a1.9 1.9 0 0 0 2.7 2.7l1.2-1.2 3 3a1.9 1.9 0 0 0 2.7-2.7"/><path d="M2.6 8.4 6.4 5.6h4L13 7.4M21.4 8.4 17.6 5.6h-3.2"/><path d="M2.6 8.4v6.2l2.4 2.4M21.4 8.4v6.2L19 17"/></svg>
@@ -1799,6 +1841,7 @@ function render(){
   else if(tab==="report") v.innerHTML=renderReport();
   else if(tab==="settings") v.innerHTML=renderSettings();
   else if(tab==="consulta"){ if(!cons) cons=novaConsulta(); v.innerHTML=renderConsulta(); }
+  else if(tab==="baixa"){ if(!bx) bx=novaBaixa(); v.innerHTML=renderBaixa(); }
   else if(tab==="razao"){ if(!raz||!pesOf(raz.pes)){ tab="home"; v.innerHTML=renderHome(); }
     else v.innerHTML=renderRazao(); }
   const g=$("#greetEl"); if(g) g.textContent=greetWord();
@@ -1983,52 +2026,15 @@ function renderHome(){
   const prev=monthAgg(addMonthsISO(viewMonth+"-01",-1).slice(0,7));
   const patr=S.goals.reduce((a,g)=>a+goalBalance(g),0);
 
-  /* --- HERO: extrato de caixa do mês ---
-     O número em destaque é o SALDO ATUAL, o que existe em caixa agora — é ele
-     que se compara com o app do banco. Acima dele, de onde partiu; abaixo, o
-     que ainda falta acontecer até fechar o mês. */
+  /* --- HERO: só o saldo final do mês ---
+     O extrato encadeado (inicial + recebido − pago = atual, e o que falta) saiu
+     a pedido: o número que interessa é onde o mês termina. O cálculo continua
+     o mesmo em cashFlow(). Mês já encerrado não é "previsto": é o que foi. */
   const cx=cashFlow(viewMonth);
-  const tot=Math.max(1,incT+expT);
   const hero='<div class="hero" data-tour="ledger">'+
-    '<div class="cap">'+(cx.fechado?"Saldo ao fim de":"Saldo atual ·")+
-      ' <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
-    '<div class="big '+(cx.atual>=0?"":"down")+'">'+fmt(cx.atual)+'</div>'+
-    (cx.semAbertura
-      ? '<div class="sub"><span class="open-warn" data-action="open-set">'+ic("alert")+
-        ' Informe seu saldo de abertura para bater com o banco</span></div>'
-      : cx.faltando.length
-      ? '<div class="sub"><span class="open-warn" data-action="acc-edit" data-id="'+cx.faltando[0].id+'">'+ic("alert")+
-        (cx.faltando.length===1
-          ? ' '+esc(cx.faltando[0].name)+' ainda não tem saldo de abertura'
-          : ' '+cx.faltando.length+' contas ainda não têm saldo de abertura')+
-        ' — o total não bate com o banco</span></div>'
-      : '<div class="sub">'+deltaChip(pctDelta(incT-expT,prev.inc-prev.exp))+
-        '<span>'+(cx.fechado
-          ? 'Foi com isso que '+shortMonth(addMonthsISO(viewMonth+"-01",1).slice(0,7))+' começou'
-          : 'Fecha o mês em <b style="color:#fff">'+fmt(cx.final)+'</b>')+'</span></div>')+
-
-    /* mês encerrado mostra o que de fato aconteceu; o pendente aparece como
-       nota, não somado, porque aquele dinheiro nunca saiu naquele mês */
-    '<div class="ledger">'+
-      '<div class="lg"><span>Saldo inicial</span><b>'+fmt(cx.inicial)+'</b></div>'+
-      '<div class="lg" data-action="home-filter" data-mode="recebido"><span>+ Recebido</span><b class="up">'+fmt(cx.entrou)+'</b></div>'+
-      '<div class="lg" data-action="home-filter" data-mode="pago"><span>− Pago</span><b class="down">'+fmt(cx.saiu)+'</b></div>'+
-      (cx.fechado
-        ? '<div class="lg end"><span>= Saldo final</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>'+
-          ((cx.aReceber||cx.aPagar)
-            ? '<div class="lg nota"><span>Ficou pendente</span><b>'+
-              (cx.aReceber?'<span class="up">+'+fmt(cx.aReceber)+'</span> ':"")+
-              (cx.aPagar?'<span class="down">−'+fmt(cx.aPagar)+'</span>':"")+'</b></div>'
-            : "")
-        : '<div class="lg now"><span>= Saldo atual</span><b>'+fmt(cx.atual)+'</b></div>'+
-          (cx.aReceber?'<div class="lg" data-action="home-filter" data-mode="areceber"><span>+ A receber</span><b class="up">'+fmt(cx.aReceber)+'</b></div>':"")+
-          (cx.aPagar?'<div class="lg" data-action="home-filter" data-mode="apagar"><span>− A pagar'+
-            (cx.atrasado?' <i class="lt">'+fmt(cx.atrasado)+' vencido</i>':"")+'</span><b class="down">'+fmt(cx.aPagar)+'</b></div>':"")+
-          '<div class="lg end"><span>= Saldo final previsto</span><b class="'+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</b></div>')+
-    '</div>'+
-
-    '<div class="flowbar"><i style="width:'+(incT/tot*100)+'%;background:linear-gradient(90deg,#00E5A8,#00b98a)"></i>'+
-      '<i style="width:'+(expT/tot*100)+'%;background:linear-gradient(90deg,#FF5C7A,#e0405f)"></i></div>'+
+    '<div class="cap">'+(cx.fechado?"Saldo final":"Saldo final previsto")+
+      ' · <span style="text-transform:capitalize">'+monthLabel(viewMonth)+'</span></div>'+
+    '<div class="big '+(cx.final>=0?"":"down")+'">'+fmt(cx.final)+'</div>'+
     '</div>';
 
   /* --- alertas --- */
@@ -2183,29 +2189,14 @@ function renderCards(){
       '<div class="metric"><div class="k">'+ic("chart")+' Disponível</div><div class="v '+(totLim-totUsed>0?"up":"down")+'">'+fmt(Math.max(0,totLim-totUsed))+'</div>'+
         '<div class="s">usado '+fmt(totUsed)+'</div></div></div></div>';
 
-  /* --- contas: onde o dinheiro de fato está --- */
-  html+='<div class="sec-head" style="margin:0 20px 10px"><h2>Contas</h2>'+
-    (S.accounts.length>1?'<span class="more" data-action="xfer-open">'+ic("swap")+' Transferir</span>':"")+'</div>';
-  if(!S.accounts.length) html+='<div class="empty"><div class="e-ic">'+ic("bank")+'</div><div class="e-t">Nenhuma conta</div>'+
-    'Cadastre suas contas para saber quanto há em cada uma, e não só o total.</div>';
-  else {
-    const total=cashRealized(viewMonth);
-    html+='<div class="sec"><div class="acc-list" data-tour="contas">'+S.accounts.map(a=>{
-      const f=cashFlow(viewMonth,a.id);
-      const prev=f.final!==f.atual;
-      return '<div class="acc" data-action="acc-open" data-id="'+a.id+'">'+
-        '<i class="dot" style="background:'+a.color+'"></i>'+
-        '<div class="mid"><div class="nm">'+esc(a.name)+'</div>'+
-          '<div class="tp">'+(a.bank?esc(a.bank)+" · ":"")+ACC_TYPES[a.type||"corrente"]+'</div></div>'+
-        '<div class="rt"><div class="v '+(f.atual>=0?"":"down")+'">'+fmt(f.atual)+'</div>'+
-          (prev?'<div class="s">prev. '+fmt(f.final)+'</div>':"")+'</div></div>';
-    }).join("")+
-    '<div class="acc total"><div class="mid"><div class="nm">Total em contas</div></div>'+
-      '<div class="rt"><div class="v">'+fmt(total)+'</div></div></div>'+
-    '</div></div>';
-  }
-  html+='<div class="sec"><div class="btn-row"><button class="btn ghost" data-action="acc-add">'+ic("plus")+' Adicionar conta</button>'+
-    (S.accounts.length?'<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button>':"")+'</div></div>';
+  /* --- contas bancárias: fora da tela, a pedido ---
+     A lista de contas (saldo por conta, Transferir, Adicionar conta) saiu da
+     Carteira porque hoje não é relevante para quem usa. Os dados continuam lá
+     e seguem valendo: o saldo de abertura de cada conta ainda entra no saldo
+     final da Início. Para trazer de volta, é o bloco anterior a este no git.
+     Só o Importar extrato fica, que não depende de ver as contas. */
+  html+='<div class="sec"><div class="btn-row">'+
+    '<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button></div></div>';
 
   html+='<div class="sec-head" style="margin:24px 20px 10px"><h2>Cartões de crédito</h2>'+
     (S.cards.length>1?'<span class="more" data-action="card-pick-all">'+
@@ -2434,6 +2425,8 @@ function renderSettings(){
       '<button class="btn ghost" data-action="pes-list">'+ic("handshake")+' Pessoas</button>'+
       '<button class="btn ghost" data-action="cons-abrir" data-v="receber">'+ic("inflow")+' Contas a receber</button>'+
       '<button class="btn ghost" data-action="cons-abrir" data-v="pagar">'+ic("outflow")+' Contas a pagar</button>'+
+      '<button class="btn ghost" data-action="bx-abrir" data-v="receber">'+ic("check")+' Baixar recebimento</button>'+
+      '<button class="btn ghost" data-action="bx-abrir" data-v="pagar">'+ic("check")+' Baixar pagamento</button>'+
       '<button class="btn ghost" data-action="abrir-importacao">'+ic("upload")+' Importar extrato</button>'+
       (S.accounts.length?"":'<button class="btn ghost" data-action="open-set">'+ic("coin")+' '+(S.opening?"Ajustar":"Definir")+' saldo de abertura</button>')+
     '</div></div></div>'+
@@ -2539,6 +2532,8 @@ const CMD_ACTIONS=[
   {ic:ic("coin"),t:"Saldo de abertura",s:"ponto de partida do caixa",a:"open-set"},
   {ic:ic("inflow"),t:"Contas a receber",s:"tudo que está por entrar",a:"cons-abrir",v:"receber"},
   {ic:ic("outflow"),t:"Contas a pagar",s:"tudo que está por sair",a:"cons-abrir",v:"pagar"},
+  {ic:ic("check"),t:"Baixar recebimento",s:"alguém te pagou",a:"bx-abrir",v:"receber"},
+  {ic:ic("check"),t:"Baixar pagamento",s:"você pagou alguém",a:"bx-abrir",v:"pagar"},
   {ic:ic("receipt"),t:"Relatório em PDF",s:"filtrar e imprimir",a:"rep-pdf"},
   {ic:ic("trash"),t:"Abrir lixeira",s:"lançamentos excluídos",a:"trash-open"},
   {ic:ic("book"),t:"Rever tutorial",s:"como usar o app",a:"tut-open"},
@@ -3164,6 +3159,10 @@ function openPesDetail(id){
     '<div class="lg"><span>Já pago</span><b>'+fmt(f.pago)+'</b></div>'+
   '</div>'+
   '<div class="act-row" style="margin-top:14px;flex-wrap:wrap">'+
+    (aTx().some(t=>t.pesId===id&&bxDoLado(t,"receber"))
+      ?'<button class="btn small" data-action="bx-abrir" data-v="receber" data-id="'+id+'">'+ic("check")+' Baixar recebimento</button>':"")+
+    (aTx().some(t=>t.pesId===id&&bxDoLado(t,"pagar"))
+      ?'<button class="btn small" data-action="bx-abrir" data-v="pagar" data-id="'+id+'">'+ic("check")+' Baixar pagamento</button>':"")+
     '<button class="btn small" data-action="pes-razao" data-id="'+id+'">'+ic("receipt")+' Extrato da conta</button>'+
     '<button class="btn small ghost" data-action="pes-vincular" data-id="'+id+'">'+ic("plus")+' Vincular lançamentos</button>'+
     '<button class="btn small ghost" data-action="pes-edit" data-id="'+id+'">Editar</button>'+
@@ -5033,6 +5032,208 @@ function consExportar(){
   toast(l.length+" linha(s) exportada(s) ✓");
 }
 
+/* ══════════════════ BAIXA POR PESSOA ══════════════════
+   As telas de "Contas a receber" e "Contas a pagar" do SAP: escolhe a pessoa,
+   aparece tudo que ela tem em aberto daquele lado, marca o que foi quitado e o
+   "Meio de pagamento" pede data e forma.
+
+   A consulta responde "quanto tenho a receber de todo mundo"; esta responde
+   "Fulano me pagou — o quê?". Por isso nada aparece antes de escolher a
+   pessoa: a lista de todo mundo já existe, e é a consulta.
+
+   Compra no cartão e no ticket nunca aparece em Pagamento. O cartão é pago
+   pela fatura, na Carteira, e baixar a compra aqui faria o mesmo dinheiro sair
+   duas vezes; o ticket tem saldo próprio e não sai da conta. */
+let bx=null;
+function novaBaixa(lado,pes){
+  return { lado:lado==="pagar"?"pagar":"receber", pes:pesOf(pes)?pes:"", sel:new Set(), valor:{} };
+}
+function abrirBaixa(lado,pes){ bx=novaBaixa(lado,pes); tab="baixa"; render(); }
+function bxNoCartao(t){ return t.method==="cartao"||t.method==="ticket"||!!t.cardId||!!t.ticketId; }
+/* em aberto e do lado da tela — sem olhar a pessoa, para servir à contagem do seletor */
+function bxDoLado(t,lado){
+  if(t.paid||t.type==="xfer") return false;
+  return lado==="receber" ? t.type==="inc"
+    : (t.type==="exp"&&t.dest!=="savings"&&!bxNoCartao(t));
+}
+function bxLinhas(){
+  if(!bx||!bx.pes) return [];
+  return aTx().filter(t=>t.pesId===bx.pes&&bxDoLado(t,bx.lado))
+    .sort((a,b)=>a.due<b.due?-1:(a.due>b.due?1:0));
+}
+/* o que ficou de fora por ser cartão/ticket — a tela diz, senão parece sumiço */
+function bxForaCartao(){
+  if(!bx||!bx.pes||bx.lado!=="pagar") return [];
+  return aTx().filter(t=>t.pesId===bx.pes&&!t.paid&&t.type==="exp"&&t.dest!=="savings"&&bxNoCartao(t));
+}
+/* Valor a baixar: o da linha, a menos que o usuário tenha mudado (juros,
+   desconto). É o mesmo payAmt do Pagar da lista — o lançamento fica quitado
+   com o valor informado, e não sobra saldo em aberto. */
+function bxValor(t){ return bx&&bx.valor[t.id]!=null?bx.valor[t.id]:t.amount; }
+/* mesmo formato da coluna ao lado (1.000,00), e o parseMoney lê de volta */
+const bxNum=v=>(Math.round(v*100)/100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+function bxTotais(l){
+  const sel=l.filter(t=>bx.sel.has(t.id));
+  const venc=l.filter(t=>statusOf(t)==="atrasado");
+  return { n:l.length, aberto:sum(l,t=>t.amount), venc:sum(venc,t=>t.amount), nVenc:venc.length,
+    selN:sel.length, selTotal:sum(sel,bxValor),
+    mudados:sel.filter(t=>Math.abs(bxValor(t)-t.amount)>0.004).length };
+}
+
+function renderBaixa(){
+  const receber=bx.lado==="receber";
+  const p=pesOf(bx.pes);
+  /* quantos cada pessoa tem em aberto deste lado, para escolher sem adivinhar */
+  const cont={};
+  aTx().forEach(t=>{ if(t.pesId&&bxDoLado(t,bx.lado)) cont[t.pesId]=(cont[t.pesId]||0)+1; });
+  const pessoas=S.people.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"pt-BR"));
+
+  const cab='<div class="sec" style="margin-top:4px"><div class="sec-head">'+
+    '<h2 class="t-h2">'+(receber?"Baixar recebimento":"Baixar pagamento")+'</h2>'+
+    '<span class="more" data-action="tab" data-v="home">'+ic("x")+' Fechar</span></div></div>';
+  const abas='<div class="sec"><div class="seg">'+
+    '<button type="button" class="'+(receber?"on":"")+'" data-action="bx-lado" data-v="receber">'+ic("inflow")+' Recebimento</button>'+
+    '<button type="button" class="'+(!receber?"on":"")+'" data-action="bx-lado" data-v="pagar">'+ic("outflow")+' Pagamento</button>'+
+    '</div></div>';
+  const escolha='<div class="sec"><div class="surface" style="padding:16px">'+
+    '<label>'+(receber?"Receber de":"Pagar a")+'</label>'+
+    (pessoas.length
+      ? '<select id="bxPes"><option value="">Escolha uma pessoa…</option>'+
+        pessoas.map(x=>'<option value="'+x.id+'"'+(x.id===bx.pes?" selected":"")+'>'+esc(x.name)+
+          (cont[x.id]?" · "+cont[x.id]+" em aberto":"")+'</option>').join("")+'</select>'
+      : '<div class="help">Nenhuma pessoa cadastrada ainda.</div>'+
+        '<div class="act-row"><button type="button" class="btn small ghost" data-action="pes-add">'+ic("plus")+' Cadastrar pessoa</button></div>')+
+    '</div></div>';
+
+  if(!p) return cab+abas+escolha+
+    '<div class="empty"><div class="e-ic">'+ic("handshake")+'</div><div class="e-t">Escolha uma pessoa</div>'+
+    'Aparece tudo que ela tem em aberto '+(receber?"para você receber":"para você pagar")+'.</div>';
+
+  const l=bxLinhas(), tt=bxTotais(l), fora=bxForaCartao();
+  const avisoCartao=fora.length?'<div class="help" style="margin-top:10px">'+fora.length+
+    (fora.length>1?" compras":" compra")+' no cartão ou ticket ('+fmt(sum(fora,t=>t.amount))+
+    (fora.length>1?') ficam':') fica')+' fora desta tela: o cartão é pago pela fatura, na Carteira.</div>':"";
+  if(!l.length) return cab+abas+escolha+
+    '<div class="empty"><div class="e-ic">'+ic("check")+'</div><div class="e-t">Nada em aberto</div>'+
+    esc(p.name)+(receber?" não tem nada a te pagar em aberto.":" não tem nada a receber de você em aberto.")+'</div>'+
+    (avisoCartao?'<div class="sec">'+avisoCartao+'</div>':"");
+
+  const totais='<div class="sec"><div class="cons-tot">'+
+    '<div><b class="'+(receber?"up":"down")+'">'+fmt(tt.aberto)+'</b><span>em aberto · '+tt.n+
+      ' lançamento'+(tt.n>1?"s":"")+'</span></div>'+
+    (tt.venc?'<div><b class="down">'+fmt(tt.venc)+'</b><span>'+tt.nVenc+' vencido'+(tt.nVenc>1?"s":"")+'</span></div>':"")+
+    '</div></div>';
+  const acoes='<div class="sec"><div class="act-row" style="margin-top:0">'+
+    '<button type="button" class="btn small ghost" data-action="bx-todos">'+ic("checkSquare")+' Selecionar todos</button>'+
+    '<button type="button" class="btn small ghost" data-action="bx-nenhum">Desmarcar todos</button></div></div>';
+  return cab+abas+escolha+totais+acoes+
+    '<div class="sec"><div id="bxBox">'+renderBxGrade(l)+'</div>'+avisoCartao+'</div>'+
+    '<div id="bxFoot">'+bxRodape(tt)+'</div>';
+}
+function renderBxGrade(l){
+  const todos=l.length&&l.every(t=>bx.sel.has(t.id));
+  const cab='<div class="bx-row gr-head">'+
+    '<span><button type="button" class="gr-ck'+(todos?" on":"")+'" data-action="bx-todos"></button></span>'+
+    '<span>Vencimento</span><span>Descrição</span><span>Parc.</span><span>Atraso</span>'+
+    '<span class="r">Em aberto</span><span class="r">'+(bx.lado==="receber"?"Recebido":"Pago")+'</span></div>';
+  return '<div class="grade">'+cab+l.map(t=>{
+    const d=daysTo(t.due), on=bx.sel.has(t.id), v=bxValor(t);
+    return '<div class="bx-row'+(on?" sel":"")+'" data-id="'+t.id+'">'+
+      '<span><button type="button" class="gr-ck'+(on?" on":"")+'" data-action="bx-pick" data-id="'+t.id+'"></button></span>'+
+      '<span class="nw'+(d<0?" atraso":"")+'">'+fmtDate(t.due)+'</span>'+
+      '<span class="ttl" data-action="tx-edit" data-id="'+t.id+'">'+esc(t.desc)+'</span>'+
+      '<span class="faint">'+(t.kind==="parcelado"?t.i+"/"+t.n:(t.kind==="fixo"?"fixo":"—"))+'</span>'+
+      '<span class="faint'+(d<0?" atraso":"")+'">'+(d<0?(-d)+" dia"+(d===-1?"":"s"):"—")+'</span>'+
+      '<span class="r">'+fmt(t.amount)+'</span>'+
+      '<span><input class="bx-val'+(Math.abs(v-t.amount)>0.004?" mudou":"")+'" data-id="'+t.id+
+        '" inputmode="decimal" autocomplete="off" aria-label="Valor a baixar" value="'+bxNum(v)+'"></span></div>';
+  }).join("")+'</div>';
+}
+function bxRodape(tt){
+  if(!tt.selN) return "";
+  return '<div class="cons-bar bx-bar"><div class="si">'+
+    '<div class="n">'+tt.selN+' selecionado'+(tt.selN>1?"s":"")+
+      (tt.mudados?' · '+tt.mudados+' com valor ajustado':"")+'</div>'+
+    '<div class="v">Total <b class="'+(bx.lado==="receber"?"up":"down")+'">'+fmt(tt.selTotal)+'</b></div></div>'+
+    '<button class="btn small" data-action="bx-meio">'+ic("check")+' Meio de pagamento</button>'+
+    '<button class="btn small ghost" data-action="bx-nenhum">Limpar</button></div>';
+}
+/* redesenha só o rodapé e as marcas: o campo de valor não pode perder o foco a cada tecla */
+function bxRedesenha(grade){
+  const l=bxLinhas();
+  if(grade){ const box=$("#bxBox"); if(box) box.innerHTML=renderBxGrade(l); }
+  else document.querySelectorAll(".bx-row[data-id]").forEach(r=>{
+    const on=bx.sel.has(r.dataset.id); r.classList.toggle("sel",on);
+    const ck=r.querySelector(".gr-ck"); if(ck) ck.classList.toggle("on",on); });
+  const ft=$("#bxFoot"); if(ft) ft.innerHTML=bxRodape(bxTotais(l));
+}
+/* O "Meio de pagamento" do SAP: um total, a data, e a forma. A forma só é
+   gravada se o usuário escolher uma — "Manter" preserva a de cada lançamento,
+   que é o certo quando a seleção mistura boleto e Pix. */
+const BX_FORMAS=["pix","transferencia","boleto","dinheiro","debito"];
+function openBxMeio(){
+  if(!bx) return;
+  const alvo=bxLinhas().filter(t=>bx.sel.has(t.id));
+  if(!alvo.length){ toast("Selecione o que foi "+(bx.lado==="receber"?"recebido":"pago")); return; }
+  const zerado=alvo.find(t=>!(bxValor(t)>0));
+  if(zerado){ toast("Informe o valor de "+zerado.desc); return; }
+  const receber=bx.lado==="receber", p=pesOf(bx.pes);
+  const formas=[...new Set(alvo.map(t=>t.method))];
+  const comum=formas.length===1&&BX_FORMAS.includes(formas[0])?formas[0]:"";
+  const total=sum(alvo,bxValor);
+  const mudados=alvo.filter(t=>Math.abs(bxValor(t)-t.amount)>0.004);
+  const lista=alvo.slice(0,40).map(t=>{
+    const v=bxValor(t), dif=Math.abs(v-t.amount)>0.004;
+    return '<div class="pd-row"><span class="nw">'+fmtDate(t.due)+'</span>'+
+      '<span class="ttl">'+esc(t.desc)+'</span>'+
+      '<span class="v '+(receber?"up":"down")+'">'+fmt(v)+
+        (dif?'<small class="faint" style="display:block;font-weight:500">era '+fmt(t.amount)+'</small>':"")+'</span></div>';
+  }).join("");
+  openModal(modalHead("Meio de pagamento",(receber?"Recebimento de ":"Pagamento a ")+esc(p?p.name:""))+
+  '<div class="cons-tot" style="margin-bottom:14px">'+
+    '<div><b class="'+(receber?"up":"down")+'">'+fmt(total)+'</b><span>total · '+alvo.length+
+      ' lançamento'+(alvo.length>1?"s":"")+'</span></div></div>'+
+  '<form id="fBxMeio">'+
+  '<label>Data do '+(receber?"recebimento":"pagamento")+'</label>'+
+  '<input id="bmData" type="date" value="'+todayISO()+'" required>'+
+  '<div class="help">Vale para todos. É esta data que decide em que mês o dinheiro '+(receber?"entra no":"sai do")+' saldo.</div>'+
+  '<label style="margin-top:14px">Forma de pagamento</label><select id="bmForma">'+
+    (comum?"":'<option value="">Manter a de cada lançamento</option>')+
+    BX_FORMAS.map(k=>'<option value="'+k+'"'+(k===comum?" selected":"")+'>'+METHODS[k]+'</option>').join("")+'</select>'+
+  (S.accounts.length>1?'<label style="margin-top:14px">Conta</label>'+
+    '<select id="bmConta"><option value="">Manter a de cada lançamento</option>'+
+    S.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join("")+'</select>':"")+
+  (mudados.length?'<div class="help" style="margin-top:10px">'+mudados.length+
+    (mudados.length>1?" lançamentos serão quitados":" lançamento será quitado")+
+    ' com o valor informado, diferente do original — juros ou desconto. Não sobra saldo em aberto.</div>':"")+
+  '<div class="parc-doc doc-baixa" style="margin-top:14px">'+
+    '<div class="pd-cap">O que será baixado</div>'+lista+
+    (alvo.length>40?'<div class="pd-row"><span></span><span class="faint">e mais '+(alvo.length-40)+'…</span><span></span></div>':"")+
+  '</div>'+
+  '<button class="btn" type="submit">'+ic("check")+' Confirmar '+(receber?"recebimento":"pagamento")+'</button></form>'+
+  '<div class="act-row"><button type="button" class="btn small ghost" data-action="close-modal">Cancelar</button></div>');
+}
+function confirmaBxMeio(){
+  if(!bx) return;
+  const data=$("#bmData").value;
+  if(!data){ toast("Informe a data"); return; }
+  const forma=$("#bmForma").value, conta=$("#bmConta")?$("#bmConta").value:"";
+  const alvo=bxLinhas().filter(t=>bx.sel.has(t.id));
+  if(!alvo.length){ toast("Nada a baixar"); return; }
+  let total=0;
+  alvo.forEach(t=>{
+    if(forma) t.method=forma;
+    /* a conta vale antes do applyPaid, que só preenche quando está vazia; com
+       uma conta só não há escolha, e o lançamento sem conta vai para ela */
+    if(conta) t.accId=conta;
+    else if(!t.accId&&S.accounts.length===1) t.accId=S.accounts[0].id;
+    const v=bxValor(t); applyPaid(t,data,v); total+=v;
+  });
+  const n=alvo.length, receber=bx.lado==="receber";
+  bx.sel.clear(); bx.valor={}; save(); closeModal(); render();
+  toast(n+(receber?" recebimento":" pagamento")+(n>1?"s":"")+" baixado"+(n>1?"s":"")+" · "+fmt(total)+" ✓");
+}
+
 /* ══════════════════ TOUR GUIADO ══════════════════
    Balões ancorados em elementos reais da tela, com o resto escurecido.
 
@@ -5052,8 +5253,8 @@ const TOUR_BASIC=[
   b:"O botão de <b>novo lançamento</b>. Você escolhe <b>Gasto</b>, <b>Receita</b> ou <b>Guardar</b>, e se é à vista, parcelado ou fixo mensal — que pode repetir para sempre, sem data para acabar."},
  {sel:"month",tab:"home",place:"bottom",t:"O mês que você está vendo",
   b:"Use as setas para andar no tempo. Tudo na tela — saldo, faturas, listas — acompanha esse mês."},
- {sel:"ledger",tab:"home",place:"bottom",t:"Seu saldo, como num extrato",
-  b:"Começa com o que sobrou do mês passado, soma o que entrou, tira o que saiu. O <b>saldo atual</b> é o que você tem agora — dá para comparar com o app do banco.<br><br>Abaixo dele, o que ainda falta acontecer até fechar o mês."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Onde o mês termina",
+  b:"O <b>saldo final previsto</b>: o que você tem hoje, mais o que ainda vai receber, menos o que ainda vai pagar até o mês fechar."},
  {sel:"search",tab:"home",place:"top",t:"Achar qualquer lançamento",
   b:"Busque por descrição, categoria, cartão ou <b>valor</b> — digitar <i>90</i> encontra R$ 90,00 e R$ 190,00.<br><br>No ícone de filtro dá para limitar por faixa de valor, período e forma de pagamento."},
  {tab:"report",t:"Análise",b:"Aqui ficam a tendência dos últimos 12 meses, a comparação com o mês anterior, a média por categoria e o mapa de gastos por dia. Toque em qualquer mês ou categoria para abrir o detalhe."},
@@ -5090,10 +5291,8 @@ const TOUR_LANCAR=[
 /* Conferir e dar baixa */
 const TOUR_CONFERIR=[
  {tab:"home",t:"Conferir e dar baixa",b:"Como acompanhar o que está pago, o que falta e o que venceu."},
- {sel:"ledger",tab:"home",place:"bottom",t:"O extrato do mês",
-  b:"<b>Saldo inicial</b> é o que sobrou do mês passado. Somando o recebido e tirando o pago, chega no <b>saldo atual</b> — esse é o número para comparar com o app do banco.<br><br>Abaixo dele fica o que ainda deve acontecer até o mês fechar."},
- {sel:"ledger",tab:"home",place:"bottom",t:"Cada linha é um atalho",
-  b:"Toque em <b>Recebido</b>, <b>Pago</b>, <b>A receber</b> ou <b>A pagar</b> e a lista passa a mostrar exatamente aqueles lançamentos."},
+ {sel:"ledger",tab:"home",place:"bottom",t:"Onde o mês termina",
+  b:"O número em destaque é o <b>saldo final previsto</b>: o que você tem hoje, mais o que ainda vai receber, menos o que ainda vai pagar até o mês fechar."},
  {sel:"lista",tab:"home",place:"top",t:"A lista do mês",
   b:"Cada linha traz vencimento, forma de pagamento e situação. O que está vencido aparece destacado."},
  {sel:"linha",tab:"home",place:"bottom",t:"Dar baixa",
@@ -5862,6 +6061,14 @@ document.addEventListener("click", async e=>{
     case "cons-limpar-sel": if(cons){ cons.sel.clear(); consRedesenha(); } break;
     case "cons-csv": consExportar(); break;
     case "cons-baixar": openConsBaixa(); break;
+    case "bx-abrir": closeCmd(); closeModal(); abrirBaixa(el.dataset.v,el.dataset.id); break;
+    case "bx-lado": if(bx){ bx.lado=el.dataset.v; bx.sel.clear(); bx.valor={}; render(); } break;
+    case "bx-pick": if(bx){ bx.sel.has(id)?bx.sel.delete(id):bx.sel.add(id); bxRedesenha(); } break;
+    case "bx-todos": if(bx){ const l=bxLinhas();
+      if(l.length&&l.every(t=>bx.sel.has(t.id))) bx.sel.clear(); else l.forEach(t=>bx.sel.add(t.id));
+      bxRedesenha(true); } break;
+    case "bx-nenhum": if(bx){ bx.sel.clear(); bxRedesenha(true); } break;
+    case "bx-meio": openBxMeio(); break;
 
     /* ----- importar extrato ----- */
     case "abrir-importacao": abrirImportacao(); break;
@@ -5915,6 +6122,11 @@ document.addEventListener("input", e=>{
         parseInt($("#iePn").value)||null,parseInt($("#iePt").value)||null); }
     return; }
   if(e.target.id==="consQ"&&cons){ cons.q=e.target.value; consRedesenha(); return; }
+  if(e.target.classList.contains("bx-val")&&bx){ const id=e.target.dataset.id;
+    const t=S.tx.find(x=>x.id===id); if(!t) return;
+    bx.valor[id]=parseMoney(e.target.value); bx.sel.add(id);
+    e.target.classList.toggle("mudou",Math.abs(bx.valor[id]-t.amount)>0.004);
+    bxRedesenha(); return; }
   if((e.target.id==="consDe"||e.target.id==="consAte")&&cons){
     cons[e.target.id==="consDe"?"de":"ate"]=e.target.value; consRedesenha(); return; }
   if(e.target.id==="razQ"&&raz){ raz.q=e.target.value; razRedesenha(); return; }
@@ -5971,6 +6183,7 @@ document.addEventListener("change", e=>{
     if(nm&&!arr.includes(nm.trim()))arr.push(nm.trim());
     save(); t.innerHTML=catOptions(tx.type,nm?nm.trim():tx.cat); }
   if(t.id==="impArquivo"){ const arq=t.files[0]; t.value=""; processarArquivoImportacao(arq); }
+  if(t.id==="bxPes"&&bx){ bx.pes=t.value; bx.sel.clear(); bx.valor={}; render(); return; }
   if(t.dataset.campo&&cons&&t.closest("#view")){ cons[t.dataset.campo]=t.value; cons.sel.clear(); consRedesenha(); }
   if(t.dataset.raz&&raz&&t.closest("#view")){ raz[t.dataset.raz]=t.value; razRedesenha(); }
   if(t.id==="impCartao"&&imp) imp.cartaoId=t.value;
@@ -6009,6 +6222,7 @@ document.addEventListener("submit", async e=>{
       else await signInWithEmailAndPassword(auth,em,ps);
     }catch(err){ authMsg(authErr(err)); } }
   else if(f.id==="fTx") submitTx();
+  else if(f.id==="fBxMeio") confirmaBxMeio();
   else if(f.id==="fConsBaixa"){
     if(!cons) return;
     const data=$("#cbData").value;

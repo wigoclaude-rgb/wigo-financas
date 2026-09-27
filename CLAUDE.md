@@ -153,12 +153,13 @@ de aba não muda a URL nem entra no histórico.
 
 | Aba | O que tem |
 |---|---|
-| **Início** (`renderHome`) | Hero de extrato do mês, alertas, métricas, mini-cartões, donut de categorias, lista de lançamentos com filtros |
-| **Carteira** (`renderCards`) | Contas · Cartões de crédito · Tickets e benefícios · Pessoas |
+| **Início** (`renderHome`) | Hero só com o saldo final do mês, alertas, métricas, mini-cartões, donut de categorias, lista de lançamentos com filtros |
+| **Carteira** (`renderCards`) | Importar extrato · Cartões de crédito · Tickets e benefícios · Pessoas (a lista de contas está escondida — ver abaixo) |
 | **Metas** (`renderSavings`) | Poupanças com valor alvo, aporte, progresso e rendimento estimado |
 | **Análise** (`renderReport`) | Tendência de 12 meses, comparação, projeção, heatmap por dia, médias por categoria |
 | **Ajustes** (`renderSettings`) | Contas e pessoas, lixeira, saldo de abertura, ajuda/tours, categorias, CDI, conta, backup |
 | **Consulta** (`renderConsulta`) | Contas a receber e a pagar, todos os meses de uma vez: filtros de período, pessoa, origem, categoria e situação, totais no topo, grade densa e baixa em lote. Não está no dock — abre pela sidebar, por Ajustes ou pelo `Ctrl/⌘+K` |
+| **Baixar recebimento / pagamento** (`renderBaixa`) | A tela do SAP: escolhe a pessoa, aparece o que ela tem em aberto daquele lado, marca, ajusta o valor da linha e o "Meio de pagamento" pede data e forma. Abre pela sidebar, por Ajustes, pelo `Ctrl/⌘+K` e pela ficha da pessoa |
 | **Extrato da conta** (`renderRazao`) | O razão de uma pessoa: cada documento e cada baixa, com saldo acumulado. Abre pelo cartão de saldo da ficha da pessoa |
 
 Navegação: **dock** inferior no celular, **sidebar** de 250 px no desktop
@@ -218,7 +219,18 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   `<select required>` com valor vazio é inválido para o navegador, que barrava o
   envio do formulário inteiro sem que houvesse o que corrigir. Esteve assim na
   `main` de 30/08 (v2.1) até 13/09.
-- **O aviso de saldo de abertura é por conta, não do app inteiro.**
+- **O topo da Início mostra só o saldo final do mês**, a pedido do usuário
+  (27/09). Saíram as linhas do extrato (inicial, recebido, pago, atual, a
+  receber, a pagar), o aviso de conta sem saldo de abertura e a barra de fluxo.
+  O cálculo não mudou: é o `cx.final` de `cashFlow()`. Mês encerrado diz "Saldo
+  final", não "previsto". Custo assumido: sem o aviso, uma conta sem saldo de
+  abertura puxa o número para baixo sem nenhum sinal na tela.
+- **A lista de contas saiu da Carteira** pelo mesmo pedido ("no momento não é
+  relevante"). Os dados e o cálculo continuam: a abertura de cada conta ainda
+  entra no saldo final. Adicionar conta segue em Ajustes; editar a abertura de
+  uma conta existente ficou sem caminho na tela até a lista voltar.
+- **O aviso de saldo de abertura é por conta, não do app inteiro.** *(Hoje fora
+  da tela — ver o item acima. `contasSemAbertura()` continua existindo.)*
   `contasSemAbertura()` lista as contas que já têm movimento e nunca disseram de
   onde partiram — cada uma soma o histórico inteiro a partir de zero e puxa o
   total para baixo. Antes o aviso sumia assim que *qualquer* conta tivesse
@@ -243,9 +255,6 @@ no desktop. `Ctrl/⌘+K` abre a command palette.
   filtros avançados foram criados, o literal ficou para trás e os campos novos
   nasciam `undefined` — como `undefined !== "all"`, `passFilter` rejeitava tudo e a
   lista abria vazia.
-- **A pessoa é obrigatória no formulário de lançamento**, de propósito: força
-  decidir de quem é o lançamento em vez de deixar em branco por descuido.
-  "Ninguém" é uma resposta válida.
 - **`migraContas()` roda uma vez.** Antes existia um caixa único (`S.opening`); ao
   introduzir contas, esse valor virou a abertura de uma conta "Principal" e todo o
   histórico foi atribuído a ela — o saldo por conta já nasce com passado e nenhum
@@ -389,6 +398,32 @@ baixas ou os dois), período por atalho ou por data, origem e categoria.
 - **"Sem movimento" só quando a pessoa não tem nada mesmo.** Um período vazio é
   resultado de filtro; dizer o contrário faria procurar defeito no app.
 - A busca redesenha só `#razBox`, para o campo não perder o foco a cada tecla.
+
+### Baixa por pessoa (tela do SAP)
+
+`bx` vive fora de `S`, como `cons`. `bxDoLado()` decide o que entra; `bxLinhas()`
+aplica a pessoa; `openBxMeio()`/`confirmaBxMeio()` são o "Meio de pagamento".
+
+- **Nada aparece antes de escolher a pessoa.** A pergunta desta tela é "Fulano
+  me pagou — o quê?"; a lista de todo mundo já existe, e é a consulta.
+- **Recebimento só mostra receita; Pagamento só mostra despesa.** Poupança e
+  transferência ficam de fora nos dois.
+- **Compra no cartão ou ticket nunca aparece em Pagamento.** O cartão é pago pela
+  fatura, na Carteira — baixar a compra aqui faria o mesmo dinheiro sair duas
+  vezes. A tela diz quantas ficaram de fora e por quê, senão parece sumiço.
+- **O valor da linha é editável, e quita o lançamento com o valor informado**
+  (`payAmt`, o mesmo do Pagar da lista). Serve para juros e desconto; **não** é
+  pagamento parcial — não sobra saldo em aberto, e a tela do meio de pagamento
+  diz isso com todas as letras. O campo usa o formato da coluna ao lado
+  (1.000,00) e marca a linha ao ser editado.
+- **A forma de pagamento só é gravada se o usuário escolher uma.** Quando a
+  seleção inteira tem a mesma forma, ela vem escolhida; quando mistura, o padrão
+  é "Manter a de cada lançamento".
+- **A conta segue a regra do resto do app:** o campo só aparece com duas ou mais
+  contas, é gravada antes do `applyPaid`, e com uma conta só o lançamento sem
+  conta vai para ela.
+- Digitar no valor redesenha só as marcas e o rodapé (`bxRedesenha()`), para o
+  campo não perder o foco a cada tecla.
 
 ### Documento do parcelamento
 
