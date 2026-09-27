@@ -97,8 +97,18 @@ export function resumoConciliacao(L,{conta,de,ate,bancoInicial,bancoFinal}){
   const planejadas=[...L.documentos.values()].filter(d=>d.tipo==="TRANSFERENCIA"&&d.status==="PLANEJADA"&&
     (d.conta===conta||d.contaDestino===conta)&&d.data>=de&&d.data<=ate);
   for(const d of planejadas) pistas.push({tipo:"TRANSFERENCIA",valor:d.valor,texto:d.numero+" está planejada e ainda não foi marcada como feita."});
+  /* o suspeito mais comum: um movimento com exatamente o valor da diferença
+     (lançado no WIGO e não no banco, ou o contrário), ou com metade dela
+     (lançado com o sinal trocado) */
+  if(temBanco&&diferenca){
+    for(const x of soNoWigo){
+      if(x.valor===-diferenca) pistas.push({tipo:"VALOR",valor:x.valor,texto:"\""+x.descricao+"\" ("+x.data.split("-").reverse().join("/")+") tem exatamente o valor da diferença — confira se ele aparece no banco.",itens:[x]});
+      else if(x.valor*2===-diferenca) pistas.push({tipo:"SINAL",valor:x.valor,texto:"\""+x.descricao+"\" vale metade da diferença — pode ter sido lançado como "+(x.valor>0?"entrada":"saída")+" quando era "+(x.valor>0?"saída":"entrada")+".",itens:[x]});
+    }
+    for(const e of soNoBanco) if(e.valor===diferenca) pistas.push({tipo:"VALOR",valor:e.valor,texto:"\""+e.descricao+"\" está no extrato com exatamente o valor da diferença e ainda não foi lançado.",itens:[e]});
+  }
   return { conta, de, ate, wigoInicial, wigoFinal, entradas, saidas, bancoInicial:bancoInicial??null, bancoFinal:temBanco?bancoFinal:null,
-    diferenca, difInicial, soNoBanco, soNoWigo, conciliados, somaSoBanco, somaSoWigo,
+    diferenca, difInicial, soNoBanco, soNoWigo, conciliados, somaSoBanco, somaSoWigo, comExtrato:ext.length>0,
     naoExplicado:temBanco?diferenca-explicado:null, pares, pistas,
     fechada:temBanco&&diferenca===0&&!soNoWigo.length&&!soNoBanco.length };
 }

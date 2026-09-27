@@ -40,12 +40,21 @@ tela("reconciliacao",{titulo:"Reconciliação",grupo:"Financeiro",render(app){
   let veredito;
   if(r.bancoFinal==null) veredito=aviso("Informe o saldo final que o app do banco mostra para comparar.",{tipo:"info",icone:"scale"});
   else if(r.diferenca===0) veredito=aviso(h`<b>O WIGO bate com o banco.</b> ${r.soNoWigo.length?r.soNoWigo.length+" movimento(s) ainda sem conferir, mas o saldo fecha.":"Tudo conferido."}`,{tipo:"bom",icone:"check"});
+  /* Sem extrato do período, "só no WIGO" quer dizer "ainda não conferido", não
+     "o banco não tem". Decompor a diferença nesse caso afirmava coisas que o
+     app não sabe (e sobrava um "não explicado" enorme). */
+  else if(!r.comExtrato) veredito=h`<div class="aviso ruim">${I("alert")}<div style="flex:1"><b>Diferença de ${R(Math.abs(r.diferenca))}</b> — o banco tem ${r.diferenca>0?"mais":"menos"} que o WIGO.
+    <div style="margin-top:6px">Sem extrato deste período no WIGO, não dá para saber quais movimentos o banco tem. Dois caminhos:</div>
+    <div class="rank" style="margin-top:8px">
+      <div><span><b>Importar o extrato</b> — o WIGO casa cada linha sozinho e mostra exatamente o que falta de cada lado.</span><button class="btn peq sec" data-a="ir" data-v="importacao">${I("import","p")} Importar</button></div>
+      ${r.soNoWigo.length?h`<div><span><b>Conferir à mão</b> os ${r.soNoWigo.length} movimento(s) abaixo com o app do banco. O que não estiver lá explica a diferença.</span></div>`:""}
+    </div></div></div>`;
   else veredito=h`<div class="aviso ruim">${I("alert")}<div style="flex:1"><b>Diferença de ${R(Math.abs(r.diferenca))}</b> — o banco tem ${r.diferenca>0?"mais":"menos"} que o WIGO. Veja de onde vem:
     <div class="rank" style="margin-top:8px">
       ${r.difInicial?h`<div><span>Saldo inicial diferente</span><span class="num">${Rs(r.difInicial)}</span></div>`:""}
       ${r.soNoBanco.length?h`<div><span>${r.soNoBanco.length} movimento(s) só no banco (falta lançar)</span><span class="num">${Rs(r.somaSoBanco)}</span></div>`:""}
       ${r.soNoWigo.length?h`<div><span>${r.soNoWigo.length} movimento(s) só no WIGO (o banco não mostra)</span><span class="num">${Rs(-r.somaSoWigo)}</span></div>`:""}
-      ${r.naoExplicado?h`<div><span>Não explicado — há movimento do banco fora dos extratos importados${temExtrato?"":" (nenhum extrato desta conta foi importado)"}</span><span class="num">${Rs(r.naoExplicado)}</span></div>`:""}
+      ${r.naoExplicado?h`<div><span>Não explicado — há movimento do banco fora do extrato importado (dias sem extrato, ou saldo inicial do banco não informado)</span><span class="num">${Rs(r.naoExplicado)}</span></div>`:""}
     </div></div></div>`;
 
   const lado=(tit,v,sub)=>h`<div><span class="cap">${tit}</span><b style="font-size:18px">${v}</b>${sub?h`<span class="fraco peq">${sub}</span>`:""}</div>`;

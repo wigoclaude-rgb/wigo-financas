@@ -164,7 +164,18 @@ g("Caso 10 — reconciliação encontra e explica a diferença");
   t("o saldo inicial é ponto de partida, não movimento", [r.wigoInicial, r.difInicial], [R(1000), 0]);
   t("a diferença é a Luz: está no WIGO e não no banco", r.soNoWigo.map(x=>x.valor), [R(-200)]);
   t("tudo explicado", r.naoExplicado, 0);
+  t("pista aponta a Luz pelo valor", r.pistas.filter(p=>p.tipo==="VALOR").map(p=>p.itens[0].valor), [R(-200)]);
   integro(L); }
+
+g("Reconciliação — lançamento com o sinal trocado vira pista");
+{ const {L,a}=base();   // WIGO: 1.000 em 01/09
+  /* recebeu 150 de verdade, mas foi lançado como despesa paga: o WIGO fica com 850, o banco com 1.150 */
+  ex(L,C.criarDocumento(L,{tipo:"PAGAR",descricao:"Reembolso",valor:R(150),data:"2026-09-12",quitar:{data:"2026-09-12",conta:a}}));
+  const r=resumoConciliacao(L,{conta:a,de:"2026-09-01",ate:"2026-09-30",bancoFinal:R(1150)});
+  t("diferença de 300", r.diferenca, R(300));
+  t("pista: metade da diferença, sinal trocado", r.pistas.map(p=>p.tipo), ["SINAL"]);
+  t("e diz o que provavelmente era", /lançado como saída quando era entrada/.test(r.pistas[0].texto), true);
+  t("sem extrato no período, a tela sabe que não pode decompor", r.comExtrato, false); }
 
 g("Reconciliação — sugestão de par com pontuação");
 { t("mesmo valor, dia e nome: alta", pontuar({valor:-5000,data:"2026-09-26",descricao:"PIX JOAO SILVA"},{valor:-5000,data:"2026-09-26",descricao:"Pagamento João Silva"}).pontos>=90, true);
