@@ -14,6 +14,15 @@ async function enviar(p,sel){ await p.evaluate(()=>{ const t=document.getElement
   await p.click(sel); await p.waitForSelector("#toast.on",{timeout:6000}); const t=await p.textContent("#toast"); await p.waitForTimeout(200); return t; }
 async function ir(p,rota){ await p.evaluate(h=>{ location.hash=h; },"#/"+rota); await p.waitForTimeout(350); }
 const integridade=p=>p.evaluate(()=>window.__verificar().problemas.map(x=>x.msg));
+/* o que passa da largura da tela, elemento por elemento — com overflow-x:clip
+   no html a página não ganha rolagem, então medir scrollWidth não basta */
+const vazamentos=p=>p.evaluate(()=>{ const W=document.documentElement.clientWidth, out=[];
+  for(const el of document.querySelectorAll("#raiz *,#painel *")){ const b=el.getBoundingClientRect();
+    if(!b.width||b.right<=W+1) continue;
+    let a=el.parentElement, rola=false;
+    while(a&&a!==document.body){ if(/(auto|scroll|hidden)/.test(getComputedStyle(a).overflowX)){ rola=true; break; } a=a.parentElement; }
+    if(!rola&&el.closest("#painel.on,#raiz")) out.push((el.className||el.tagName)+" →"+Math.round(b.right)); }
+  return out.slice(0,3); });
 
 /* ─────────── 1. migração do 2.2 no navegador ─────────── */
 g("migração: abre com os dados do 2.2 convertidos e conferidos");
@@ -236,7 +245,7 @@ for(const r of ["visao","movimentos","pagar","receber","faturas","pagamentos","r
   "cartoes","categorias","relatorios","relatorios/razao","relatorios/fluxo","relatorios/resultado","relatorios/avancados","relatorios/cartoes",
   "relatorios/obrigacoes","relatorios/conciliacao","relatorios/saldos","relatorios/parceiros","importacao","ajustes"]){
   await ir(p,r);
-  if(await p.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth)) vazam.push(r);
+  const v=await vazamentos(p); if(v.length) vazam.push(r+": "+v.join(", "));
 }
 t("todas as telas cabem em 390px", vazam, []);
 t("filtros recolhidos atrás de um botão", await ir(p,"pagar").then(()=>p.locator(".filtros-bt").isVisible()), true);
@@ -329,6 +338,31 @@ g("tema: escuro por padrão, automático pelo horário; migração mostra progre
   t("e termina quando o Firebase responde", /Tudo conferido/.test(await p.textContent("#painel")), true);
   t("sem erro de JS", erros, []);
   await ctx.close(); }
+
+/* ─────────── 18. celular: sem zoom ao tocar e sem texto alargando a tela ─────────── */
+g("celular: campos com 16px (o iPhone não dá zoom) e descrição enorme não alarga a tela");
+({p,erros,ctx}=await abrir({largura:390,altura:844,legado:legadoDemo("2026-09-27"),hoje:HOJE}));
+await p.waitForSelector("#painel.on",{timeout:15000}); await p.click('#painel [data-a="painel-fechar"]'); await p.waitForTimeout(300);
+const pequenos=()=>p.evaluate(()=>[...document.querySelectorAll("#painel.on input,#painel.on select,#painel.on textarea,.conteudo input,.conteudo select")]
+  .filter(e=>e.offsetParent&&!["checkbox","radio","file"].includes(e.type)&&parseFloat(getComputedStyle(e).fontSize)<16).map(e=>e.name||e.dataset.c||e.dataset.i||e.tagName));
+await p.click('.dock .mais-btn'); await p.waitForSelector("#painel.on");
+await p.click('#painel [data-a="doc-novo"][data-v="PAGAR"]'); await p.waitForSelector("#fNovo");
+t("formulário de lançamento: nenhum campo abaixo de 16px", await pequenos(), []);
+const longo="PAGAMENTO*MERCADOPAGO*LOJAVIRTUALCOMNOMEMUITOCOMPRIDOSEMESPACOALGUM1234567890";
+await p.fill('#fNovo [name="descricao"]',longo); await p.fill('#fNovo [name="valor"]',"12,34");
+await p.fill('#fNovo [name="parceiro"]',"FORNECEDORCOMUMNOMEENORMEQUENAOTEMESPACONENHUMLTDAMEEPP");
+await enviar(p,'#fNovo button[type="submit"]');
+const telas={};
+for(const r of ["visao","movimentos","pagamentos","parceiros"]){ await ir(p,r); const v=await vazamentos(p); if(v.length) telas[r]=v; }
+t("descrição e parceiro enormes não passam da tela", telas, {});
+await p.evaluate(d=>{ const L=window.__app.L; window.__app.abrirDocumento([...L.documentos.values()].find(x=>x.descricao===d).id); },longo);
+await p.waitForTimeout(400);
+t("nem no documento aberto", await vazamentos(p), []);
+await p.click('#painel [data-a="painel-fechar"]'); await ir(p,"pagar");
+await p.click(".filtros-bt"); await p.waitForTimeout(150);
+t("filtros: nenhum campo abaixo de 16px", await pequenos(), []);
+t("sem erro de JS", erros, []);
+await ctx.close();
 
 await encerrar();
 fim();

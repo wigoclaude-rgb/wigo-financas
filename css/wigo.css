@@ -54,6 +54,13 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.45;
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 body{min-height:100vh;overflow-x:hidden}
+/* clip, e não hidden, no html: nada passa da largura da tela (no iPhone,
+   passar faz a página abrir com zoom afastado), e sem virar área de rolagem
+   — com hidden no html a barra do topo deixaria de ficar presa ao rolar */
+@supports (overflow-x:clip){ html,body{overflow-x:clip} }
+/* descrição de banco sem espaço ("PAGAMENTO*MERCADOPAGO*LOJA...") quebra
+   a linha em vez de alargar a tela; valores têm nowrap onde importa */
+.t,.sub,.s,.tt,.aviso>div{overflow-wrap:anywhere}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
 a{color:inherit}
@@ -338,6 +345,9 @@ table.tab{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
 
 /* ══════════ CELULAR ══════════ */
 @media (max-width:1023px){
+  /* 16px nos campos: com menos que isso o iPhone dá zoom ao tocar no campo
+     e não volta sozinho — era preciso afastar o zoom com os dedos */
+  input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{font-size:16px}
   /* no celular os atalhos viram uma fileira que rola de lado: oito botões
      quebrando em quatro linhas empurravam o resto da tela para baixo */
   .rapidas{flex-wrap:nowrap;overflow-x:auto;margin:14px -16px 20px;padding:2px 16px;scrollbar-width:none}

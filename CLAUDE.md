@@ -31,7 +31,7 @@ node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, e
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
 node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (77)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (39)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (106)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (111)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -313,7 +313,13 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
     (posição absoluta empilhava um valor sobre o outro);
   - filtros recolhidos atrás de "Filtros (n)", que conta os que fogem do padrão;
   - indicadores das listas rolam de lado;
-  - o e2e confere que nenhuma tela passa de 390 px.
+  - o e2e confere que nenhuma tela passa de 390 px — elemento por elemento,
+    porque com `overflow-x:clip` no html o `scrollWidth` não denuncia mais;
+  - **campos com 16px no celular**: com menos, o iPhone dá zoom ao tocar no
+    campo e não volta, e o usuário tinha de afastar o zoom com os dedos;
+  - `overflow-x:clip` em html e body (não `hidden`, que quebraria a barra do
+    topo presa) e `overflow-wrap:anywhere` nos textos: descrição de banco sem
+    espaço quebra a linha em vez de alargar a tela.
 - **Valor nunca é cortado com reticências.** O tamanho do número do indicador
   sai da largura do próprio cartão (`cqi`).
 - **A classe `.sec` é do botão secundário; seção é `.secao`.** As duas já foram a
