@@ -59,7 +59,7 @@ export function razao(L,chave,{de,ate}={}){
    Mandar para a reserva é: o dinheiro sai do disponível. */
 export function fluxoDeCaixa(L,{de,ate}){
   const meses=new Map();
-  const mes=m=>{ if(!meses.has(m)) meses.set(m,{mes:m,entradas:0,saidas:0,paraReservas:0,dasReservas:0,ajustes:0}); return meses.get(m); };
+  const mes=m=>{ if(!meses.has(m)) meses.set(m,{mes:m,entradas:0,saidas:0,paraReservas:0,dasReservas:0,ajustes:0,paraTerceiros:0,deTerceiros:0}); return meses.get(m); };
   const tipoDoc=l=>l.documento?L.documentos.get(l.documento)?.tipo:null;
   for(let m=mesDe(de);m<=mesDe(ate);m=addMesesMes(m,1)) mes(m);
   for(const c of L.contas.values()){
@@ -80,6 +80,11 @@ export function fluxoDeCaixa(L,{de,ate}){
         continue;
       }
       if(x.v>0) r.entradas+=x.v; else r.saidas+=-x.v;
+      /* a parte que foi dinheiro adiantado a outra pessoa, ou devolvido por
+         ela: continua nas entradas e saídas (o dinheiro se moveu), mas à vista */
+      if(x.l.pagamento){ const t=parteDeTerceiros(L,L.pagamentos.get(x.l.pagamento));
+        if(t.pago) r.paraTerceiros+=Math.sign(-x.v)*Math.min(Math.abs(t.pago),Math.abs(x.v));
+        if(t.devolvido) r.deTerceiros+=Math.sign(x.v)*Math.min(Math.abs(t.devolvido),Math.abs(x.v)); }
     }
   }
   const lista=[...meses.values()].sort((a,b)=>a.mes<b.mes?-1:1);
@@ -89,6 +94,16 @@ export function fluxoDeCaixa(L,{de,ate}){
     r.resultado=r.entradas-r.saidas;
   }
   return lista;
+}
+
+/* quanto de um pagamento foi compra de outra pessoa (pago) e quanto foi o
+   reembolso dela (devolvido) — estorno entra negativo */
+export function parteDeTerceiros(L,pg){
+  let pago=0,devolvido=0;
+  for(const a of (pg?.alocacoes||[])){ const d=L.documentos.get(a.documento); if(!d) continue;
+    const din=L.sinalParcela(d)*a.valor+(a.juros||0)-(a.desconto||0);
+    if(d.terceiro) pago+=din; else if(d.reembolsoDe) devolvido+=din; }
+  return {pago,devolvido};
 }
 
 /* ── O QUE VAI ACONTECER ──
@@ -148,13 +163,23 @@ export function agruparCategorias(L,cats){
 }
 
 /* ── RESULTADO POR COMPETÊNCIA ── receitas e despesas por categoria e mês */
+/* Compra de outra pessoa não é despesa minha (vai para R:<pessoa>, ver
+   comandos.js): fica fora de receitas, despesas e resultado, e aparece à
+   parte em `terceiros`, pela categoria real e por pessoa. */
 export function resultado(L,{de,ate}){
   const mesDeIni=de.slice(0,7), mesAte=ate.slice(0,7);
-  const porMes=new Map(), cats=new Map();
-  for(let m=mesDeIni;m<=mesAte;m=addMesesMes(m,1)) porMes.set(m,{mes:m,receitas:0,despesas:0,ajustes:0});
+  const porMes=new Map(), cats=new Map(), tCats=new Map(), tPessoas=new Map();
+  for(let m=mesDeIni;m<=mesAte;m=addMesesMes(m,1)) porMes.set(m,{mes:m,receitas:0,despesas:0,ajustes:0,terceiros:0});
   for(const l of L.lancamentos.values()){
     const m=l.competencia; if(m<mesDeIni||m>mesAte) continue;
     for(const x of l.linhas){
+      if(x.terceiro){
+        const cid=x.categoria||"-";
+        if(!tCats.has(cid)) tCats.set(cid,{id:cid,nome:CATEGORIA_SISTEMA[cid]||L.nomeCategoria(cid)||"Sem categoria",natureza:"DESPESA",total:0});
+        tCats.get(cid).total+=x.v; porMes.get(m).terceiros+=x.v;
+        const pid=idChave(x.k); tPessoas.set(pid,(tPessoas.get(pid)||0)+x.v);
+        continue;
+      }
       const t=tipoChave(x.k);
       if(t!=="E"&&t!=="I"&&x.k!==K.AJUSTE) continue;
       const r=porMes.get(m);
@@ -169,26 +194,40 @@ export function resultado(L,{de,ate}){
   }
   const meses=[...porMes.values()]; for(const r of meses) r.resultado=r.receitas-r.despesas;
   const categorias=[...cats.values()].filter(c=>c.total!==0).sort((a,b)=>b.total-a.total);
-  return { meses, categorias, grupos:agruparCategorias(L,categorias), receitas:soma(meses,r=>r.receitas), despesas:soma(meses,r=>r.despesas) };
+  const tc=[...tCats.values()].filter(c=>c.total!==0).sort((a,b)=>b.total-a.total);
+  return { meses, categorias, grupos:agruparCategorias(L,categorias), receitas:soma(meses,r=>r.receitas), despesas:soma(meses,r=>r.despesas),
+    terceiros:{ total:soma(meses,r=>r.terceiros), categorias:tc, grupos:agruparCategorias(L,tc),
+      pessoas:[...tPessoas].filter(([,v])=>v).map(([pessoa,total])=>({pessoa,total})).sort((a,b)=>b.total-a.total) } };
 }
 
 /* ── RESULTADO POR CAIXA ── o que foi pago/recebido, pela categoria do documento */
+/* O que foi pago por outra pessoa (a fatura com a gasolina do João) e o que
+   ela devolveu ficam em `adiantado` e `devolvido`, por pessoa: dinheiro que
+   foi e voltou não é despesa nem receita. Juros e descontos dessas parcelas
+   continuam sendo meus. */
 export function resultadoCaixa(L,{de,ate}){
-  const cats=new Map(); let entradas=0,saidas=0;
+  const cats=new Map(), pessoas=new Map(); let entradas=0,saidas=0,adiantado=0,devolvido=0;
+  const somar=(nat,cid,v)=>{ const key=(nat==="RECEITA"?"I:":"E:")+cid;
+    if(!cats.has(key)) cats.set(key,{id:cid,nome:CATEGORIA_SISTEMA[cid]||L.nomeCategoria(cid)||"Sem categoria",natureza:nat,total:0});
+    cats.get(key).total+=v; if(nat==="RECEITA") entradas+=v; else saidas+=v; };
+  const pessoa=id=>{ if(!pessoas.has(id)) pessoas.set(id,{pessoa:id,adiantado:0,devolvido:0}); return pessoas.get(id); };
   for(const pg of L.pagamentos.values()){
     if(pg.data<de||pg.data>ate) continue;
     for(const a of pg.alocacoes){
       const d=L.documentos.get(a.documento); if(!d) continue;
       const sinal=d.tipo===DOC.ESTORNO_CARTAO?-1:1;
-      const cid=d.categoria||"-", key=(d.tipo===DOC.RECEBER?"I:":"E:")+cid;
-      if(!cats.has(key)) cats.set(key,{id:cid,nome:CATEGORIA_SISTEMA[cid]||L.nomeCategoria(cid)||"Sem categoria",
-        natureza:d.tipo===DOC.RECEBER?"RECEITA":"DESPESA",total:0});
-      const v=sinal*a.valor+(a.juros||0)-(a.desconto||0);
-      cats.get(key).total+=v; if(d.tipo===DOC.RECEBER) entradas+=v; else saidas+=v;
+      if(d.terceiro||d.reembolsoDe){
+        const receber=!!d.reembolsoDe, v=sinal*a.valor-(a.desconto||0);
+        if(receber){ devolvido+=v; pessoa(d.parceiro).devolvido+=v; } else { adiantado+=v; pessoa(d.terceiro.pessoa).adiantado+=v; }
+        if(a.juros) somar(receber?"RECEITA":"DESPESA","#juros",a.juros);
+        continue;
+      }
+      somar(d.tipo===DOC.RECEBER?"RECEITA":"DESPESA",d.categoria||"-",sinal*a.valor+(a.juros||0)-(a.desconto||0));
     }
   }
   const categorias=[...cats.values()].filter(c=>c.total).sort((a,b)=>b.total-a.total);
-  return { categorias, grupos:agruparCategorias(L,categorias), entradas, saidas };
+  return { categorias, grupos:agruparCategorias(L,categorias), entradas, saidas, adiantado, devolvido,
+    pessoas:[...pessoas.values()].filter(x=>x.adiantado||x.devolvido).sort((a,b)=>b.adiantado-a.adiantado) };
 }
 
 /* ── CONTAS A PAGAR / RECEBER: faixas de vencimento ── */

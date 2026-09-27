@@ -91,7 +91,7 @@ function postar(m,{data,competencia,natureza,documento=null,pagamento=null,descr
 function estornarLancamento(m,l,{data,descricao,pagamento,origem}={}){
   return postar(m,{data:data||l.data,competencia:data?mesDe(data):l.competencia,natureza:"ESTORNO",
     documento:l.documento,pagamento:pagamento||l.pagamento,descricao:descricao||("Estorno: "+l.descricao),
-    linhas:l.linhas.map(x=>({k:x.k,v:-x.v,parceiro:x.parceiro,categoria:x.categoria})),
+    linhas:l.linhas.map(x=>({k:x.k,v:-x.v,parceiro:x.parceiro,categoria:x.categoria,...(x.terceiro?{terceiro:true}:{})})),
     estornoDe:l.id,origem:origem||"MANUAL"});
 }
 function lancamentosAtivos(L,m,lista){
@@ -275,12 +275,19 @@ function montarParcelas(L,d,spec){
 }
 function linhasProvisao(d){
   const v=d.valor;
+  /* compra de outra pessoa: o débito é o que ela passa a me dever, não
+     despesa minha. A categoria real (Combustível) fica na linha, marcada
+     como de terceiro, para os relatórios mostrarem esse gasto à parte. */
+  const debito=d.terceiro?{k:K.receber(d.terceiro.pessoa),v,categoria:d.categoria,parceiro:d.terceiro.pessoa,terceiro:true}
+    :{k:K.despesa(d.categoria),v,categoria:d.categoria,parceiro:d.parceiro};
   switch(d.tipo){
-    case DOC.PAGAR: return [{k:K.despesa(d.categoria),v,categoria:d.categoria,parceiro:d.parceiro},
-                            {k:K.pagar(d.parceiro),v:-v,parceiro:d.parceiro}];
-    case DOC.RECEBER: return [{k:K.receber(d.parceiro),v,parceiro:d.parceiro},
-                              {k:K.receita(d.categoria),v:-v,categoria:d.categoria,parceiro:d.parceiro}];
-    case DOC.COMPRA: return [{k:K.despesa(d.categoria),v,categoria:d.categoria,parceiro:d.parceiro},{k:K.cartao(d.cartao),v:-v}];
+    case DOC.PAGAR: return [debito,{k:K.pagar(d.parceiro),v:-v,parceiro:d.parceiro}];
+    /* a conta a receber de um reembolso não lança nada: o direito já nasceu
+       na compra, e lançar de novo faria a pessoa dever o dobro */
+    case DOC.RECEBER: if(d.reembolsoDe) return [];
+      return [{k:K.receber(d.parceiro),v,parceiro:d.parceiro},
+              {k:K.receita(d.categoria),v:-v,categoria:d.categoria,parceiro:d.parceiro}];
+    case DOC.COMPRA: return [debito,{k:K.cartao(d.cartao),v:-v}];
     case DOC.ESTORNO_CARTAO: return [{k:K.cartao(d.cartao),v},{k:K.despesa(d.categoria),v:-v,categoria:d.categoria,parceiro:d.parceiro}];
   }
   return [];
@@ -303,6 +310,155 @@ function validarDocumento(L,d){
   if(d.conta&&!L.contas.get(d.conta)) erro("Conta não encontrada.");
 }
 
+/* ═════════ COMPRA DE OUTRA PESSOA ═════════
+   "Abasteci o carro do João no meu cartão, ele me devolve em 3x." Um
+   registro principal e um vínculo, nunca a mesma despesa lançada duas vezes:
+
+     a COMPRA   continua na fatura, com o valor e as parcelas de sempre — o
+                cartão controla a dívida com o banco, e ela não muda;
+     a CONTA A RECEBER nasce junto (d.terceiro.receber ↔ r.reembolsoDe) e
+                controla a dívida do João comigo, com o cronograma dele.
+
+   No razão a compra lança R:<pessoa> / C:<cartão> em vez de E:<cat> /
+   C:<cartão>: não é despesa minha, então não pesa em "minhas despesas". A
+   conta a receber vinculada não lança nada (linhasProvisao); receber dele é
+   um recebimento comum (A:conta / R:pessoa) — dinheiro que volta, não
+   receita. Por isso a saúde dos dados continua valendo sem regra nova: o
+   a receber de cada pessoa no razão = as contas a receber em aberto dela.
+
+   Modos de devolução: PARCELAS (acompanha as parcelas da compra), UNICO
+   (tudo numa data) e PERSONALIZADO (valor e data de cada parcela, somando
+   exatamente o valor da compra). */
+const MODOS_REEMBOLSO=new Set(["PARCELAS","UNICO","PERSONALIZADO"]);
+function lerTerceiro(L,m,t){
+  if(!t.pessoa) erro("Diga quem é a pessoa responsável.");
+  if(!m.obter("parceiros",t.pessoa)) erro("Pessoa responsável não encontrada.");
+  const modo=t.modo||"PARCELAS";
+  if(!MODOS_REEMBOLSO.has(modo)) erro("Escolha como a pessoa vai te devolver.");
+  return {pessoa:t.pessoa,modo,vencimento:t.vencimento||null,cronograma:t.cronograma||null};
+}
+const nomeDe=(m,id)=>m.obter("parceiros",id)?.nome||"A pessoa";
+/* O que falta programar, dividido conforme o modo. `jaTem` é o que as
+   parcelas que já receberam algo cobrem — essas não mudam. */
+function linhasReembolso(compra,t,jaTem){
+  const resto=compra.valor-jaTem;
+  if(resto<0) erro("Parcelas do reembolso que já tiveram recebimento somam "+formatar(jaTem)+
+    ", mais que o novo valor da compra. Estorne o recebimento antes de diminuir o valor.");
+  if(resto===0) return [];
+  if(t.modo==="PARCELAS"){
+    /* acompanha as parcelas da compra; o que já está coberto sai das primeiras */
+    let coberto=jaTem; const out=[];
+    for(const p of compra.parcelas){ const v=Math.min(coberto,p.valor); coberto-=v;
+      if(p.valor>v) out.push({valor:p.valor-v,vencimento:p.vencimento}); }
+    return out;
+  }
+  if(t.modo==="UNICO") return [{valor:resto,vencimento:exigirData(t.vencimento,"data em que a pessoa vai te devolver")}];
+  const xs=(t.cronograma||[]).map(x=>({valor:int(x.valor),vencimento:x.vencimento||""})).filter(x=>x.valor||x.vencimento);
+  if(!xs.length) erro("Informe quanto e quando a pessoa vai te devolver.");
+  for(const x of xs){
+    if(!(x.valor>0)) erro("Cada parcela do reembolso precisa de um valor maior que zero.");
+    exigirData(x.vencimento,"data de cada parcela do reembolso"); }
+  const s=soma(xs,x=>x.valor);
+  if(s!==resto) erro("O reembolso soma "+formatar(s)+(jaTem?" e falta programar ":" e a compra é de ")+formatar(resto)+
+    ": "+(s<resto?"faltam "+formatar(resto-s):"passou "+formatar(s-resto))+".");
+  return xs.sort((a,b)=>a.vencimento<b.vencimento?-1:a.vencimento>b.vencimento?1:0);
+}
+/* Parcelas da conta a receber. A que já teve recebimento (mesmo estornado)
+   fica com o id, o valor e o vencimento que tinha — o recebimento aponta
+   para ela; só as outras são refeitas. Devolve null se nada mudaria. */
+function parcelasReembolso(L,docId,atuais,compra,t){
+  const presas=atuais.filter(p=>(L.ix.alocacoes.get(p.id)||[]).length);
+  const livres=atuais.filter(p=>!presas.includes(p));
+  const novas=linhasReembolso(compra,t,soma(presas,p=>p.valor));
+  if(atuais.length&&livres.length===novas.length&&livres.every((p,i)=>p.valor===novas[i].valor&&p.vencimento===novas[i].vencimento)) return null;
+  /* sem nada preso, os ids recomeçam do 1 (nenhum pagamento aponta para
+     eles); com parcela presa, as novas ganham ids que nunca existiram */
+  let seq=Math.max(0,...atuais.map(p=>+String(p.id).split(".").pop()||0));
+  const todas=[...presas.map(p=>({...p})),...novas.map(x=>({id:presas.length?docId+"."+(++seq):null,valor:x.valor,vencimento:x.vencimento}))]
+    .sort((a,b)=>a.vencimento<b.vencimento?-1:a.vencimento>b.vencimento?1:0);
+  todas.forEach((p,i)=>{ p.n=i+1; p.de=todas.length; if(!p.id) p.id=docId+"."+(i+1); });
+  return todas;
+}
+function criarReembolso(L,m,compra,t){
+  const id=novoId("d");
+  const r={ id, numero:m.numero(PREFIXO.RECEBER), tipo:DOC.RECEBER, status:"ABERTO",
+    descricao:"Reembolso · "+compra.descricao, valor:compra.valor, data:compra.data, competencia:compra.competencia,
+    parceiro:t.pessoa, categoria:null, conta:null, cartao:null, forma:null, obs:"", origem:compra.origem,
+    reembolsoDe:compra.id, recorrencia:null, sequencia:null, importacao:null, legado:null, parcelas:[],
+    criadoEm:agora(), atualizadoEm:agora() };
+  r.parcelas=parcelasReembolso(L,id,[],compra,t);
+  m.set("documentos",id,r);
+  m.auditar("CRIAR","documento",id,r.numero,r.numero+" · "+nomeDe(m,t.pessoa)+" vai devolver "+formatar(r.valor)+
+    (r.parcelas.length>1?" em "+r.parcelas.length+"x":"")+" · origem "+compra.numero);
+  return r;
+}
+function recebimentosAtivos(L,r){ return L.pagamentosDoDocumento(r).filter(pg=>!pg.estornoDe&&!L.pagamentoEstornado(pg)); }
+function cancelarReembolso(L,m,r,compra,motivo){
+  if(recebimentosAtivos(L,r).length) erro(nomeDe(m,r.parceiro)+" já devolveu "+formatar(L.estadoDocumento(r).pago)+
+    " desta compra ("+r.numero+"). Estorne esse recebimento antes: o dinheiro que entrou continua registrado até lá.");
+  m.set("documentos",r.id,{...r,status:"CANCELADO",canceladoEm:hoje(),motivoCancelamento:motivo,atualizadoEm:agora()});
+  m.auditar("CANCELAR","documento",r.id,r.numero,r.numero+" cancelado: "+motivo);
+}
+/* Depois de editar a compra, a conta a receber acompanha. `specT`:
+   undefined = a responsabilidade não foi mexida (segue valor, datas e
+   parcelas); null = a compra passou a ser minha; objeto = de outra pessoa.
+   Com dinheiro já devolvido nada destrutivo acontece: trocar a pessoa ou
+   tornar a compra minha exige estornar o recebimento antes; valor e
+   cronograma mudam só no que ainda não foi recebido. */
+function sincronizarReembolso(L,m,antes,novo,specT,mud){
+  const r0=antes.terceiro?m.obter("documentos",antes.terceiro.receber):null;
+  const r=r0&&r0.status!=="CANCELADO"?r0:null;
+  if(specT===null){
+    if(!antes.terceiro) return;
+    if(r) cancelarReembolso(L,m,r,novo,"a compra "+novo.numero+" passou a ser sua");
+    novo.terceiro=null;
+    mud.push({campo:"responsável",de:nomeDe(m,antes.terceiro.pessoa),para:"minha"});
+    return;
+  }
+  let t;
+  if(specT===undefined){
+    if(!antes.terceiro) return;
+    t={...antes.terceiro};
+    const livres=(r?.parcelas||[]).filter(p=>!(L.ix.alocacoes.get(p.id)||[]).length);
+    const mudouValor=novo.valor!==antes.valor;
+    const mudouParcelas=JSON.stringify(novo.parcelas.map(p=>[p.valor,p.vencimento]))!==JSON.stringify(antes.parcelas.map(p=>[p.valor,p.vencimento]));
+    if(t.modo==="UNICO") t.vencimento=livres[livres.length-1]?.vencimento||r?.parcelas[r.parcelas.length-1]?.vencimento;
+    if(t.modo==="PERSONALIZADO"){
+      if(mudouValor) erro("O valor da compra mudou: diga de novo como a pessoa vai te devolver (cronograma personalizado).");
+      t.cronograma=livres;
+    }
+    if(!mudouValor&&!(t.modo==="PARCELAS"&&mudouParcelas)) t.manter=true;
+  } else t=lerTerceiro(L,m,specT);
+  if(!r){
+    const nr=criarReembolso(L,m,novo,t);
+    novo.terceiro={pessoa:t.pessoa,receber:nr.id,modo:t.modo};
+    mud.push({campo:"responsável",de:antes.terceiro?nomeDe(m,antes.terceiro.pessoa):"minha",para:nomeDe(m,t.pessoa)});
+    return;
+  }
+  const nr={...r}, mudR=[];
+  if(t.pessoa!==r.parceiro){
+    if(recebimentosAtivos(L,r).length) erro(nomeDe(m,r.parceiro)+" já devolveu "+formatar(L.estadoDocumento(r).pago)+
+      " desta compra ("+r.numero+"). Para trocar a pessoa, estorne esse recebimento antes.");
+    nr.parceiro=t.pessoa; mudR.push({campo:"parceiro",de:nomeDe(m,r.parceiro),para:nomeDe(m,t.pessoa)});
+    mud.push({campo:"responsável",de:nomeDe(m,r.parceiro),para:nomeDe(m,t.pessoa)});
+  }
+  if(!t.manter){
+    const ps=parcelasReembolso(L,r.id,r.parcelas,novo,t);
+    if(ps){ mudR.push({campo:"parcelas",de:r.parcelas.length+"x · "+formatar(r.valor),para:ps.length+"x · "+formatar(novo.valor)});
+      nr.parcelas=ps; nr.valor=novo.valor; }
+  }
+  if(t.modo!==antes.terceiro.modo) mudR.push({campo:"modo",de:antes.terceiro.modo,para:t.modo});
+  if(mudR.length) mud.push({campo:"reembolso",de:r.parcelas.length+"x",para:nr.parcelas.length+"x"});
+  /* a descrição acompanha só enquanto for a automática */
+  if(novo.descricao!==antes.descricao&&r.descricao==="Reembolso · "+antes.descricao){ nr.descricao="Reembolso · "+novo.descricao; mudR.push({campo:"descricao",de:r.descricao,para:nr.descricao}); }
+  if(novo.data!==r.data||novo.competencia!==r.competencia){ nr.data=novo.data; nr.competencia=novo.competencia; mudR.push({campo:"data",de:r.data,para:novo.data}); }
+  novo.terceiro={pessoa:t.pessoa,receber:r.id,modo:t.modo};
+  if(!mudR.length) return;
+  nr.atualizadoEm=agora();
+  m.set("documentos",r.id,nr);
+  m.auditar("ALTERAR","documento",r.id,r.numero,r.numero+" acompanhou a alteração de "+novo.numero,mudR);
+}
+
 /* Cria o documento, as parcelas e a provisão. Com `quitar`, paga tudo na
    hora (a despesa à vista no Pix); com `quitarPrimeiras`, paga as N
    primeiras nos seus vencimentos (o "já paguei 2 de 10" do 2.2). */
@@ -316,12 +472,17 @@ export function criarDocumento(L,spec,m){
     obs:spec.obs||"", origem:spec.origem||"MANUAL", recorrencia:spec.recorrencia||null, sequencia:spec.sequencia||null,
     importacao:spec.importacao||null, legado:spec.legado||null, parcelas:[],
     criadoEm:agora(), atualizadoEm:agora() };
+  const t=spec.terceiro?lerTerceiro(L,m,spec.terceiro):null;
+  if(t&&d.tipo!==DOC.COMPRA&&d.tipo!==DOC.PAGAR) erro("Só despesa e compra no cartão podem ser de outra pessoa.");
+  if(t&&d.recorrencia) erro("Despesa de outra pessoa não se repete sozinha: lance cada uma.");
   validarDocumento(L,d);
   d.parcelas=montarParcelas(L,d,spec);
-  m.set("documentos",id,d);
+  m.set("documentos",id,d);   /* a compra entra no lote antes da conta a receber que ela gera */
+  if(t){ const r=criarReembolso(L,m,d,t); d.terceiro={pessoa:t.pessoa,receber:r.id,modo:t.modo}; }
   postarProvisao(m,d);
   if(!spec.silencioso) m.auditar("CRIAR","documento",id,d.numero,
-    d.numero+" · "+d.descricao+" · "+formatar(d.valor)+(d.parcelas.length>1?" em "+d.parcelas.length+"x":""));
+    d.numero+" · "+d.descricao+" · "+formatar(d.valor)+(d.parcelas.length>1?" em "+d.parcelas.length+"x":"")+
+    (t?" · de "+nomeDe(m,t.pessoa)+" ("+m.obter("documentos",d.terceiro.receber).numero+")":""));
   if(spec.quitar){
     registrarPagamento(L,{direcao:d.tipo===DOC.RECEBER?"ENTRADA":"SAIDA",data:spec.quitar.data||d.data,
       conta:spec.quitar.conta,forma:spec.quitar.forma||d.forma,parceiro:d.parceiro,origem:d.origem,
@@ -341,6 +502,12 @@ export function editarDocumento(L,id,patch,m0){
   const d=L.documentos.get(id); if(!d) erro("Documento não encontrado.");
   if(d.status==="CANCELADO") erro("Documento cancelado não se altera.");
   const m=m0||new Mudanca(L);
+  if(d.reembolsoDe){
+    const proib=Object.keys(patch).filter(k=>!["descricao","obs","vencimentos"].includes(k)&&JSON.stringify(patch[k])!==JSON.stringify(d[k]));
+    const c=L.documentos.get(d.reembolsoDe);
+    if(proib.length) erro("Esta conta a receber nasceu da compra "+(c?.numero||"de origem")+": valor, pessoa e parcelas mudam por lá (abra a compra e use Editar).");
+  }
+  if("terceiro" in patch&&d.tipo!==DOC.COMPRA&&d.tipo!==DOC.PAGAR) erro("Só despesa e compra no cartão podem ser de outra pessoa.");
   const planejada=d.tipo===DOC.TRANSF&&d.status==="PLANEJADA";
   if(!COM_PARCELAS.has(d.tipo)&&!planejada){
     const proib=Object.keys(patch).filter(k=>!EDITAVEL_SEMPRE.includes(k));
@@ -354,7 +521,7 @@ export function editarDocumento(L,id,patch,m0){
   const novo={...d};
   const mud=[];
   for(const [k,v] of Object.entries(patch)){
-    if(k==="vencimentos"||k==="faturas") continue;
+    if(k==="vencimentos"||k==="faturas"||k==="terceiro") continue;
     if(JSON.stringify(v)!==JSON.stringify(d[k])){ mud.push({campo:k,de:d[k]??null,para:v}); novo[k]=v; }
   }
   if(planejada){
@@ -389,12 +556,13 @@ export function editarDocumento(L,id,patch,m0){
       p.fatura=f.fatura; p.vencimento=datasFatura(L.cartoes.get(d.cartao),f.fatura).vencimento;
     }
   }
+  if(d.terceiro||patch.terceiro) sincronizarReembolso(L,m,d,novo,"terceiro" in patch?patch.terceiro:undefined,mud);
   if(!mud.length) return m;
   novo.atualizadoEm=agora();
   m.set("documentos",id,novo);
   /* a provisão refeita: estorna a antiga (na mesma data, para o mês original
      ficar certo) e lança a nova. Os dois ficam no histórico do documento. */
-  const contabil=["valor","categoria","parceiro","data","competencia","cartao"];
+  const contabil=["valor","categoria","parceiro","data","competencia","cartao","responsável"];
   if(COM_PARCELAS.has(d.tipo)&&mud.some(x=>contabil.includes(x.campo))){
     for(const l of lancamentosAtivos(L,m,L.lancamentosDoDocumento(id).filter(l=>l.natureza==="DOCUMENTO")))
       estornarLancamento(m,l,{descricao:"Correção de "+d.numero});
@@ -423,7 +591,13 @@ export function cancelarDocumento(L,id,{motivo,data,estornarPagamentos=false}={}
   const d=L.documentos.get(id); if(!d) erro("Documento não encontrado.");
   if(d.status==="CANCELADO") erro("O documento já está cancelado.");
   if(!(motivo||"").trim()) erro("Diga o motivo do cancelamento.");
+  if(d.reembolsoDe){ const c=L.documentos.get(d.reembolsoDe);
+    if(c&&c.status!=="CANCELADO") erro("Esta conta a receber nasceu da compra "+c.numero+". Para desfazer, cancele a compra ou marque-a como sua (Editar)."); }
   const m=m0||new Mudanca(L); m.pendEstornado=m.pendEstornado||new Set();
+  /* a conta a receber vinculada cai junto — mas não se já entrou dinheiro:
+     aí o usuário decide o que fazer com ele antes */
+  if(d.terceiro){ const r=m.obter("documentos",d.terceiro.receber);
+    if(r&&r.status!=="CANCELADO") cancelarReembolso(L,m,r,d,"compra "+d.numero+" cancelada: "+motivo.trim()); }
   if(COM_PARCELAS.has(d.tipo)){
     const ativos=L.pagamentosDoDocumento(d).filter(pg=>!pg.estornoDe&&!L.pagamentoEstornado(pg));
     if(ativos.length){

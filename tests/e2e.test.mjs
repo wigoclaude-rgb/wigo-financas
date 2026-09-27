@@ -409,5 +409,91 @@ g("categorias: conta nova já nasce com as sugeridas; conta sem nenhuma ganha co
   t("sem erro de JS", erros, []);
   await ctx.close(); }
 
+/* ─────────── 21. compra de outra pessoa ─────────── */
+g("terceiro: compra no cartão para outra pessoa gera a conta a receber, mostra o vínculo e separa na fatura");
+{ ({p,erros,ctx}=await abrir({legado:legadoDemo("2026-09-27"),hoje:HOJE}));
+  await p.waitForSelector("#painel.on",{timeout:15000}); await p.click('#painel [data-a="painel-fechar"]');
+  const L=()=>window.__app.L;
+  await ir(p,"visao");
+  await p.click('.conteudo [data-a="doc-novo"][data-v="COMPRA_CARTAO"]'); await p.waitForSelector("#fNovo");
+  await p.fill('#fNovo [name="descricao"]',"Gasolina do João");
+  await p.fill('#fNovo [name="valor"]',"600");
+  await p.selectOption('#fNovo [name="parcelas"]',"3");
+  t("começa como Minha, sem pedir pessoa", [await p.locator('#fNovo [data-a="tf-resp"][data-v="MINHA"].on').count(), await p.locator('#fNovo [name="pessoa"]').count()], [1,0]);
+  await p.click('#fNovo [data-a="tf-resp"][data-v="TERCEIRO"]');
+  await p.fill('#fNovo [name="pessoa"]',"João Teste"); await p.waitForTimeout(150);
+  const res=await p.textContent("#tfResumo");
+  t("resumo antes de salvar", [/Contas a receber: R\$\s*600,00 — 3 parcelas/.test(res), /nova pessoa/.test(res), /A fatura continua com o valor total/.test(res)], [true,true,true]);
+  t("pergunta como a pessoa vai devolver", /Como essa pessoa irá te devolver esse valor\?/.test(await p.textContent("#fNovo")), true);
+  t("não deixa repetir todo mês", await p.locator('#fNovo [name="repetir"][disabled]').count(), 1);
+  t("salvo", await enviar(p,'#fNovo button[type="submit"]'), "Compra registrada na fatura · conta a receber de João Teste criada");
+  const v=await p.evaluate(()=>{ const L=window.__app.L; const d=[...L.documentos.values()].find(x=>x.descricao==="Gasolina do João"); const r=L.documentos.get(d.terceiro.receber);
+    return {id:d.id,rid:r.id,rnum:r.numero,dnum:d.numero,pessoa:L.nomeParceiro(r.parceiro),parc:r.parcelas.map(x=>x.valor),volta:r.reembolsoDe===d.id,ref:d.parcelas[0].fatura,cartao:d.cartao}; });
+  t("a conta a receber nasceu vinculada, em 3x, da pessoa nova", [v.pessoa,v.parc,v.volta], ["João Teste",[20000,20000,20000],true]);
+  t("integridade", await integridade(p), []);
+
+  await p.evaluate(id=>window.__app.abrirDocumento(id),v.id); await p.waitForSelector("#painel.on"); await p.waitForTimeout(300);
+  t("a compra diz o que gerou", /Este lançamento gerou um contas a receber de R\$\s*600,00/.test(await p.textContent("#painel")), true);
+  await p.click(`#painel [data-a="doc-abrir"][data-id="${v.rid}"]`); await p.waitForTimeout(400);
+  const txR=await p.textContent("#painel");
+  t("a conta a receber diz de onde veio", [/Origem: compra realizada no cartão/.test(txR), txR.includes(v.dnum)], [true,true]);
+  t("e não se cancela sozinha", await p.locator('#painel [data-a="doc-cancelar"]').count(), 0);
+  await p.click('#painel [data-a="pag-doc"]'); await p.waitForSelector("#fPag");
+  const idSel=await p.getAttribute('#fPag [data-a="pf-pick"].on',"data-id");
+  await p.locator(`#fPag [data-i="pf-valor"][data-id="${idSel}"]`).fill("50,00"); await p.waitForTimeout(700);
+  t("recebimento parcial", await enviar(p,'#fPag button[type="submit"]'), "Recebimento registrado");
+  t("parcialmente recebida", await p.evaluate(id=>window.__app.L.estadoDocumento(window.__app.L.documentos.get(id)).status,v.rid), "PARCIAL");
+  await p.evaluate(id=>window.__app.abrirDocumento(id),v.rid); await p.waitForTimeout(300);
+  t("o selo fala em recebida", /Parcialmente recebida/.test(await p.textContent("#painel")), true);
+  await p.click('#painel [data-a="painel-fechar"]');
+
+  await ir(p,"faturas/"+v.cartao+"/"+v.ref);
+  const txF=await p.textContent("#conteudo");
+  t("a fatura separa o que é meu e o que é de terceiros", [/De quem é esta fatura/.test(txF), /Minhas despesas/.test(txF), /João Teste/.test(txF)], [true,true,true]);
+
+  /* personalizado: a soma precisa bater */
+  await ir(p,"visao"); await p.click('.conteudo [data-a="doc-novo"][data-v="COMPRA_CARTAO"]'); await p.waitForSelector("#fNovo");
+  await p.fill('#fNovo [name="descricao"]',"Jantar do Pedro"); await p.fill('#fNovo [name="valor"]',"300");
+  await p.click('#fNovo [data-a="tf-resp"][data-v="TERCEIRO"]'); await p.fill('#fNovo [name="pessoa"]',"Pedro Teste");
+  await p.check('#fNovo [name="tfModo"][value="PERSONALIZADO"]'); await p.waitForTimeout(150);
+  const ls=p.locator('#fNovo [data-i="tf-linha"][data-k="valor"]');
+  t("personalizado começa com duas parcelas", await ls.count(), 2);
+  await ls.nth(0).fill("100"); await ls.nth(1).fill("150"); await p.waitForTimeout(150);
+  t("mostra o que falta", /faltam R\$\s*50,00/.test(await p.textContent("#tfResumo")), true);
+  t("não salva com a soma errada", /faltam R\$\s*50,00/.test(await enviar(p,'#fNovo button[type="submit"]')), true);
+  t("e não cadastrou a pessoa pela metade", await p.evaluate(()=>[...window.__app.L.parceiros.values()].some(x=>x.nome==="Pedro Teste")), false);
+  await ls.nth(1).fill("200"); await p.waitForTimeout(150);
+  t("soma certa", /Soma certa/.test(await p.textContent("#tfResumo")), true);
+  /* no celular, o formulário com as parcelas não passa da tela */
+  await p.setViewportSize({width:390,height:844}); await p.waitForTimeout(300);
+  t("celular: formulário de terceiro dentro da tela", await vazamentos(p), []);
+  await p.setViewportSize({width:1280,height:900}); await p.waitForTimeout(200);
+  t("salvo", await enviar(p,'#fNovo button[type="submit"]'), "Compra registrada na fatura · conta a receber de Pedro Teste criada");
+  const ped=await p.evaluate(()=>{ const L=window.__app.L; const d=[...L.documentos.values()].find(x=>x.descricao==="Jantar do Pedro"); return {id:d.id,rid:d.terceiro.receber}; });
+
+  /* editar: com recebimento a responsabilidade trava; sem, vira minha */
+  await p.evaluate(id=>window.__app.abrirDocumento(id),v.id); await p.waitForTimeout(250);
+  await p.click('#painel [data-a="doc-editar"]'); await p.waitForTimeout(200);
+  t("com dinheiro devolvido, a responsabilidade trava e explica", [await p.locator('#painel [data-a="tf-resp"][disabled]').count(), /já devolveu/.test(await p.textContent("#painel"))], [2,true]);
+  await p.evaluate(id=>window.__app.abrirDocumento(id),ped.id); await p.waitForTimeout(250);
+  await p.click('#painel [data-a="doc-editar"]'); await p.waitForTimeout(200);
+  await p.click('#painel [data-a="tf-resp"][data-v="MINHA"]');
+  t("passou a ser minha", await enviar(p,'#painel button[type="submit"]'), "Documento alterado");
+  t("a conta a receber do Pedro foi cancelada, com o motivo", await p.evaluate(id=>{ const r=window.__app.L.documentos.get(id); return [r.status,/passou a ser sua/.test(r.motivoCancelamento)]; },ped.rid), ["CANCELADO",true]);
+  await p.click('#painel [data-a="painel-fechar"]');
+  t("integridade", await integridade(p), []);
+
+  await ir(p,"relatorios/resultado");
+  t("relatório: minhas despesas e de terceiros à parte", [/Minhas despesas/.test(await p.textContent("#conteudo")), /De terceiros/.test(await p.textContent("#conteudo"))], [true,true]);
+  await p.setViewportSize({width:390,height:844}); await p.waitForTimeout(300);
+  const telas={};
+  for(const r of ["relatorios/resultado","receber","faturas/"+v.cartao+"/"+v.ref,"relatorios/fluxo"]){ await ir(p,r); const x=await vazamentos(p); if(x.length) telas[r]=x; }
+  await p.evaluate(id=>window.__app.abrirDocumento(id),v.id); await p.waitForTimeout(300);
+  const doc=await vazamentos(p); if(doc.length) telas.documento=doc;
+  t("celular: nada passa da tela", telas, {});
+  t("as regras aceitam", await p.evaluate(()=>window.__recusas), []);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
 await encerrar();
 fim();

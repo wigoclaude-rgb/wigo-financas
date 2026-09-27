@@ -5,7 +5,7 @@
    oferece "estornar". */
 import { app, acao, abrirPainel, fecharPainel, executar, toast, ir } from "./base.js";
 import { h, raw, juntar } from "./html.js";
-import { I, R, Rs, chipSt, chip, fmtData, rotuloMes, rotuloMesCurto, aviso, valorCor } from "./componentes.js";
+import { I, R, Rs, chipSt, chipStLado, chip, fmtData, rotuloMes, rotuloMesCurto, aviso, valorCor } from "./componentes.js";
 import { clic, rotuloTipo } from "./util.js";
 import { DOC, COM_PARCELAS, DO_CARTAO, FORMAS, CATEGORIA_SISTEMA, K } from "../financas/modelo.js";
 import * as C from "../financas/comandos.js";
@@ -56,6 +56,8 @@ app.abrirDocumento=function(id){
   const lancs=[...L.lancamentosDoDocumento(d.id),...pags.flatMap(p=>L.lancamentosDoPagamento(p.id))]
     .sort((a,b)=>a.criadoEm<b.criadoEm?-1:1);
   const receber=d.tipo===DOC.RECEBER;
+  /* o vínculo com a outra pessoa, visto dos dois lados */
+  const reemb=d.terceiro?L.documentos.get(d.terceiro.receber):null, origem=d.reembolsoDe?L.documentos.get(d.reembolsoDe):null;
   const resumo=parcelado?h`<div class="resumo"><div><span class="cap">Valor</span><b>${R(d.valor)}</b></div>
       <div><span class="cap">${receber?"Recebido":noCartao?"Pago na fatura":"Pago"}</span><b>${R(e.pago)}</b></div>
       <div><span class="cap">Restante</span><b class="${e.restante>0?(e.status==="VENCIDA"?"down":""):"up"}">${R(e.restante)}</b></div></div>`
@@ -64,13 +66,15 @@ app.abrirDocumento=function(id){
     :h`<div class="resumo"><div><span class="cap">Valor</span><b>${Rs(d.valor)}</b></div><div><span class="cap">Conta</span><b>${L.nomeConta(d.conta)}</b></div>
       <div><span class="cap">Data</span><b>${fmtData(d.data)}</b></div></div>`;
   const meta=[
-    ["Parceiro",d.parceiro?h`<a class="link" data-a="ir" data-v="parceiros" data-p="${d.parceiro}">${L.nomeParceiro(d.parceiro)}</a>`:"—"],
-    ["Categoria",L.nomeCategoria(d.categoria)||"—"],
+    [origem?"Pessoa":noCartao?"Estabelecimento":"Parceiro",d.parceiro?h`<a class="link" data-a="ir" data-v="parceiros" data-p="${d.parceiro}">${L.nomeParceiro(d.parceiro)}</a>`:"—"],
+    d.terceiro?["Responsável",h`<a class="link" data-a="ir" data-v="parceiros" data-p="${d.terceiro.pessoa}">${L.nomeParceiro(d.terceiro.pessoa)}</a> (terceiro)`]:null,
+    origem?null:["Categoria",L.nomeCategoria(d.categoria)||"—"],
     ["Data do documento",fmtData(d.data)],["Competência",rotuloMes(d.competencia)],
     parcelado&&!noCartao?["Próximo vencimento",e.proximoVencimento?fmtData(e.proximoVencimento):"—"]:null,
     noCartao?["Cartão",h`<a class="link" data-a="ir" data-v="cartoes" data-p="${d.cartao}">${L.nomeCartao(d.cartao)}</a>`]:null,
-    parcelado&&!noCartao?["Conta prevista",d.conta?L.nomeConta(d.conta):"—"]:null,
-    ["Forma",FORMAS[d.forma]||"—"],["Origem",ORIGEM[d.origem]||d.origem],
+    parcelado&&!noCartao&&!origem?["Conta prevista",d.conta?L.nomeConta(d.conta):"—"]:null,
+    /* no reembolso, forma e origem são as da compra, que o aviso do topo já mostra */
+    origem?null:["Forma",FORMAS[d.forma]||"—"],origem?null:["Origem",ORIGEM[d.origem]||d.origem],
     d.recorrencia?["Recorrência",(d.sequencia?"ocorrência "+d.sequencia:"")]:null
   ].filter(Boolean);
   const tabParcelas=parcelado?h`<div class="bloco"><div class="cap">${I("split","p")} Parcelas</div><div class="card"><div class="tab-wrap"><table class="tab cartoes">
@@ -78,7 +82,7 @@ app.abrirDocumento=function(id){
     <tbody>${juntar(e.parcelas,({p,e:pe})=>h`<tr><td class="nw" data-r="Parcela">${p.n}/${p.de}</td>
       <td class="nw">${noCartao?h`<a class="link" data-a="ir" data-v="faturas" data-p="${d.cartao}|${p.fatura}">${rotuloMesCurto(p.fatura)}</a> <span class="fraco peq">vence ${fmtData(p.vencimento)}</span>`:fmtData(p.vencimento)}</td>
       <td class="r oc">${R(p.valor)}</td><td class="r oc">${pe.pago?R(pe.pago):"—"}</td><td class="r"><span class="cel-only fraco peq">${pe.restante?"resta ":""}</span>${pe.restante?R(pe.restante):h`<span class="cel-only">${R(p.valor)}</span><span class="oc-inline">—</span>`}</td>
-      <td>${chipSt(pe.status)}</td>
+      <td>${chipStLado(pe.status,receber)}</td>
       <td class="r">${!cancelado&&pe.restante>0&&!noCartao?h`<button class="btn peq sec" data-a="pag-parcela" data-id="${p.id}">${receber?"Receber":"Pagar"}</button>`:""}
         ${!cancelado&&noCartao&&!pe.pago?h`<button class="btn peq fant" data-a="parcela-mover" data-id="${p.id}" title="Mover para outra fatura">${I("swap","p")}</button>`:""}</td></tr>`)}</tbody>
     ${e.juros||e.desconto?h`<tfoot><tr><td colspan="7" class="peq">${e.juros?h`Juros e multas: ${R(e.juros)} `:""}${e.desconto?h`· Descontos: ${R(e.desconto)}`:""}</td></tr></tfoot>`:""}
@@ -88,24 +92,39 @@ app.abrirDocumento=function(id){
       return h`<div class="clic"${clic("pag-abrir",pg.id)}><span class="bola ${pg.estornoDe?"warn":receber?"up":"down"}">${I(pg.estornoDe?"undo":"check","p")}</span>
         <div class="meio"><div class="t">${pg.numero} · ${pg.estornoDe?"estorno":fmtData(pg.data)}</div><div class="s">${pg.conta?L.nomeConta(pg.conta):"sem movimento de conta"} · ${FORMAS[pg.forma]||"—"}</div></div>
         <div class="dir"><div class="num" style="font-weight:600">${R(pg.valor)}</div>${est?chip("estornado"):""}</div></div>`; })}</div>`:h`<div class="fraco peq">Nenhum pagamento ainda.</div>`}</div>`:"";
+  const blocoVinculo=reemb?(()=>{ const er=L.estadoDocumento(reemb), quem=L.nomeParceiro(reemb.parceiro);
+      return h`<div class="bloco"><div class="cap">${I("handshake","p")} Reembolso</div>
+        ${reemb.status==="CANCELADO"?aviso(h`A conta a receber ${reemb.numero} foi cancelada.`,{tipo:"ruim"}):h`<div class="card pad vinculo">
+          <div>Este lançamento gerou um contas a receber de <b>${R(reemb.valor)}</b>: ${quem} devolve ${reemb.parcelas.length>1?"em "+reemb.parcelas.length+" parcelas":"de uma vez"}.</div>
+          <div class="resumo" style="margin:10px 0"><div><span class="cap">Devolvido</span><b class="${er.pago?"up":""}">${R(er.pago)}</b></div>
+            <div><span class="cap">Falta</span><b>${R(er.restante)}</b></div><div><span class="cap">Situação</span><b>${chipStLado(er.status,true)}</b></div></div>
+          <div class="btns">${!cancelado&&er.restante>0?h`<button class="btn peq" data-a="pag-doc" data-id="${reemb.id}">${I("coin","p")} Registrar recebimento</button>`:""}
+            <button class="btn sec peq" data-a="doc-abrir" data-id="${reemb.id}">${I("link","p")} Ver ${reemb.numero}</button></div></div>`}
+        ${noCartao?h`<div class="fraco peq" style="margin-top:6px">A fatura continua com o valor total: o cartão controla a dívida com o banco; a conta a receber, a dívida de ${quem} com você.</div>`:""}</div>`; })():"";
+  const blocoOrigem=origem?aviso(h`<b>Origem: ${DO_CARTAO.has(origem.tipo)?"compra realizada no cartão "+L.nomeCartao(origem.cartao):"despesa paga por você"}.</b>
+      ${origem.numero} · ${origem.descricao} · ${R(origem.valor)}${origem.parcelas.length>1?" em "+origem.parcelas.length+"x":""} em ${fmtData(origem.data)}.
+      <a class="link" data-a="doc-abrir" data-id="${origem.id}">Abrir ${origem.numero}</a>
+      <div class="fraco peq" style="margin-top:4px">Receber é dinheiro que volta: não conta como receita.</div>`,{tipo:"info",icone:"link"}):"";
   const acoes=[];
   if(!cancelado){
     if(parcelado&&!noCartao&&e.restante>0) acoes.push(h`<button class="btn" data-a="pag-doc" data-id="${d.id}">${I("check")} ${receber?"Registrar recebimento":"Registrar pagamento"}</button>`);
     if(noCartao&&e.restante>0){ const p0=e.parcelas.find(x=>x.e.restante>0)?.p; if(p0) acoes.push(h`<button class="btn sec" data-a="ir" data-v="faturas" data-p="${d.cartao}|${p0.fatura}">${I("card")} Ver fatura</button>`); }
     if(d.tipo===DOC.TRANSF&&d.status==="PLANEJADA") acoes.push(h`<button class="btn" data-a="trf-efetivar" data-id="${d.id}">${I("check")} Marcar como feita</button>`);
     acoes.push(h`<button class="btn sec" data-a="doc-editar" data-id="${d.id}">Editar</button>`);
-    if(parcelado) acoes.push(h`<button class="btn sec" data-a="doc-duplicar" data-id="${d.id}">${I("copy","p")} Duplicar</button>`);
+    /* a conta a receber de um reembolso não se duplica nem se cancela
+       sozinha: ela segue a compra */
+    if(parcelado&&!origem) acoes.push(h`<button class="btn sec" data-a="doc-duplicar" data-id="${d.id}">${I("copy","p")} Duplicar</button>`);
     const temPag=parcelado&&e.pago!==0;
     const rot=!parcelado&&d.status!=="PLANEJADA"?"Estornar":temPag?"Estornar e cancelar":"Cancelar";
-    acoes.push(h`<button class="btn fant" data-a="doc-cancelar" data-id="${d.id}" style="color:var(--down)">${rot}</button>`);
+    if(!origem||origem.status==="CANCELADO") acoes.push(h`<button class="btn fant" data-a="doc-cancelar" data-id="${d.id}" style="color:var(--down)">${rot}</button>`);
   }
   abrirPainel({id:"doc:"+d.id,
-    topo:h`<div class="doc-cab"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="doc-num">${d.numero}</span>${chip(rotuloTipo(d.tipo),"acc")}${chipSt(e.status)}${L.documentoConciliado(d)?chip("conciliado","bom"):""}</div></div>`,
+    topo:h`<div class="doc-cab"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="doc-num">${d.numero}</span>${chip(origem?"Reembolso":rotuloTipo(d.tipo),"acc")}${chipStLado(e.status,receber)}${d.terceiro?chip("de "+L.nomeParceiro(d.terceiro.pessoa)):""}${L.documentoConciliado(d)?chip("conciliado","bom"):""}</div></div>`,
     titulo:d.descricao,
     corpo:h`${cancelado?aviso(h`<b>Cancelado em ${fmtData(d.canceladoEm)}.</b> ${d.motivoCancelamento||""} O documento e os estornos continuam no histórico.`,{tipo:"ruim"}):""}
-      ${resumo}<div class="meta-doc">${juntar(meta,([r,v])=>h`<div><span class="cap">${r}</span><b>${v}</b></div>`)}</div>
+      ${blocoOrigem}${resumo}<div class="meta-doc">${juntar(meta,([r,v])=>h`<div><span class="cap">${r}</span><b>${v}</b></div>`)}</div>
       ${d.obs?h`<div class="fraco peq" style="margin-top:8px">${d.obs}</div>`:""}
-      ${tabParcelas}${blocoPags}
+      ${blocoVinculo}${tabParcelas}${blocoPags}
       <div class="bloco"><div class="cap">${I("ledger","p")} Lançamentos no razão</div>${blocoLancamentos(lancs)}</div>
       <div class="bloco"><div class="cap">${I("history","p")} Histórico</div><div id="historicoDoc"><div class="sk" style="height:40px"></div></div></div>`,
     rodape:acoes.length?raw(acoes.map(String).join("")):""});
@@ -154,10 +173,12 @@ acao("doc-cancelar",el=>{
   const d=app.L.documentos.get(el.dataset.id), parc=COM_PARCELAS.has(d.tipo);
   const temPag=parc&&app.L.estadoDocumento(d).pago!==0;
   const caixa=!parc&&d.status!=="PLANEJADA";
+  const r=d.terceiro?app.L.documentos.get(d.terceiro.receber):null;
+  const junto=r&&r.status!=="CANCELADO"?" A conta a receber "+r.numero+" de "+app.L.nomeParceiro(r.parceiro)+" é cancelada junto.":"";
   pedirMotivo({titulo:(caixa?"Estornar ":temPag?"Estornar e cancelar ":"Cancelar ")+d.numero,
-    texto:caixa?"Um lançamento com as linhas invertidas anula o efeito no saldo. O original fica no histórico.":
+    texto:(caixa?"Um lançamento com as linhas invertidas anula o efeito no saldo. O original fica no histórico.":
       temPag?"Os pagamentos deste documento serão estornados (voltam para a conta) e o documento fica cancelado. Nada é apagado.":
-      "O documento fica cancelado e sai de contas a pagar/receber. Nada é apagado.",
+      "O documento fica cancelado e sai de contas a pagar/receber. Nada é apagado.")+junto,
     botao:caixa?"Estornar":temPag?"Estornar e cancelar":"Cancelar documento", data:caixa||temPag?d.data:null,
     aoConfirmar:(motivo,data)=>executar(()=>C.cancelarDocumento(app.L,d.id,{motivo,data,estornarPagamentos:temPag}),
       {ok:caixa?"Estornado":"Documento cancelado"})});

@@ -12,7 +12,10 @@
    5. nenhuma parcela foi paga além do valor;
    6. transferência efetivada tem exatamente um lançamento ativo, com as duas
       pernas;
-   7. documento com parcelas: a soma das parcelas = total. */
+   7. documento com parcelas: a soma das parcelas = total;
+   8. compra de outra pessoa tem exatamente uma conta a receber ativa, do
+      mesmo valor e da mesma pessoa, que aponta de volta para ela — e a
+      conta a receber vinculada não lança nada por conta própria. */
 
 import { DOC, K, COM_PARCELAS, DO_CARTAO } from "./modelo.js";
 import { soma, formatar } from "../nucleo/dinheiro.js";
@@ -78,6 +81,21 @@ export function verificar(L){
         ativos[0].linhas.some(x=>x.k===K.conta(d.conta)&&x.v===-d.valor)&&
         ativos[0].linhas.some(x=>x.k===K.conta(d.contaDestino)&&x.v===d.valor);
       if(!ok) p("TRANSFERENCIA",d.numero+" não tem as duas pernas no razão.",{documento:d.id});
+    }
+  }
+  /* compra de outra pessoa ↔ conta a receber */
+  for(const d of L.documentos.values()){
+    if(d.status==="CANCELADO") continue;
+    if(d.terceiro){
+      const r=L.documentos.get(d.terceiro.receber);
+      if(!r||r.status==="CANCELADO"||r.reembolsoDe!==d.id) p("TERCEIRO",d.numero+" é de outra pessoa mas não tem a conta a receber vinculada.",{documento:d.id});
+      else if(r.valor!==d.valor||r.parceiro!==d.terceiro.pessoa) p("TERCEIRO",d.numero+" e "+r.numero+" não batem: compra de "+formatar(d.valor)+
+        ", a receber "+formatar(r.valor)+(r.parceiro!==d.terceiro.pessoa?", de outra pessoa":"")+".",{documento:d.id});
+    }
+    if(d.reembolsoDe){
+      const c=L.documentos.get(d.reembolsoDe);
+      if(!c||c.status==="CANCELADO"||c.terceiro?.receber!==d.id) p("TERCEIRO",d.numero+" é um reembolso sem a compra de origem.",{documento:d.id});
+      if(L.lancamentosDoDocumento(d.id).length) p("TERCEIRO",d.numero+" lançou no razão por conta própria; o a receber já nasce na compra.",{documento:d.id});
     }
   }
   return { ok:!problemas.length, problemas };

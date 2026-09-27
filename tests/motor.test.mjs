@@ -4,9 +4,9 @@ import { g, t, lanca, fim } from "./util.mjs";
 import { Livro } from "../js/financas/livro.js";
 import * as C from "../js/financas/comandos.js";
 import { verificar } from "../js/financas/integridade.js";
-import { fatura, faturaDaCompra, datasFatura, limiteCartao } from "../js/financas/cartoes.js";
+import { fatura, faturaDaCompra, datasFatura, limiteCartao, divisaoDaFatura } from "../js/financas/cartoes.js";
 import { definirRelogio } from "../js/nucleo/datas.js";
-import { resultado } from "../js/financas/relatorios.js";
+import { resultado, resultadoCaixa, fluxoDeCaixa } from "../js/financas/relatorios.js";
 import { centavos, dividir } from "../js/nucleo/dinheiro.js";
 
 definirRelogio(()=>new Date(2026,8,27,12));   // hoje = 27/09/2026
@@ -304,5 +304,175 @@ g("Categorias sugeridas: em dois níveis, sem duplicar o que já existe");
   t("não duplicou o Mercado que já existia", [...L.categorias.values()].filter(c=>c.nome==="Mercado").length, 1);
   t("de novo: nada a acrescentar", C.adicionarCategoriasSugeridas(L).vazia, true);
   t("contou o que criou", m.criadas>30, true); }
+
+
+/* ─────────── Compra de outra pessoa ─────────── */
+const tenta=f=>{ try{ f(); return "aceito"; }catch(e){ return e.message; } };
+function cenarioTerceiro(){
+  const L=novoLivro(); const a=conta(L,"Nubank",1000); const nu=cartao(L,"Roxinho",{contaPagamento:a});
+  const comb=cat(L,"Combustível"), mer=cat(L,"Mercado"); const joao=pn(L,"João"), pedro=pn(L,"Pedro");
+  return {L,a,nu,comb,mer,joao,pedro};
+}
+g("Terceiro — compra no cartão para o João: fatura igual, conta a receber vinculada, não é despesa minha");
+{ const {L,a,nu,comb,joao}=cenarioTerceiro();
+  const d=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Gasolina",valor:R(600),data:"2026-09-15",cartao:nu,categoria:comb,parcelas:3,
+    terceiro:{pessoa:joao,modo:"PARCELAS"}});
+  const r=L.documentos.get(d.terceiro.receber);
+  t("vínculo nos dois sentidos", [r.tipo,r.reembolsoDe,r.parceiro,d.terceiro.pessoa], ["RECEBER",d.id,joao,joao]);
+  t("numeração: a compra e a conta a receber", [d.numero,r.numero], ["CP-000001","AR-000001"]);
+  t("a compra continua em 3 parcelas na fatura", d.parcelas.map(p=>[p.valor,p.fatura]), [[R(200),"2026-10"],[R(200),"2026-11"],[R(200),"2026-12"]]);
+  t("o cartão deve os 600", L.dividaCartao(nu), R(600));
+  t("o reembolso acompanha as parcelas do cartão", r.parcelas.map(p=>[p.valor,p.vencimento]), d.parcelas.map(p=>[p.valor,p.vencimento]));
+  t("João me deve 600", L.saldoChave("R:"+joao), R(600));
+  const rs=resultado(L,{de:"2026-09-01",ate:"2026-09-30"});
+  t("não entra nas minhas despesas", rs.despesas, 0);
+  t("aparece à parte, na categoria real e por pessoa", [rs.terceiros.total, rs.terceiros.categorias.map(c=>c.nome), rs.terceiros.pessoas], [R(600),["Combustível"],[{pessoa:joao,total:R(600)}]]);
+  t("a conta a receber não lança nada no razão", L.lancamentosDoDocumento(r.id).length, 0);
+  t("não existe despesa em Combustível no razão", L.saldoChave("E:"+comb), 0);
+  integro(L);
+
+g("Terceiro — recebimento parcial e total: dinheiro que volta, não receita");
+  ex(L,C.registrarPagamento(L,{direcao:"ENTRADA",data:"2026-09-20",conta:a,alocacoes:[{parcela:r.parcelas[0].id,valor:R(150)}]}));
+  t("parcialmente recebido", [L.estadoDocumento(r).status,L.estadoDocumento(r).pago,L.estadoDocumento(r).restante], ["PARCIAL",R(150),R(450)]);
+  t("a conta subiu 150", L.saldoConta(a), R(1150));
+  t("João agora deve 450", L.saldoChave("R:"+joao), R(450));
+  t("não virou receita", resultado(L,{de:"2026-09-01",ate:"2026-09-30"}).receitas, 0);
+  const cx=resultadoCaixa(L,{de:"2026-09-01",ate:"2026-09-30"});
+  t("no caixa: devolvido, não entrada", [cx.entradas,cx.devolvido,cx.pessoas[0].devolvido], [0,R(150),R(150)]);
+  const fl=fluxoDeCaixa(L,{de:"2026-09-01",ate:"2026-09-30"})[0];
+  t("no fluxo: entrou, e mostra que foi devolução", [fl.entradas,fl.deTerceiros], [R(150),R(150)]);
+  integro(L);
+  ex(L,C.registrarPagamento(L,{direcao:"ENTRADA",data:"2026-09-25",conta:a,alocacoes:r.parcelas.map((p,i)=>({parcela:p.id,valor:i===0?R(50):p.valor}))}));
+  t("recebido por inteiro", [L.estadoDocumento(r).status,L.saldoChave("R:"+joao),L.saldoConta(a)], ["PAGA",0,R(1600)]);
+  t("a fatura não mudou", [fatura(L,nu,"2026-10").total,L.dividaCartao(nu)], [R(200),R(600)]);
+  ex(L,C.pagarFatura(L,{cartao:nu,ref:"2026-10",valor:R(200),data:"2026-09-26",conta:a}));
+  const cx2=resultadoCaixa(L,{de:"2026-09-01",ate:"2026-09-30"});
+  t("pagar a fatura com a parte do João: adiantado, não despesa minha", [cx2.saidas,cx2.adiantado], [0,R(200)]);
+  const fl2=fluxoDeCaixa(L,{de:"2026-09-01",ate:"2026-09-30"})[0];
+  t("no fluxo a saída aparece como paga por outros", [fl2.saidas,fl2.paraTerceiros], [R(200),R(200)]);
+  integro(L); }
+
+g("Terceiro — a fatura separa o que é meu do que é dos outros (exemplo do pedido)");
+{ const {L,nu,comb,mer,joao,pedro}=cenarioTerceiro();
+  doc(L,{tipo:"COMPRA_CARTAO",descricao:"Mercado",valor:R(800),data:"2026-09-12",cartao:nu,categoria:mer});
+  const dj=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Pneu do João",valor:R(600),data:"2026-09-13",cartao:nu,categoria:comb,
+    terceiro:{pessoa:joao,modo:"PERSONALIZADO",cronograma:[{valor:R(200),vencimento:"2026-10-20"},{valor:R(200),vencimento:"2026-11-20"},{valor:R(200),vencimento:"2026-12-20"}]}});
+  const dp=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Jantar do Pedro",valor:R(300),data:"2026-09-14",cartao:nu,categoria:mer,
+    terceiro:{pessoa:pedro,modo:"UNICO",vencimento:"2026-10-05"}});
+  const dv=divisaoDaFatura(L,fatura(L,nu,"2026-10"));
+  t("total 1.700 = 800 meus + 900 de terceiros", [dv.total,dv.minhas,dv.terceiros], [R(1700),R(800),R(900)]);
+  t("a receber 900", dv.aReceber, R(900));
+  t("por pessoa", dv.pessoas.map(x=>[x.pessoa,x.nestaFatura,x.falta]), [[joao,R(600),R(600)],[pedro,R(300),R(300)]]);
+  t("João devolve em 3x", L.documentos.get(dj.terceiro.receber).parcelas.map(p=>p.vencimento), ["2026-10-20","2026-11-20","2026-12-20"]);
+  t("Pedro de uma vez", L.documentos.get(dp.terceiro.receber).parcelas.map(p=>[p.valor,p.vencimento]), [[R(300),"2026-10-05"]]);
+  t("minhas despesas do mês: só os 800", resultado(L,{de:"2026-09-01",ate:"2026-09-30"}).despesas, R(800));
+  integro(L);
+  /* parcelado no cartão: cada fatura leva a parte daquele mês */
+  doc(L,{tipo:"COMPRA_CARTAO",descricao:"Celular do João",valor:R(900),data:"2026-09-14",cartao:nu,categoria:mer,parcelas:3,terceiro:{pessoa:joao}});
+  const dv11=divisaoDaFatura(L,fatura(L,nu,"2026-11"));
+  t("fatura seguinte: só a parcela do celular, de terceiro", [dv11.total,dv11.minhas,dv11.terceiros], [R(300),0,R(300)]);
+  integro(L); }
+
+g("Terceiro — cronograma personalizado precisa somar o valor da compra");
+{ const {L,nu,comb,joao}=cenarioTerceiro();
+  const base={tipo:"COMPRA_CARTAO",descricao:"Pneu",valor:R(600),data:"2026-09-13",cartao:nu,categoria:comb};
+  t("faltando", tenta(()=>C.criarDocumento(L,{...base,terceiro:{pessoa:joao,modo:"PERSONALIZADO",cronograma:[{valor:R(200),vencimento:"2026-10-20"},{valor:R(300),vencimento:"2026-11-20"}]}})),
+    "O reembolso soma R$ 500,00 e a compra é de R$ 600,00: faltam R$ 100,00.");
+  t("passando", /passou R\$ 50,00/.test(tenta(()=>C.criarDocumento(L,{...base,terceiro:{pessoa:joao,modo:"PERSONALIZADO",cronograma:[{valor:R(650),vencimento:"2026-10-20"}]}}))), true);
+  t("sem data", /data de cada parcela/.test(tenta(()=>C.criarDocumento(L,{...base,terceiro:{pessoa:joao,modo:"PERSONALIZADO",cronograma:[{valor:R(600),vencimento:""}]}}))), true);
+  t("sem pessoa", tenta(()=>C.criarDocumento(L,{...base,terceiro:{modo:"UNICO",vencimento:"2026-10-01"}})), "Diga quem é a pessoa responsável.");
+  t("nada foi gravado", [...L.documentos.values()].filter(d=>d.tipo!=="ABERTURA").length, 0); }
+
+g("Terceiro — despesa comum paga por mim para outra pessoa");
+{ const {L,a,joao}=cenarioTerceiro(); const luz=cat(L,"Luz");
+  const d=doc(L,{tipo:"PAGAR",descricao:"Luz da casa da mãe",valor:R(120),data:"2026-09-10",categoria:luz,conta:a,
+    quitar:{data:"2026-09-10",conta:a},terceiro:{pessoa:joao,modo:"UNICO",vencimento:"2026-10-10"}});
+  t("saiu da conta", L.saldoConta(a), R(880));
+  t("não é despesa minha, é a receber", [resultado(L,{de:"2026-09-01",ate:"2026-09-30"}).despesas,L.saldoChave("R:"+joao)], [0,R(120)]);
+  t("a conta a receber existe", L.documentos.get(d.terceiro.receber).parcelas.map(p=>[p.valor,p.vencimento]), [[R(120),"2026-10-10"]]);
+  t("no caixa: adiantado", [resultadoCaixa(L,{de:"2026-09-01",ate:"2026-09-30"}).saidas,resultadoCaixa(L,{de:"2026-09-01",ate:"2026-09-30"}).adiantado], [0,R(120)]);
+  t("recorrente não pode", /não se repete sozinha/.test(tenta(()=>C.criarDocumento(L,{tipo:"PAGAR",descricao:"x",valor:R(10),data:"2026-09-10",recorrencia:"r1",terceiro:{pessoa:joao,modo:"UNICO",vencimento:"2026-10-10"}}))), true);
+  integro(L); }
+
+g("Terceiro — editar sem nada recebido atualiza o vínculo no lugar");
+{ const {L,nu,comb,joao,pedro}=cenarioTerceiro();
+  const d=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Gasolina",valor:R(600),data:"2026-09-15",cartao:nu,categoria:comb,parcelas:3,terceiro:{pessoa:joao,modo:"PARCELAS"}});
+  const rid=d.terceiro.receber;
+  ex(L,C.editarDocumento(L,d.id,{valor:R(900)}));
+  const r=L.documentos.get(rid);
+  t("valor novo: o reembolso acompanha, mesma conta a receber", [r.valor,r.parcelas.map(p=>p.valor),r.numero], [R(900),[R(300),R(300),R(300)],"AR-000001"]);
+  t("João deve 900", L.saldoChave("R:"+joao), R(900));
+  ex(L,C.editarDocumento(L,d.id,{parcelas:2}));
+  t("parcelas da compra mudaram: o reembolso também", L.documentos.get(rid).parcelas.map(p=>p.valor), [R(450),R(450)]);
+  ex(L,C.editarDocumento(L,d.id,{terceiro:{pessoa:pedro,modo:"UNICO",vencimento:"2026-12-01"}}));
+  const r2=L.documentos.get(rid);
+  t("trocar a pessoa e o cronograma", [r2.parceiro,r2.parcelas.map(p=>[p.valor,p.vencimento]),L.documentos.get(d.id).terceiro.modo], [pedro,[[R(900),"2026-12-01"]],"UNICO"]);
+  t("o a receber passou do João para o Pedro", [L.saldoChave("R:"+joao),L.saldoChave("R:"+pedro)], [0,R(900)]);
+  ex(L,C.editarDocumento(L,d.id,{descricao:"Gasolina e óleo"}));
+  t("a descrição automática acompanha", L.documentos.get(rid).descricao, "Reembolso · Gasolina e óleo");
+  integro(L);
+  ex(L,C.editarDocumento(L,d.id,{terceiro:null}));
+  t("passou a ser minha: conta a receber cancelada, vira despesa", [L.documentos.get(rid).status,L.saldoChave("R:"+pedro),L.saldoChave("E:"+comb),L.documentos.get(d.id).terceiro], ["CANCELADO",0,R(900),null]);
+  t("o cartão não mudou", L.dividaCartao(nu), R(900));
+  integro(L);
+  ex(L,C.editarDocumento(L,d.id,{terceiro:{pessoa:joao,modo:"PARCELAS"}}));
+  const d3=L.documentos.get(d.id);
+  t("de novo de terceiro: uma conta a receber nova", [d3.terceiro.receber!==rid,L.documentos.get(d3.terceiro.receber).numero,L.saldoChave("E:"+comb),L.saldoChave("R:"+joao)], [true,"AR-000002",0,R(900)]);
+  const ativos=[...L.documentos.values()].filter(x=>x.reembolsoDe===d.id&&x.status!=="CANCELADO");
+  t("nunca duas contas a receber ativas para a mesma compra", ativos.length, 1);
+  integro(L); }
+
+g("Terceiro — com dinheiro já devolvido, nada destrutivo");
+{ const {L,a,nu,comb,joao,pedro}=cenarioTerceiro();
+  const d=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Gasolina",valor:R(600),data:"2026-09-15",cartao:nu,categoria:comb,parcelas:3,terceiro:{pessoa:joao,modo:"PARCELAS"}});
+  const rid=d.terceiro.receber, r=L.documentos.get(rid);
+  ex(L,C.registrarPagamento(L,{direcao:"ENTRADA",data:"2026-09-20",conta:a,alocacoes:[{parcela:r.parcelas[0].id,valor:R(200)}]}));
+  t("trocar a pessoa é recusado", /João já devolveu R\$ 200,00.*estorne esse recebimento/.test(tenta(()=>C.editarDocumento(L,d.id,{terceiro:{pessoa:pedro,modo:"PARCELAS"}}))), true);
+  t("tornar minha é recusado", /João já devolveu/.test(tenta(()=>C.editarDocumento(L,d.id,{terceiro:null}))), true);
+  t("cancelar a compra é recusado", /João já devolveu/.test(tenta(()=>C.cancelarDocumento(L,d.id,{motivo:"teste"}))), true);
+  t("cancelar a conta a receber direto é recusado", /nasceu da compra CP-000001/.test(tenta(()=>C.cancelarDocumento(L,rid,{motivo:"teste"}))), true);
+  t("mudar o valor da conta a receber direto é recusado", /mudam por lá/.test(tenta(()=>C.editarDocumento(L,rid,{valor:R(100)}))), true);
+  const p1=r.parcelas[0];
+  ex(L,C.editarDocumento(L,d.id,{valor:R(900)}));
+  const r2=L.documentos.get(rid);
+  t("aumentar o valor: a parcela recebida fica como estava, o resto é refeito", [r2.parcelas[0].id,r2.parcelas[0].valor,r2.valor,r2.parcelas.map(p=>p.valor)], [p1.id,R(200),R(900),[R(200),R(100),R(300),R(300)]]);
+  t("o recebimento continua apontando para a mesma parcela", L.estadoParcela(r2.parcelas[0],r2).pago, R(200));
+  t("João deve 700", [L.saldoChave("R:"+joao),L.estadoDocumento(r2).restante], [R(700),R(700)]);
+  integro(L);
+  ex(L,C.editarDocumento(L,d.id,{terceiro:{pessoa:joao,modo:"UNICO",vencimento:"2026-12-15"}}));
+  const r3=L.documentos.get(rid);
+  t("reprogramar o que falta de uma vez", r3.parcelas.map(p=>[p.valor,p.vencimento]), [[R(200),p1.vencimento],[R(700),"2026-12-15"]]);
+  t("personalizado conta só o que falta", tenta(()=>C.editarDocumento(L,d.id,{terceiro:{pessoa:joao,modo:"PERSONALIZADO",cronograma:[{valor:R(600),vencimento:"2026-11-01"}]}})),
+    "O reembolso soma R$ 600,00 e falta programar R$ 700,00: faltam R$ 100,00.");
+  t("diminuir abaixo do que já tem recebimento é recusado", /Estorne o recebimento antes de diminuir/.test(tenta(()=>C.editarDocumento(L,d.id,{valor:R(150)}))), true);
+  integro(L);
+  /* estornado o recebimento, a pessoa pode mudar */
+  const pg=[...L.pagamentos.values()].find(x=>x.direcao==="ENTRADA");
+  ex(L,C.estornarPagamento(L,pg.id,{motivo:"lancei errado"}));
+  ex(L,C.editarDocumento(L,d.id,{terceiro:{pessoa:pedro,modo:"UNICO",vencimento:"2026-12-15"}}));
+  t("depois do estorno, troca a pessoa", [L.documentos.get(rid).parceiro,L.saldoChave("R:"+joao),L.saldoChave("R:"+pedro)], [pedro,0,R(900)]);
+  integro(L);
+  ex(L,C.cancelarDocumento(L,d.id,{motivo:"compra devolvida"}));
+  t("cancelar a compra leva a conta a receber junto", [L.documentos.get(rid).status,L.saldoChave("R:"+pedro),L.dividaCartao(nu)], ["CANCELADO",0,0]);
+  integro(L); }
+
+g("Terceiro — compra antiga, fatura já paga, marcada depois como do João");
+{ const {L,a,nu,comb,joao}=cenarioTerceiro();
+  const d=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Posto",valor:R(250),data:"2026-08-05",cartao:nu,categoria:comb});
+  ex(L,C.pagarFatura(L,{cartao:nu,ref:"2026-08",valor:R(250),data:"2026-08-17",conta:a}));
+  const antes=L.saldoConta(a);
+  ex(L,C.editarDocumento(L,d.id,{terceiro:{pessoa:joao,modo:"UNICO",vencimento:"2026-10-01"}}));
+  t("a fatura paga continua paga, o banco não mexe", [fatura(L,nu,"2026-08").status,L.saldoConta(a),L.dividaCartao(nu)], ["PAGA",antes,0]);
+  t("agosto: sai das minhas despesas", [resultado(L,{de:"2026-08-01",ate:"2026-08-31"}).despesas,resultado(L,{de:"2026-08-01",ate:"2026-08-31"}).terceiros.total], [0,R(250)]);
+  t("João deve 250", L.saldoChave("R:"+joao), R(250));
+  integro(L); }
+
+g("Terceiro — perdoar parte da dívida vira despesa minha (desconto)");
+{ const {L,a,nu,comb,joao}=cenarioTerceiro();
+  const d=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Posto",valor:R(100),data:"2026-09-15",cartao:nu,categoria:comb,terceiro:{pessoa:joao,modo:"UNICO",vencimento:"2026-10-01"}});
+  const r=L.documentos.get(d.terceiro.receber);
+  ex(L,C.registrarPagamento(L,{direcao:"ENTRADA",data:"2026-09-20",conta:a,alocacoes:[{parcela:r.parcelas[0].id,valor:R(100),desconto:R(20)}]}));
+  t("quitado, entrou 80, 20 de desconto concedido", [L.estadoDocumento(r).status,L.saldoConta(a),L.saldoChave("E:#desconto")], ["PAGA",R(1080),R(20)]);
+  integro(L); }
 
 fim();

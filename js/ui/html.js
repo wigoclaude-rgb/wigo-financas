@@ -13,5 +13,7 @@ function v(x){
   return esc(x);
 }
 export function h(strs,...vals){ let o=strs[0]; for(let i=0;i<vals.length;i++) o+=v(vals[i])+strs[i+1]; return new Raw(o); }
-export const juntar=(lista,f)=>raw(lista.map(x=>v(f?f(x):x)).join(""));
+/* f recebe o item e o índice: sem o índice, a tela de colunas da importação
+   gerava todas as opções com value="" e escolher uma coluna não valia */
+export const juntar=(lista,f)=>raw(lista.map((x,i)=>v(f?f(x,i):x)).join(""));
 export const attr=(nome,val)=>val==null||val===false?raw(""):raw(" "+nome+'="'+esc(val===true?"":val)+'"');

@@ -18,6 +18,9 @@ const ROTULO_EXTRA={FECHADA:"Fechada",VAZIA:"Sem compras",CONCILIADA:"Conciliada
   NO_APP:"Já no app",QUITA:"Quita conta",FATURA:"Paga fatura",POSSIVEL:"Confira",ERRO:"Erro",IGNORADA:"Ignorada",LANCADA:"Lançada",ESTORNADO:"Estornado"};
 export const chipSt=(st,extra="")=>h`<span class="chip ${st}">${ROTULO_ST[st]||ROTULO_EXTRA[st]||st}${extra}</span>`;
 export const chip=(txt,cls="")=>h`<span class="chip nb ${cls}">${txt}</span>`;
+/* conta a receber fala em "recebida", não em "paga" */
+const ROTULO_RECEBER={PAGA:"Recebida",PARCIAL:"Parcialmente recebida"};
+export const chipStLado=(st,receber)=>receber&&ROTULO_RECEBER[st]?h`<span class="chip ${st}">${ROTULO_RECEBER[st]}</span>`:chipSt(st);
 
 export function kpi({rotulo,valor,sub="",icone,cls="",acao,v,p,tom=""}){
   return h`<div class="card kpi ${acao?"tap":""} ${cls}"${attr("data-a",acao)}${attr("data-v",v)}${attr("data-p",p)}>

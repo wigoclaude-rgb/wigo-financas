@@ -40,6 +40,23 @@ render(app){
 aoMudar("rel-f",el=>{ app.f[el.dataset.tela][el.dataset.k]=el.type==="checkbox"?el.checked:el.value; render(); });
 const sel=(tela,k,v,opcoes)=>h`<select data-c="rel-f" data-tela="${tela}" data-k="${k}">${juntar(opcoes,([ov,r])=>h`<option value="${ov}"${String(ov)===String(v)?raw(" selected"):""}>${r}</option>`)}</select>`;
 
+/* O que foi gasto por outras pessoas (e devolvido por elas) não é despesa
+   nem receita minha: fica neste bloco, à parte, sem apagar nada do cartão. */
+function terceiros(L,base,r){
+  if(base==="caixa"){
+    if(!r.pessoas.length) return "";
+    return h`<div class="card" style="margin-top:14px"><div class="card-cab"><div><h2 class="t2">${I("handshake")} De terceiros</h2>
+      <div class="fraco peq">Pago por você para outras pessoas e o que elas devolveram no período. Não entra em despesas nem receitas.</div></div></div>
+      ${tabela({linhas:r.pessoas,cartoes:false,colunas:[{rot:"Pessoa",cel:x=>L.nomeParceiro(x.pessoa)},{rot:"Pago por você",r:true,cel:x=>R(x.adiantado)},{rot:"Devolveu",r:true,cel:x=>h`<span class="up">${R(x.devolvido)}</span>`}],
+        rodape:h`<td>Total</td><td class="r">${R(r.adiantado)}</td><td class="r up">${R(r.devolvido)}</td>`})}</div>`;
+  }
+  const t=r.terceiros; if(!t.total) return "";
+  return h`<div class="grade g2" style="margin-top:14px">
+    <div class="card"><div class="card-cab"><div><h2 class="t2">${I("handshake")} De terceiros, por pessoa</h2><div class="fraco peq">Compras feitas para outras pessoas. Não entram nas suas despesas.</div></div><b>${R(t.total)}</b></div>
+      <div class="card-corpo">${barrasRanking(t.pessoas.map(x=>({id:x.pessoa,nome:L.nomeParceiro(x.pessoa),valor:x.total})))}</div></div>
+    <div class="card"><div class="card-cab"><h2 class="t2">De terceiros, por categoria</h2><b>${R(t.total)}</b></div>
+      <div class="card-corpo">${barrasRanking(t.grupos.flatMap(c=>[{id:c.id,nome:c.nome,valor:c.total},...c.subs.map(x=>({id:x.id,nome:x.nome,valor:x.total,nivel:1}))]))}</div></div></div>`;
+}
 const REL={
 /* ── RAZÃO ── */
 razao(L,[contaParam]){
@@ -76,13 +93,16 @@ fluxo(L){
   const fim=mesDe(hoje()), ini=addMesesMes(fim,-(+f.meses-1));
   const fl=Rel.fluxoDeCaixa(L,{de:inicioDoMes(ini),ate:fimDoMes(fim)});
   const pj=Rel.compromissos(L,{meses:+f.proj});
+  const terc=fl.some(x=>x.paraTerceiros||x.deTerceiros);
   return h`<div class="filtros">${sel("rel-fluxo","meses",f.meses,[["3","Últimos 3 meses"],["6","Últimos 6 meses"],["12","Últimos 12 meses"],["24","Últimos 24 meses"]])}
       ${sel("rel-fluxo","proj",f.proj,[["3","Projetar 3 meses"],["6","Projetar 6 meses"],["12","Projetar 12 meses"]])}</div>
     <div class="card secao"><div class="card-cab"><div><h2 class="t2">Realizado</h2><div class="fraco peq">Dinheiro disponível (contas e dinheiro — sem reservas nem vales). Transferência entre elas não conta.</div></div></div>
       <div class="card-corpo">${graficoColunas({rotulos:fl.map(x=>rotuloMesCurto(x.mes)),series:[{nome:"Entradas",cor:"--serie1",valores:fl.map(x=>x.entradas)},{nome:"Saídas",cor:"--serie2",valores:fl.map(x=>x.saidas)}]})}</div>
       ${tabela({linhas:fl,cartoes:false,colunas:[{rot:"Mês",cel:x=>rotuloMes(x.mes)},{rot:"Saldo inicial",r:true,cel:x=>R(x.saldoInicial)},{rot:"Entradas",r:true,cel:x=>h`<span class="up">${R(x.entradas)}</span>`},
-        {rot:"Saídas",r:true,cel:x=>R(x.saidas)},{rot:"Reservas (líquido)",r:true,cel:x=>Rs(x.dasReservas-x.paraReservas)},{rot:"Saldo final",r:true,cel:x=>h`<b>${R(x.saldoFinal)}</b>`}],
-        rodape:h`<td>Total</td><td></td><td class="r up">${R(soma(fl,x=>x.entradas))}</td><td class="r">${R(soma(fl,x=>x.saidas))}</td><td class="r">${Rs(soma(fl,x=>x.dasReservas-x.paraReservas))}</td><td></td>`})}</div>
+        {rot:"Saídas",r:true,cel:x=>R(x.saidas)},...(terc?[{rot:"Terceiros: pago · devolvido",r:true,cel:x=>x.paraTerceiros||x.deTerceiros?R(x.paraTerceiros)+" · "+R(x.deTerceiros):"—"}]:[]),
+        {rot:"Reservas (líquido)",r:true,cel:x=>Rs(x.dasReservas-x.paraReservas)},{rot:"Saldo final",r:true,cel:x=>h`<b>${R(x.saldoFinal)}</b>`}],
+        rodape:h`<td>Total</td><td></td><td class="r up">${R(soma(fl,x=>x.entradas))}</td><td class="r">${R(soma(fl,x=>x.saidas))}</td>${terc?h`<td class="r">${R(soma(fl,x=>x.paraTerceiros))} · ${R(soma(fl,x=>x.deTerceiros))}</td>`:""}<td class="r">${Rs(soma(fl,x=>x.dasReservas-x.paraReservas))}</td><td></td>`})}
+      ${terc?h`<div class="fraco peq" style="padding:10px 14px">Entradas e saídas incluem o que você pagou por outras pessoas e o que elas devolveram — o dinheiro se moveu. A coluna Terceiros mostra quanto disso foi de terceiros.</div>`:""}</div>
     <div class="card"><div class="card-cab"><div><h2 class="t2">Projetado</h2><div class="fraco peq">Saldo de hoje + o que vence a receber − a pagar − faturas. O que já venceu entra no mês atual.</div></div></div>
       <div class="card-corpo">${graficoColunas({rotulos:pj.map(x=>rotuloMesCurto(x.mes)),series:[{nome:"Saldo previsto",cor:"--serie1",valores:pj.map(x=>x.saldoFinal)}]})}</div>
       ${tabela({linhas:pj,cartoes:false,colunas:[{rot:"Mês",cel:x=>rotuloMes(x.mes)},{rot:"Início",r:true,cel:x=>R(x.saldoInicial)},{rot:"A receber",r:true,cel:x=>h`<span class="up">${R(x.receber)}</span>`},
@@ -113,17 +133,20 @@ resultado(L){
   return h`<div class="filtros">${seletorPeriodo(f,"rel-resultado",{semTudo:true})}
       <div class="seg">${juntar([["competencia","Competência"],["caixa","Caixa"]],([k,t])=>h`<button class="${f.base===k?"on":""}" data-a="rel-base" data-v="${k}">${t}</button>`)}</div></div>
     <div class="fraco peq" style="margin-bottom:12px">${f.base==="caixa"?"Caixa: quando o dinheiro saiu ou entrou (data do pagamento). Compra no cartão conta no pagamento da fatura.":"Competência: a que mês a despesa ou receita pertence, independente de quando foi paga."}</div>
-    <div class="kpis secao">${kpi({rotulo:"Receitas",valor:R(totR)})}${kpi({rotulo:"Despesas",valor:R(totD)})}${kpi({rotulo:"Resultado",valor:Rs(totR-totD),tom:totR-totD<0?"down":"up"})}</div>
-    <div class="grade g2">${bloco("Despesas",desp,totD)}${bloco("Receitas",rec,totR)}</div>`;
+    <div class="kpis secao">${kpi({rotulo:"Receitas",valor:R(totR)})}${kpi({rotulo:"Minhas despesas",valor:R(totD)})}${kpi({rotulo:"Resultado",valor:Rs(totR-totD),tom:totR-totD<0?"down":"up"})}
+      ${f.base==="caixa"?(r.adiantado||r.devolvido?kpi({rotulo:"Pago por outros",valor:R(r.adiantado),sub:R(r.devolvido)+" devolvido"}):"")
+        :r.terceiros.total?kpi({rotulo:"De terceiros",valor:R(r.terceiros.total),sub:"fora do resultado"}):""}</div>
+    <div class="grade g2">${bloco("Minhas despesas",desp,totD)}${bloco("Receitas",rec,totR)}</div>
+    ${terceiros(L,f.base,r)}`;
 },
 /* ── A PAGAR / RECEBER ── */
 obrigacoes(L){
   const f=filtro("rel-obr",{lado:"PAGAR",agrupar:"parceiro"});
   const xs=L.obrigacoes(f.lado).filter(x=>x.e.restante>0&&x.doc.status!=="CANCELADO");
   const h0=hoje(), grupos=new Map();
-  for(const x of xs){ const k=f.agrupar==="parceiro"?(x.doc.parceiro||"-"):f.agrupar==="categoria"?(x.doc.categoria||"-"):x.p.vencimento.slice(0,7);
+  for(const x of xs){ const k=f.agrupar==="parceiro"?(x.doc.parceiro||"-"):f.agrupar==="categoria"?(x.doc.reembolsoDe?"#reembolso":x.doc.categoria||"-"):x.p.vencimento.slice(0,7);
     if(!grupos.has(k)) grupos.set(k,{k,total:0,vencido:0,n:0}); const g=grupos.get(k); g.total+=x.e.restante; g.n++; if(x.p.vencimento<h0) g.vencido+=x.e.restante; }
-  const nome=k=>f.agrupar==="parceiro"?(k==="-"?"Sem parceiro":L.nomeParceiro(k)):f.agrupar==="categoria"?(k==="-"?"Sem categoria":L.nomeCategoria(k)):rotuloMes(k);
+  const nome=k=>f.agrupar==="parceiro"?(k==="-"?"Sem parceiro":L.nomeParceiro(k)):f.agrupar==="categoria"?(k==="-"?"Sem categoria":k==="#reembolso"?"Reembolsos de compras":L.nomeCategoria(k)):rotuloMes(k);
   const gs=[...grupos.values()].sort((a,b)=>f.agrupar==="mes"?(a.k<b.k?-1:1):b.total-a.total);
   const fx=Rel.faixas(L,f.lado);
   return h`<div class="filtros"><div class="seg">${juntar([["PAGAR","A pagar"],["RECEBER","A receber"]],([k,t])=>h`<button class="${f.lado===k?"on":""}" data-a="rel-obr" data-k="lado" data-v="${k}">${t}</button>`)}</div>
@@ -172,7 +195,8 @@ avancados(L){
   return h`<div class="card secao"><div class="card-cab"><div><h2 class="t2">Evolução mensal</h2><div class="fraco peq">Receitas e despesas por competência</div></div>
       ${sel("rel-av","meses",f.meses,[["6","6 meses"],["12","12 meses"],["24","24 meses"]])}</div>
     <div class="card-corpo">${graficoColunas({rotulos:ev.map(x=>rotuloMesCurto(x.mes)),series:[{nome:"Receitas",cor:"--serie1",valores:ev.map(x=>x.receitas)},{nome:"Despesas",cor:"--serie2",valores:ev.map(x=>x.despesas)}]})}</div>
-    ${tabela({linhas:ev.slice().reverse(),cartoes:false,colunas:[{rot:"Mês",cel:x=>rotuloMes(x.mes)},{rot:"Receitas",r:true,cel:x=>R(x.receitas)},{rot:"Despesas",r:true,cel:x=>R(x.despesas)},
+    ${tabela({linhas:ev.slice().reverse(),cartoes:false,colunas:[{rot:"Mês",cel:x=>rotuloMes(x.mes)},{rot:"Receitas",r:true,cel:x=>R(x.receitas)},{rot:"Minhas despesas",r:true,cel:x=>R(x.despesas)},
+      ...(ev.some(x=>x.terceiros)?[{rot:"De terceiros",r:true,cel:x=>x.terceiros?R(x.terceiros):"—"}]:[]),
       {rot:"Resultado",r:true,cel:x=>h`<b class="${x.resultado<0?"down":"up"}">${Rs(x.resultado)}</b>`},{rot:"Saldo em contas",r:true,cel:x=>R(x.saldoContas)},{rot:"Patrimônio",r:true,cel:x=>R(x.patrimonio)}]})}</div>
   <div class="card secao"><div class="card-cab"><div><h2 class="t2">Compromissos futuros</h2><div class="fraco peq">Tudo que já está comprometido nos próximos 12 meses</div></div></div>
     <div class="card-corpo">${graficoColunas({rotulos:cp.map(x=>rotuloMesCurto(x.mes)),empilhar:true,series:[{nome:"Contas a pagar",cor:"--serie1",valores:cp.map(x=>x.pagar)},{nome:"Faturas",cor:"--serie2",valores:cp.map(x=>x.faturas)}]})}</div>

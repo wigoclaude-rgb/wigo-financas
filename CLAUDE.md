@@ -27,11 +27,11 @@ e é público de propósito (ver "Netlify e repositório").
 ### Testes
 
 ```bash
-node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno… (123)
+node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno, terceiros… (202)
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
-node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (77)
+node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (78)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (39)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (128)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (157)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -107,7 +107,7 @@ fecha.
 |---|---|
 | `A:<conta>` | dinheiro numa conta (ativo) |
 | `C:<cartao>` | dívida do cartão (passivo) |
-| `P:<parceiro\|->` / `R:<parceiro\|->` | a pagar / a receber |
+| `P:<parceiro\|->` / `R:<parceiro\|->` | a pagar / a receber (linha com `terceiro:true` = compra feita para outra pessoa) |
 | `E:<cat>` / `I:<cat>` | despesa / receita (`E:#juros`, `I:#desconto`… para juros e descontos) |
 | `Q:abertura` / `X:ajuste` | contrapartida de saldo inicial / de ajuste |
 
@@ -181,6 +181,58 @@ de saldo gravado em lugar nenhum.
   Cadastros → Categorias um botão acrescenta as que faltarem, sem duplicar
   nome que já exista e sem reativar o que foi arquivado.
 
+### Compra de outra pessoa (terceiro)
+
+"Abasteci o carro do João no meu cartão, ele me devolve em 3x." Pedido do
+usuário em 27/09. **O cartão controla a dívida com o banco; a conta a receber
+controla a dívida do terceiro comigo.**
+
+- Despesa (`PAGAR`) e compra no cartão (`COMPRA_CARTAO`) têm Responsabilidade
+  **Minha | Terceiro**. Terceiro exige a pessoa (criada na hora se não existe)
+  e o cronograma de devolução. A categoria continua a real.
+- **Um registro principal e um vínculo**, nunca a despesa duas vezes: a compra
+  ganha `terceiro:{pessoa, receber, modo}` e nasce junto uma conta a receber
+  (`RECEBER`, AR-) com `reembolsoDe` apontando de volta.
+- **No razão a compra lança `R:<pessoa>` / `C:<cartão>`** (ou `P:` na despesa
+  comum) em vez de `E:<cat>`: não é despesa minha. A linha leva
+  `terceiro:true` e a categoria real; o estorno copia a marca. **A conta a
+  receber vinculada não lança nada** (`linhasProvisao`) — o direito já nasceu
+  na compra; lançar de novo faria a pessoa dever o dobro. Por isso a regra
+  "a receber de cada parceiro = documentos em aberto" continua valendo sem
+  exceção.
+- **Receber não é receita**: é um recebimento comum (`A:conta` / `R:pessoa`),
+  com parcial, estorno, juros e desconto como qualquer outro. Perdoar parte
+  (desconto) vira despesa minha (`E:#desconto`), que é o que aconteceu.
+- Fatura, parcelas, limite e dívida do cartão **não mudam**. Marcar depois
+  como de terceiro uma compra com a fatura já paga é permitido: só troca o
+  débito do reconhecimento (estorna e reposta na data original).
+- Modos: `PARCELAS` (acompanha as parcelas da compra), `UNICO` (uma data),
+  `PERSONALIZADO` (valor e data de cada uma; **tem de somar o valor da
+  compra**, e a mensagem diz quanto falta ou passou).
+- **Editar sem nada recebido**: a mesma AR- é atualizada (valor, parcelas,
+  pessoa, data, descrição automática), com auditoria. Tornar minha cancela a
+  AR- com o motivo; voltar a ser de terceiro cria outra.
+- **Com dinheiro já devolvido nada destrutivo acontece**: parcela que teve
+  recebimento (mesmo estornado) fica com id, valor e vencimento — o
+  recebimento aponta para ela; o cronograma novo cobre só o resto. Trocar a
+  pessoa, tornar minha ou cancelar a compra exige estornar o recebimento
+  antes (a tela trava e explica). O valor não pode ficar abaixo do que as
+  parcelas presas somam.
+- A AR- vinculada **não se cancela nem muda valor sozinha**: aponta para a
+  compra. Cancelar a compra cancela a AR- junto (se nada foi recebido).
+- Relatórios: `resultado` deixa o terceiro fora de receitas/despesas e o
+  devolve em `terceiros` (por pessoa e pela categoria real); `resultadoCaixa`
+  põe o que foi pago por outros e o devolvido em `adiantado`/`devolvido`;
+  `fluxoDeCaixa` continua com o dinheiro real nas entradas e saídas e mostra
+  quanto foi de terceiros; `divisaoDaFatura` (cartoes.js) dá total, minhas,
+  de terceiros e, por pessoa, a parcela do mês, o devolvido e o que falta.
+- Integridade confere o vínculo nos dois sentidos, valor e pessoa iguais, uma
+  AR- ativa por compra, e AR- vinculada sem lançamento próprio.
+- Não há orçamento no WIGO; se um dia houver, ele lê `resultado`, que já
+  separa.
+- Despesa de terceiro **não se repete sozinha** ("Repetir todo mês" fica
+  desligado): recorrência não carrega a pessoa.
+
 ### Integridade
 
 `verificar(L)` (`js/financas/integridade.js`) confere a cada carga e em
@@ -190,7 +242,8 @@ Ajustes → Saúde dos dados:
 - a pagar/receber de cada parceiro = documentos em aberto;
 - pagamento = soma das alocações;
 - parcelas somam o documento;
-- transferência tem as duas pernas.
+- transferência tem as duas pernas;
+- compra de terceiro ↔ conta a receber vinculada, nos dois sentidos.
 
 Se aparecer problema, é defeito do motor — não se "ajusta" o dado.
 
@@ -314,7 +367,12 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
   `aoMudar` de `js/ui/base.js`. `data-i` é reservado — índice de linha usa
   `data-ln`.
 - **Todo HTML passa pelo `h` de `js/ui/html.js`**, que escapa o que é
-  interpolado. `raw()` só para markup gerado pelo próprio app.
+  interpolado. `raw()` só para markup gerado pelo próprio app. `juntar(lista,
+  (x,i)=>…)` passa o índice — antes não passava, e a tela "Quais colunas são
+  quais?" da importação saía com todas as opções `value=""`.
+- **Função solta não pode ir dentro de `const REL={…}`** em
+  `telas/relatorios.js` (é um objeto): quebra o app inteiro no navegador, e o
+  `node --check` não acusa. Os testes de Node também não — só o e2e pega.
 - **Documento abre num painel** (lateral no computador, folha no celular) com
   resumo, parcelas, pagamentos, lançamentos do razão, histórico de auditoria e só
   as ações válidas no estado.
@@ -415,7 +473,9 @@ Arquivos que sobraram:
 ## Estado atual
 
 Versão 3 publicada no `main` em 27/09/2026, direto, sem PR, a pedido do
-usuário. As regras de `firestore.rules` foram coladas no console no mesmo dia.
+usuário. No mesmo dia: subcategorias e, depois, compra de outra pessoa
+(terceiro) com conta a receber vinculada — sem mudança nas regras do
+Firestore. As regras de `firestore.rules` foram coladas no console no mesmo dia.
 Cada usuário (eram 8, todos com e-mail e senha) migra os dados do 2.2 no
 primeiro login na versão 3.
 

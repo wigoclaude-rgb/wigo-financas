@@ -26,6 +26,10 @@ export const ROTULO_DOC={ PAGAR:"Conta a pagar", RECEBER:"Conta a receber",
 export const COM_PARCELAS=new Set([DOC.PAGAR,DOC.RECEBER,DOC.COMPRA,DOC.ESTORNO_CARTAO]);
 export const DO_CARTAO=new Set([DOC.COMPRA,DOC.ESTORNO_CARTAO]);
 
+/* Como a outra pessoa devolve o que foi comprado para ela (ver "COMPRA DE
+   OUTRA PESSOA" em comandos.js) */
+export const MODO_REEMBOLSO={ PARCELAS:"Conforme as parcelas", UNICO:"De uma vez", PERSONALIZADO:"Personalizado" };
+
 export const TIPO_CONTA={ BANCO:"Conta bancária", DINHEIRO:"Dinheiro", CARTEIRA:"Carteira digital",
   RESERVA:"Reserva / investimento", BENEFICIO:"Vale / benefício", OUTRA:"Outra" };
 /* Dinheiro que dá para gastar hoje. Reserva é patrimônio mas não é caixa do

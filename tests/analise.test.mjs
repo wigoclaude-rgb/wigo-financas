@@ -13,6 +13,7 @@ import * as Rel from "../js/financas/relatorios.js";
 import { buscar } from "../js/financas/busca.js";
 import { definirRelogio } from "../js/nucleo/datas.js";
 import { centavos } from "../js/nucleo/dinheiro.js";
+import { h, juntar } from "../js/ui/html.js";
 
 definirRelogio(()=>new Date(2026,8,27,12));
 const R=v=>centavos(v);
@@ -228,5 +229,10 @@ g("Relatórios — todos leem o mesmo livro");
   t("busca por número", buscar(L,"AP-000002")[0].itens[0].titulo.startsWith("AP-000002"), true);
   t("busca por valor", buscar(L,"800")[0].itens.some(i=>/Mercado/.test(i.titulo)), true);
   integro(L); }
+
+g("Tela de colunas da importação: cada opção leva o número da coluna");
+{ const nomes=["Data","Descrição","Valor"];
+  const html=String(juntar(nomes,(n,i)=>h`<option value="${i}">${n}</option>`));
+  t("value = índice (antes saía vazio e escolher a coluna não valia)", [...html.matchAll(/value="(\d*)"/g)].map(m=>m[1]), ["0","1","2"]); }
 
 fim();

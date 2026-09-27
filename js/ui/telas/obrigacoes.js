@@ -5,7 +5,7 @@
    pagamento só pode quitar várias, de vários documentos. */
 import { app, tela, filtro, selecao, render, renderParte, aoDigitar, aoMudar, acao } from "../base.js";
 import { h, raw, juntar } from "../html.js";
-import { I, R, fmtData, chipSt, kpi, tabela, vazio } from "../componentes.js";
+import { I, R, fmtData, chipSt, chipStLado, kpi, tabela, vazio } from "../componentes.js";
 import { clic, opcoesParceiro, opcoesCategoria, opcoesContas, seletorPeriodo, intervalo, PERIODOS_VENC } from "../util.js";
 import { faixas } from "../../financas/relatorios.js";
 import { hoje, diasEntre } from "../../nucleo/datas.js";
@@ -42,6 +42,12 @@ function itens(L,lado,f){
     doc:(a,b)=>a.doc.numero<b.doc.numero?-1:1};
   return xs.sort(ord[f.ord]||ord.venc);
 }
+/* de onde veio: o reembolso aponta para a compra; a despesa de outra pessoa, para quem devolve */
+function origem(L,d){
+  if(d.reembolsoDe){ const c=L.documentos.get(d.reembolsoDe); return h` · <span class="terc">${I("link","p")} reembolso de ${c?.numero||"compra"}</span>`; }
+  if(d.terceiro) return h` · <span class="terc">${I("handshake","p")} de ${L.nomeParceiro(d.terceiro.pessoa)}</span>`;
+  return "";
+}
 function grade(L,lado,f,sel){
   const xs=itens(L,lado,f), corte=xs.slice(0,500), receber=lado==="RECEBER";
   const selecionaveis=corte.filter(x=>x.e.restante>0);
@@ -52,14 +58,14 @@ function grade(L,lado,f,sel){
     clic:x=>String(clic("doc-abrir",x.doc.id)),
     classeLinha:x=>x.doc.status==="CANCELADO"?"fraca":"",
     colunas:[
-      {rot:"Documento",cel:x=>h`<div class="t">${x.doc.descricao}</div><div class="sub"><span class="num-doc">${x.doc.numero}</span>${x.doc.parcelas.length>1?" · "+x.p.n+"/"+x.p.de:""}</div>`},
+      {rot:"Documento",cel:x=>h`<div class="t">${x.doc.descricao}</div><div class="sub"><span class="num-doc">${x.doc.numero}</span>${x.doc.parcelas.length>1?" · "+x.p.n+"/"+x.p.de:""}${origem(L,x.doc)}</div>`},
       {rot:receber?"Pagador":"Parceiro",oc:true,cel:x=>x.doc.parceiro?L.nomeParceiro(x.doc.parceiro):h`<span class="muito-fraco">—</span>`},
       {rot:"Data",oc:true,nw:true,cel:x=>fmtData(x.doc.data)},
       {rot:"Vencimento",nw:true,cartao:"vence",cel:x=>h`<span class="${x.e.vencida?"down":""}">${fmtData(x.p.vencimento)}</span>`},
       {rot:"Original",r:true,oc:true,cel:x=>R(x.p.valor)},
       {rot:receber?"Recebido":"Pago",r:true,oc:true,cel:x=>x.e.pago?R(x.e.pago):h`<span class="muito-fraco">—</span>`},
       {rot:"Restante",r:true,cel:x=>h`<b>${R(x.e.restante)}</b>`},
-      {rot:"Situação",cel:x=>chipSt(x.e.status)}
+      {rot:"Situação",cel:x=>chipStLado(x.e.status,receber)}
     ],
     rodape:xs.length?h`<td colspan="4">${xs.length} parcela${xs.length>1?"s":""}${xs.length>500?" · mostrando 500":""}</td><td class="r oc">${R(soma(xs,x=>x.p.valor))}</td><td class="r oc">${R(soma(xs,x=>x.e.pago))}</td><td class="r">${R(soma(xs,x=>x.e.restante))}</td><td></td>`:""});
 }

@@ -13,6 +13,7 @@ import { faturaDaCompra, datasFatura, fatura as faturaDe } from "../financas/car
 import { centavos, numero, dividir } from "../nucleo/dinheiro.js";
 import { hoje, mesDe } from "../nucleo/datas.js";
 import { normalizar } from "../nucleo/texto.js";
+import { iniciarTerceiro, blocoTerceiro, atualizarTerceiro, terceiroAtivo, terceiroMudou, nomePessoa, specTerceiro, problemaTerceiro } from "./terceiro.js";
 
 const campo=(rot,conteudo,ajuda="")=>h`<div class="campo"><label>${rot}</label>${conteudo}${ajuda?h`<span class="ajuda">${ajuda}</span>`:""}</div>`;
 const valorInput=(nome,v,extra="")=>raw(`<input class="valor" name="${nome}" inputmode="decimal" placeholder="0,00" autocomplete="off" ${v?`value="${numero(v)}"`:""} ${extra}>`);
@@ -32,7 +33,8 @@ const listaParceiros=()=>h`<datalist id="pnLista">${juntar(app.L.parceirosAtivos
 let novo={tipo:"PAGAR"};
 acao("doc-novo",el=>{ novo={tipo:el.dataset.v||"PAGAR",pre:null}; formNovo(); });
 acao("doc-duplicar",el=>{ const d=app.L.documentos.get(el.dataset.id);
-  novo={tipo:d.tipo,pre:{descricao:d.descricao,valor:d.valor,parceiro:d.parceiro,categoria:d.categoria,cartao:d.cartao,parcelas:d.parcelas.length,conta:d.conta,forma:d.forma}};
+  novo={tipo:d.tipo,pre:{descricao:d.descricao,valor:d.valor,parceiro:d.parceiro,categoria:d.categoria,cartao:d.cartao,parcelas:d.parcelas.length,conta:d.conta,forma:d.forma,
+    terceiro:d.terceiro?{pessoa:d.terceiro.pessoa,modo:d.terceiro.modo}:null}};
   formNovo(); });
 function formNovo(){
   const t=novo.tipo, p=novo.pre||{}, L=app.L;
@@ -44,20 +46,23 @@ function formNovo(){
   if(cartao&&!cartoes.length){ abrirPainel({titulo:"Compra no cartão",estreito:true,id:"novo",corpo:h`${abas}${aviso("Você ainda não tem cartão cadastrado.",{tipo:"info"})}
     <div class="btns" style="margin-top:12px"><button class="btn" data-a="cartao-novo">Cadastrar cartão</button></div>`}); return; }
   const cartaoSel=p.cartao||cartoes[0]?.id;
+  const podeTerceiro=t==="PAGAR"||cartao;
+  if(podeTerceiro) iniciarTerceiro({form:"fNovo",tipo:t,pre:p.terceiro});
   abrirPainel({titulo:receita?"Nova receita":cartao?"Compra no cartão":"Nova despesa",sub:cartao?"A compra não sai do banco agora — ela entra na fatura":"",
     estreito:true,id:"novo",corpo:h`${abas}<form data-f="novo-doc" id="fNovo">
     ${campo("Descrição",h`<input name="descricao" required placeholder="${receita?"Ex.: Salário":cartao?"Ex.: Mercado":"Ex.: Conta de luz"}" value="${p.descricao||""}" autocomplete="off">`)}
     <div class="linha2">${campo(cartao?"Valor total":"Valor",valorInput("valor",p.valor,'required data-i="novo-previa"'))}
       ${campo(cartao?"Data da compra":"Data",h`<input type="date" name="data" value="${hoje()}" required data-c="novo-previa">`)}</div>
     ${cartao?campo("Cartão",h`<select name="cartao" data-c="novo-previa">${juntar(cartoes,c=>h`<option value="${c.id}"${c.id===cartaoSel?raw(" selected"):""}>${c.nome}</option>`)}</select>`):""}
-    <div class="linha2">${campo(receita?"Categoria":"Categoria",h`<select name="categoria">${opcoesCategoria(receita?"RECEITA":"DESPESA",p.categoria)}</select>`)}
+    <div class="linha2">${campo(receita?"Categoria":"Categoria",h`<select name="categoria" data-c="novo-previa">${opcoesCategoria(receita?"RECEITA":"DESPESA",p.categoria)}</select>`)}
       ${campo(receita?"Quem paga":cartao?"Estabelecimento":"Para quem",h`<input name="parceiro" list="pnLista" placeholder="Opcional" value="${p.parceiro?L.nomeParceiro(p.parceiro):""}" autocomplete="off">${listaParceiros()}`)}</div>
     <div class="linha2">${campo("Parcelas",h`<select name="parcelas" data-c="novo-previa">${juntar(Array.from({length:24},(_,i)=>i+1),n=>h`<option value="${n}"${n===(p.parcelas||1)?raw(" selected"):""}>${n===1?"À vista":n+"x"}</option>`)}</select>`)}
       ${!cartao?campo(receita?"Forma de recebimento":"Forma de pagamento",h`<select name="forma">${opcoesFormas(p.forma||"pix")}</select>`):h`<div></div>`}</div>
     <div id="novoPrevia" class="fraco peq" style="margin:-4px 0 14px"></div>
     ${!cartao?h`<label class="check" style="margin-bottom:12px"><input type="checkbox" name="jaPago" data-c="novo-pago" checked> ${receita?"Já recebi":"Já paguei"}</label>
       <div id="novoPago">${campoConta({rotulo:receita?"Entrou em":"Saiu de",valor:p.conta})}</div>
-      <div id="novoAberto" hidden>${campo("Vencimento",h`<input type="date" name="vencimento" value="${hoje()}">`,"Da primeira parcela; as outras vencem no mesmo dia dos meses seguintes.")}</div>`:""}
+      <div id="novoAberto" hidden>${campo("Vencimento",h`<input type="date" name="vencimento" value="${hoje()}" data-c="novo-previa">`,"Da primeira parcela; as outras vencem no mesmo dia dos meses seguintes.")}</div>`:""}
+    ${podeTerceiro?blocoTerceiro():""}
     <details style="margin:4px 0 14px"><summary class="link" style="list-style:none">Mais opções</summary><div style="margin-top:12px">
       <label class="check" style="margin-bottom:10px"><input type="checkbox" name="repetir" data-c="novo-repetir"> Repetir todo mês${cartao?" (assinatura)":""}</label>
       <div id="novoRepetir" hidden>${campo("Quantos meses",h`<input name="meses" inputmode="numeric" placeholder="Vazio = sem fim">`,"Sem fim: o WIGO mantém os próximos 24 meses lançados e vai estendendo sozinho.")}</div>
@@ -67,7 +72,7 @@ function formNovo(){
   previaNovo();
 }
 acao("novo-tipo",el=>{ novo={tipo:el.dataset.v,pre:null}; formNovo(); });
-aoMudar("novo-pago",el=>{ document.getElementById("novoPago").hidden=!el.checked; document.getElementById("novoAberto").hidden=el.checked; });
+aoMudar("novo-pago",el=>{ document.getElementById("novoPago").hidden=!el.checked; document.getElementById("novoAberto").hidden=el.checked; atualizarTerceiro(); });
 aoMudar("novo-repetir",el=>{ document.getElementById("novoRepetir").hidden=!el.checked; });
 aoMudar("novo-previa",()=>previaNovo()); aoDigitar("novo-previa",()=>previaNovo());
 function previaNovo(){
@@ -78,12 +83,18 @@ function previaNovo(){
   if(f.cartao&&f.data.value){ const c=app.L.cartoes.get(f.cartao.value); if(c){ const ref=faturaDaCompra(c,f.data.value);
     txt+=(txt?" · ":"")+"Entra na fatura de "+rotuloMes(ref)+" (vence "+fmtData(datasFatura(c,ref).vencimento)+")"; } }
   alvo.textContent=txt;
+  atualizarTerceiro();
 }
 form("novo-doc",async(f,d)=>{
   const t=novo.tipo, valor=centavos(d.get("valor"));
   if(!(valor>0)){ toast("Informe o valor",{erro:true}); return; }
-  let parceiro;
-  try{ parceiro=await resolverParceiro(d.get("parceiro")); }catch(e){ toast(e.message,{erro:true}); return; }
+  const terc=(t==="PAGAR"||t==="COMPRA_CARTAO")&&terceiroAtivo();
+  /* barra antes de cadastrar a pessoa nova, para um erro no cronograma
+     não deixar cadastro pela metade */
+  const prob=terc&&problemaTerceiro(); if(prob){ toast(prob,{erro:true}); return; }
+  let parceiro, terceiro;
+  try{ parceiro=await resolverParceiro(d.get("parceiro"));
+    if(terc) terceiro=specTerceiro(await resolverParceiro(nomePessoa())); }catch(e){ toast(e.message,{erro:true}); return; }
   const base={tipo:t,descricao:d.get("descricao"),valor,data:d.get("data"),categoria:d.get("categoria")||null,parceiro,
     competencia:d.get("competencia")||undefined,obs:d.get("obs")||"",forma:d.get("forma")||(t==="COMPRA_CARTAO"?"cartao":null)};
   const n=+d.get("parcelas")||1;
@@ -94,13 +105,14 @@ form("novo-doc",async(f,d)=>{
       conta:d.get("conta")||contaPadrao(),cartao:d.get("cartao")||null,forma:base.forma,inicio:pago?base.data:(d.get("vencimento")||base.data),
       quantidade:meses,quitarPrimeiras:pago?1:0,contaQuitacao:d.get("conta")||contaPadrao()}),{ok:"Lançamento mensal criado"});
   }
-  if(t==="COMPRA_CARTAO") return executar(()=>C.criarDocumento(app.L,{...base,cartao:d.get("cartao"),parcelas:n}),{ok:"Compra registrada na fatura"});
+  const okTerc=terc?" · conta a receber de "+nomePessoa()+" criada":"";
+  if(t==="COMPRA_CARTAO") return executar(()=>C.criarDocumento(app.L,{...base,cartao:d.get("cartao"),parcelas:n,terceiro}),{ok:"Compra registrada na fatura"+okTerc});
   const pago=!!d.get("jaPago");
   const conta=d.get("conta")||contaPadrao();
-  return executar(()=>C.criarDocumento(app.L,{...base,parcelas:n,conta,
+  return executar(()=>C.criarDocumento(app.L,{...base,parcelas:n,conta,terceiro,
     primeiroVencimento:pago?base.data:(d.get("vencimento")||base.data),
     ...(pago?(n===1?{quitar:{data:base.data,conta,forma:base.forma}}:{quitarPrimeiras:1,contaQuitacao:conta}):{})}),
-    {ok:t==="RECEBER"?(pago?"Receita registrada":"Conta a receber criada"):(pago?"Despesa registrada":"Conta a pagar criada")});
+    {ok:(t==="RECEBER"?(pago?"Receita registrada":"Conta a receber criada"):(pago?"Despesa registrada":"Conta a pagar criada"))+okTerc});
 });
 
 /* ═════════ TRANSFERÊNCIA ═════════ */
@@ -227,28 +239,44 @@ form("pagar-fatura",(f,d)=>executar(()=>C.pagarFatura(app.L,{cartao:f.dataset.ca
    vez de sumirem e o usuário achar que o app esqueceu deles. */
 acao("doc-editar",el=>{
   const L=app.L, d=L.documentos.get(el.dataset.id), temPag=L.temPagamento(d);
+  if(d.reembolsoDe) return editarReembolso(d);
+  const podeTerceiro=d.tipo==="COMPRA_CARTAO"||d.tipo==="PAGAR";
+  if(podeTerceiro) iniciarTerceiro({form:"fEditar",tipo:d.tipo,doc:d});
   const parc=["PAGAR","RECEBER","COMPRA_CARTAO","ESTORNO_CARTAO"].includes(d.tipo);
   const planejada=d.tipo==="TRANSFERENCIA"&&d.status==="PLANEJADA";
   const livre=parc&&!temPag;
   const trava=motivo=>raw(motivo?' disabled title="'+motivo+'"':"");
   const mot=!parc&&!planejada?"Já moveu dinheiro: estorne e lance de novo":temPag?"Já tem pagamento: estorne o pagamento ou cancele o documento":"";
   const nat=d.tipo==="RECEBER"?"RECEITA":"DESPESA";
-  abrirPainel({titulo:"Editar "+d.numero,sub:d.descricao,estreito:true,id:"editar",corpo:h`<form data-f="editar-doc" data-id="${d.id}">
+  abrirPainel({titulo:"Editar "+d.numero,sub:d.descricao,estreito:true,id:"editar",corpo:h`<form data-f="editar-doc" data-id="${d.id}" id="fEditar">
     ${mot?aviso(mot+". Descrição e observação sempre podem mudar.",{tipo:"info"}):""}
     ${campo("Descrição",h`<input name="descricao" value="${d.descricao}" required>`)}
-    ${parc||planejada?h`<div class="linha2">${campo("Valor",raw(`<input class="valor" name="valor" inputmode="decimal" value="${numero(d.valor)}"${String(trava(livre||planejada?"":mot))}>`))}
-      ${campo("Data",h`<input type="date" name="data" value="${d.data}"${trava(livre||planejada?"":mot)}>`)}</div>`:""}
-    ${parc?h`${campo("Categoria",h`<select name="categoria">${opcoesCategoria(nat,d.categoria)}</select>`)}
+    ${parc||planejada?h`<div class="linha2">${campo("Valor",raw(`<input class="valor" name="valor" inputmode="decimal" value="${numero(d.valor)}" data-i="ed-previa"${String(trava(livre||planejada?"":mot))}>`))}
+      ${campo("Data",h`<input type="date" name="data" value="${d.data}" data-c="ed-previa"${trava(livre||planejada?"":mot)}>`)}</div>`:""}
+    ${parc?h`${campo("Categoria",h`<select name="categoria" data-c="ed-previa">${opcoesCategoria(nat,d.categoria)}</select>`)}
       ${campo("Parceiro",h`<select name="parceiro">${opcoesParceiro(d.parceiro)}</select>`,temPag?"Trocar o parceiro com algo já pago move o que foi pago para o novo parceiro, com um lançamento de reclassificação.":"")}
       <div class="linha2">${campo("Competência",h`<input type="month" name="competencia" value="${d.competencia}">`)}
-      ${campo("Parcelas",h`<input name="parcelas" inputmode="numeric" value="${d.parcelas.length}"${trava(livre?"":mot)}>`)}</div>
-      ${d.tipo!=="COMPRA_CARTAO"&&d.tipo!=="ESTORNO_CARTAO"?campo("Primeiro vencimento",h`<input type="date" name="primeiroVencimento" value="${d.parcelas[0]?.vencimento}"${trava(livre?"":mot)}>`):""}`:""}
+      ${campo("Parcelas",h`<input name="parcelas" inputmode="numeric" value="${d.parcelas.length}" data-i="ed-previa"${trava(livre?"":mot)}>`)}</div>
+      ${d.tipo!=="COMPRA_CARTAO"&&d.tipo!=="ESTORNO_CARTAO"?campo("Primeiro vencimento",h`<input type="date" name="primeiroVencimento" value="${d.parcelas[0]?.vencimento}" data-c="ed-previa"${trava(livre?"":mot)}>`):""}
+      ${podeTerceiro?blocoTerceiro():""}`:""}
     ${planejada?h`<div class="linha2">${campo("De",h`<select name="conta">${juntar(L.contasAtivas(),c=>h`<option value="${c.id}"${c.id===d.conta?raw(" selected"):""}>${c.nome}</option>`)}</select>`)}
       ${campo("Para",h`<select name="contaDestino">${juntar(L.contasAtivas(),c=>h`<option value="${c.id}"${c.id===d.contaDestino?raw(" selected"):""}>${c.nome}</option>`)}</select>`)}</div>`:""}
     ${campo("Observação",h`<textarea name="obs" rows="2">${d.obs||""}</textarea>`)}
     <button class="btn larg" type="submit">Salvar alterações</button></form>`});
 });
-form("editar-doc",(f,d)=>{
+aoDigitar("ed-previa",()=>atualizarTerceiro()); aoMudar("ed-previa",()=>atualizarTerceiro());
+/* a conta a receber de um reembolso só muda descrição e observação: valor,
+   pessoa e cronograma vêm da compra, e é lá que se editam */
+function editarReembolso(d){
+  const c=app.L.documentos.get(d.reembolsoDe);
+  abrirPainel({titulo:"Editar "+d.numero,sub:d.descricao,estreito:true,id:"editar",corpo:h`<form data-f="editar-doc" data-id="${d.id}">
+    ${aviso(h`Esta conta a receber nasceu da compra <b>${c?.numero||""}</b>. Valor, pessoa e cronograma do reembolso mudam por lá.`,{tipo:"info",icone:"link"})}
+    ${c?h`<div class="btns" style="margin:10px 0 14px"><button type="button" class="btn sec peq" data-a="doc-editar" data-id="${c.id}">Editar ${c.numero}</button></div>`:""}
+    ${campo("Descrição",h`<input name="descricao" value="${d.descricao}" required>`)}
+    ${campo("Observação",h`<textarea name="obs" rows="2">${d.obs||""}</textarea>`)}
+    <button class="btn larg" type="submit">Salvar alterações</button></form>`});
+}
+form("editar-doc",async(f,d)=>{
   const doc=app.L.documentos.get(f.dataset.id), patch={descricao:d.get("descricao"),obs:d.get("obs")||""};
   const campos=["categoria","parceiro","competencia","conta","contaDestino","data","primeiroVencimento"];
   for(const k of campos) if(f.elements[k]&&!f.elements[k].disabled&&d.get(k)!==null) patch[k]=d.get(k)||null;
@@ -257,6 +285,12 @@ form("editar-doc",(f,d)=>{
   for(const k of Object.keys(patch)) if(k!=="parcelas"&&k!=="primeiroVencimento"&&JSON.stringify(patch[k]??null)===JSON.stringify(doc[k]??null)) delete patch[k];
   if(patch.primeiroVencimento===doc.parcelas[0]?.vencimento) delete patch.primeiroVencimento;
   if(patch.competencia===null) delete patch.competencia;
+  if(f.querySelector("#tfBloco")&&terceiroMudou()){
+    if(terceiroAtivo()){
+      const prob=problemaTerceiro(); if(prob){ toast(prob,{erro:true}); return; }
+      try{ patch.terceiro=specTerceiro(await resolverParceiro(nomePessoa())); }catch(e){ toast(e.message,{erro:true}); return; }
+    } else patch.terceiro=null;
+  }
   return executar(()=>C.editarDocumento(app.L,doc.id,patch),{ok:"Documento alterado",depois:()=>app.abrirDocumento(doc.id)});
 });
 

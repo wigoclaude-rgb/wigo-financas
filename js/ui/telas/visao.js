@@ -115,7 +115,8 @@ tela("visao",{titulo:"Visão geral",render(app){
         <div class="card-corpo">${graficoColunas({rotulos:fl.map(x=>rotuloMesCurto(x.mes)),altura:190,
           series:[{nome:"Entradas",cor:"--serie1",valores:fl.map(x=>x.entradas)},{nome:"Saídas",cor:"--serie2",valores:fl.map(x=>x.saidas)}]})}</div></div>
       <div class="card"><div class="card-cab"><div><h2 class="t2">${I("layers")} Gastos de ${rotuloMes(mes)}</h2><div class="fraco peq">Por categoria, competência do mês</div></div><a class="link" data-a="ir" data-v="relatorios" data-p="resultado">Ver tudo</a></div>
-        <div class="card-corpo">${cats.length?barrasRanking(cats.map(c=>({id:c.id,nome:c.nome,valor:c.total}))):h`<div class="fraco peq">Nenhuma despesa neste mês.</div>`}</div></div>
+        <div class="card-corpo">${cats.length?barrasRanking(cats.map(c=>({id:c.id,nome:c.nome,valor:c.total}))):h`<div class="fraco peq">Nenhuma despesa neste mês.</div>`}
+          ${rs.terceiros.total?h`<div class="fraco peq" style="margin-top:10px">${I("handshake","p")} Fora disso, ${R(rs.terceiros.total)} em compras de terceiros (${rs.terceiros.pessoas.map(x=>L.nomeParceiro(x.pessoa)).join(", ")}), que vão te devolver.</div>`:""}</div></div>
     </div>`;
 }});
 

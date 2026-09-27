@@ -99,3 +99,28 @@ export function alocarPagamentoFatura(L,cartaoId,ref,valor){
     alocacoes.push({parcela:i.p.id,documento:i.doc.id,valor:v,juros:0,desconto:0}); cr-=v; }
   return { alocacoes, dinheiro, creditoUsado, devido, creditos, sobra:valor-dinheiro, fatura:f };
 }
+
+/* A fatura dividida: o que é meu e o que comprei para outras pessoas, e
+   quanto cada uma já devolveu. O total não muda — é o que o banco cobra; a
+   divisão é só uma leitura das compras. "Nesta fatura" é a parcela deste
+   mês; devolvido e falta são da compra inteira (a gasolina de R$ 600 em 3x
+   aparece com R$ 200 aqui e R$ 600 a devolver). */
+export function divisaoDaFatura(L,f){
+  let minhas=0,terceiros=0; const porPessoa=new Map();
+  for(const it of f.itens){
+    const v=it.sinal*it.p.valor, t=it.doc.terceiro;
+    if(!t){ minhas+=v; continue; }
+    terceiros+=v;
+    if(!porPessoa.has(t.pessoa)) porPessoa.set(t.pessoa,{pessoa:t.pessoa,nestaFatura:0,compras:new Map()});
+    const x=porPessoa.get(t.pessoa); x.nestaFatura+=v; x.compras.set(it.doc.id,it.doc);
+  }
+  const pessoas=[...porPessoa.values()].map(x=>{
+    let total=0,devolvido=0,falta=0;
+    for(const c of x.compras.values()){ const r=L.documentos.get(c.terceiro.receber);
+      if(!r||r.status==="CANCELADO") continue;
+      const e=L.estadoDocumento(r); total+=r.valor; devolvido+=e.pago; falta+=e.restante; }
+    return {pessoa:x.pessoa,nestaFatura:x.nestaFatura,compras:[...x.compras.values()],total,devolvido,falta};
+  }).sort((a,b)=>b.nestaFatura-a.nestaFatura);
+  return { total:f.total, minhas, terceiros, pessoas,
+    devolvido:pessoas.reduce((s,x)=>s+x.devolvido,0), aReceber:pessoas.reduce((s,x)=>s+x.falta,0) };
+}
