@@ -51,13 +51,13 @@ razao(L,[contaParam]){
   let ls=rz.linhas;
   const filtrando=f.pn||f.cat||f.nat||f.conc;
   if(f.pn) ls=ls.filter(x=>x.parceiro===f.pn);
-  if(f.cat) ls=ls.filter(x=>x.categorias.includes(f.cat));
+  if(f.cat) ls=ls.filter(x=>x.categorias.some(c=>c===f.cat||L.grupoCategoria(c)===f.cat));
   if(f.nat) ls=ls.filter(x=>x.natureza===f.nat);
   if(f.conc==="sim") ls=ls.filter(x=>x.conciliado); else if(f.conc==="nao") ls=ls.filter(x=>!x.conciliado);
   const opts=[...L.contas.values()].map(c=>[c.id,c.nome]).concat([...L.cartoes.values()].map(c=>["card:"+c.id,c.nome+" (cartão)"]));
   return h`<div class="filtros">${sel("rel-razao","conta",f.conta,opts)}${seletorPeriodo(f,"rel-razao")}
       <select data-c="rel-f" data-tela="rel-razao" data-k="pn">${opcoesParceiro(f.pn,{todos:true})}</select>
-      ${sel("rel-razao","cat",f.cat,[["","Todas as categorias"],...L.categoriasAtivas().map(c=>[c.id,c.nome])])}
+      ${sel("rel-razao","cat",f.cat,[["","Todas as categorias"],...L.categoriasAtivas().map(c=>[c.id,L.nomeCategoria(c.id)+(L.subcategorias(c.id).length?" (todas)":"")]).sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"))])}
       ${sel("rel-razao","nat",f.nat,[["","Todos os tipos"],["PAGAMENTO","Pagamentos e recebimentos"],["TRANSFERENCIA","Transferências"],["AJUSTE","Ajustes"],["ABERTURA","Saldo inicial"],["ESTORNO","Estornos"],["DOCUMENTO","Compras (cartão)"]])}
       ${sel("rel-razao","conc",f.conc,[["","Conciliados ou não"],["sim","Conciliados"],["nao","Não conciliados"]])}</div>
     ${filtrando?h`<div class="fraco peq" style="margin-bottom:8px">Filtro ativo: linhas escondidas, mas a coluna Saldo continua sendo a da conta naquele momento.</div>`:""}
@@ -105,10 +105,11 @@ resultado(L){
   const f=filtro("rel-resultado",{periodo:"mes",base:"competencia"});
   const {de,ate}=intervalo(f.periodo==="tudo"?"ano":f.periodo,f.de,f.ate);
   const r=f.base==="caixa"?Rel.resultadoCaixa(L,{de,ate}):Rel.resultado(L,{de,ate});
-  const desp=r.categorias.filter(c=>c.natureza==="DESPESA"), rec=r.categorias.filter(c=>c.natureza==="RECEITA");
+  const desp=r.grupos.filter(c=>c.natureza==="DESPESA"), rec=r.grupos.filter(c=>c.natureza==="RECEITA");
   const totR=f.base==="caixa"?r.entradas:r.receitas, totD=f.base==="caixa"?r.saidas:r.despesas;
   const bloco=(tit,xs,tot)=>h`<div class="card"><div class="card-cab"><h2 class="t2">${tit}</h2><b>${R(tot)}</b></div><div class="card-corpo">
-    ${xs.length?barrasRanking(xs.map(c=>({id:c.id,nome:c.nome,valor:c.total,sub:tot?Math.round(c.total/tot*100)+"%":""}))):h`<div class="fraco peq">Nada no período.</div>`}</div></div>`;
+    ${xs.length?barrasRanking(xs.flatMap(c=>[{id:c.id,nome:c.nome,valor:c.total,sub:tot?Math.round(c.total/tot*100)+"%":""},
+      ...c.subs.map(s=>({id:s.id,nome:s.nome,valor:s.total,nivel:1}))])):h`<div class="fraco peq">Nada no período.</div>`}</div></div>`;
   return h`<div class="filtros">${seletorPeriodo(f,"rel-resultado",{semTudo:true})}
       <div class="seg">${juntar([["competencia","Competência"],["caixa","Caixa"]],([k,t])=>h`<button class="${f.base===k?"on":""}" data-a="rel-base" data-v="${k}">${t}</button>`)}</div></div>
     <div class="fraco peq" style="margin-bottom:12px">${f.base==="caixa"?"Caixa: quando o dinheiro saiu ou entrou (data do pagamento). Compra no cartão conta no pagamento da fatura.":"Competência: a que mês a despesa ou receita pertence, independente de quando foi paga."}</div>

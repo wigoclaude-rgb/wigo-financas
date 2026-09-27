@@ -24,6 +24,7 @@ import { db, doc, getDoc, collection, getDocs, getDocsFromCache, query, where, w
 import { COLECOES } from "../financas/livro.js";
 import { migrarLegado, temLegado, VERSAO_DADOS } from "./migracao.js";
 import { novoId } from "../nucleo/ids.js";
+import { adicionarCategoriasSugeridas } from "../financas/comandos.js";
 
 const LIMITE_LOTE=450;           // o Firestore aceita 500 escritas por batch
 const LOTE_MIGRACAO=200;         // lotes menores: progresso visível e pedidos mais leves
@@ -51,7 +52,7 @@ export class Repositorio{
   constructor(livro,{aoMudarEstado}={}){ this.L=livro; this.uid=null; this.pendentes=0; this.aoMudarEstado=aoMudarEstado||(()=>{}); }
 
   async carregar(uid,{aoMigrar}={}){
-    this.uid=uid;
+    this.uid=uid; let nova=false;
     const marca=await getDoc(ref(uid,"meta","migracao")).catch(e=>{ throw traduzir(e); });
     const status=marca.exists()?marca.data().status:null;
     if(status!=="CONCLUIDA"){
@@ -67,9 +68,13 @@ export class Repositorio{
       /* conta nova, ou 2.2 vazio: marca e segue */
       const b=writeBatch(db);
       b.set(ref(uid,"meta","migracao"),{id:"migracao",status:"CONCLUIDA",versao:VERSAO_DADOS,origem:json?"2.2-vazio":"nova",em:new Date().toISOString(),_ts:serverTimestamp()});
-      await b.commit();
+      await b.commit(); nova=true;
     }
     await this.sincronizar();
+    /* conta nova já nasce com as categorias sugeridas: sem categoria nenhuma,
+       o formulário e a importação não têm o que sugerir */
+    if(nova&&!this.L.categorias.size){ const m=adicionarCategoriasSugeridas(this.L);
+      if(!m.vazia) await this.gravar(m).catch(e=>console.warn("[WIGO] categorias sugeridas:",e)); }
     return {migrou:false};
   }
 

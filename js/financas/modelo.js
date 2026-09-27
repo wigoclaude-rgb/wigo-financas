@@ -66,6 +66,30 @@ export const tipoChave=k=>k.slice(0,1);
 export const idChave=k=>k.slice(2);
 export const CATEGORIA_SISTEMA={ "#juros":"Juros e multas", "#desconto":"Descontos", "-":"Sem categoria" };
 
+/* Ponto de partida para quem começa do zero, em dois níveis: a categoria
+   (Alimentação) e as subcategorias (Mercado, Restaurantes…). Conta nova já
+   nasce com elas; Cadastros → Categorias acrescenta as que faltarem. O
+   usuário arquiva o que não usa — arquivar não apaga histórico. */
+export const CATEGORIAS_SUGERIDAS={
+  DESPESA:[
+    ["Moradia",["Aluguel","Condomínio","Contas de Casa","Internet/Telefone","Manutenção/Reparos"]],
+    ["Alimentação",["Mercado","Restaurantes/Delivery","Padaria/Lanches"]],
+    ["Transporte",["Combustível","Aplicativo/Táxi","Transporte público","Veículo","Estacionamento/Pedágio"]],
+    ["Saúde",["Plano de saúde","Consultas/Exames","Farmácia","Academia/Esportes"]],
+    ["Educação",["Escola/Faculdade","Cursos","Livros/Material"]],
+    ["Família",["Filhos","Pets"]],
+    ["Cuidados pessoais",["Vestuário","Beleza/Cuidados"]],
+    ["Lazer",["Passeios","Viagens","Assinaturas"]],
+    ["Compras",["Tecnologia","Casa/Decoração","Presentes"]],
+    ["Financeiro",["Tarifas Bancárias","Impostos/Taxas","Seguros","Empréstimos/Dívidas","Investimentos"]],
+    ["Outros",[]]],
+  RECEITA:[
+    ["Trabalho",["Salário","Pró-labore","Freelance","Comissões","13º/Férias/Bônus"]],
+    ["Negócios",["Vendas","Serviços"]],
+    ["Investimentos",["Rendimentos","Aluguel Recebido"]],
+    ["Outras receitas",["Reembolso","Presentes recebidos","Outros"]]]
+};
+
 export class ErroFinanceiro extends Error{
   constructor(msg,detalhe){ super(msg); this.name="ErroFinanceiro"; this.detalhe=detalhe; }
 }

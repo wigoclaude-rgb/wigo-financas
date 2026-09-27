@@ -338,14 +338,22 @@ form("parceiro",(f,d)=>executar(()=>C.salvarParceiro(app.L,{...(f.dataset.id?{id
   documento:d.get("documento")||"",email:d.get("email")||"",telefone:d.get("telefone")||"",obs:d.get("obs")||""}),{ok:"Parceiro salvo"}));
 acao("parceiro-arquivar",el=>executar(()=>C.arquivar(app.L,"parceiros",el.dataset.id,el.dataset.v==="1"),{ok:"Parceiro atualizado"}));
 
-acao("categoria-nova",el=>formCategoria(null,el.dataset.v));
+acao("categoria-nova",el=>formCategoria(null,el.dataset.v,el.dataset.pai||null));
 acao("categoria-editar",el=>formCategoria(app.L.categorias.get(el.dataset.id)));
-function formCategoria(c,nat="DESPESA"){
-  abrirPainel({titulo:c?"Editar categoria":"Nova categoria",estreito:true,id:"categoria",corpo:h`<form data-f="categoria" data-id="${c?.id||""}">
-    ${campo("Nome",h`<input name="nome" required value="${c?.nome||""}">`)}
-    ${campo("É de",h`<select name="natureza"${c?raw(" disabled"):""}><option value="DESPESA"${(c?.natureza||nat)==="DESPESA"?raw(" selected"):""}>Despesa</option><option value="RECEITA"${(c?.natureza||nat)==="RECEITA"?raw(" selected"):""}>Receita</option></select>`,c?"A natureza não muda: os lançamentos já feitos dependem dela.":"")}
-    <button class="btn larg" type="submit">${c?"Salvar":"Criar categoria"}</button></form>`});
+function formCategoria(c,nat="DESPESA",pai=null){
+  const L=app.L, natureza=c?.natureza||nat, paiAtual=c?c.pai||null:pai, temFilhas=c&&L.subcategorias(c.id).length>0;
+  const maes=[...L.categorias.values()].filter(x=>!x.pai&&x.natureza===natureza&&x.ativa!==false&&x.id!==c?.id).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  abrirPainel({titulo:c?(c.pai?"Editar subcategoria":"Editar categoria"):(pai?"Nova subcategoria":"Nova categoria"),estreito:true,id:"categoria",corpo:h`<form data-f="categoria" data-id="${c?.id||""}">
+    ${campo("Nome",h`<input name="nome" required value="${c?.nome||""}" placeholder="${paiAtual?"Ex.: Mercado":"Ex.: Alimentação"}">`)}
+    ${campo("Dentro de",h`<select name="pai"${temFilhas?raw(" disabled"):""}><option value="">Nenhuma: é uma categoria principal</option>
+      ${juntar(maes,m=>h`<option value="${m.id}"${m.id===paiAtual?raw(" selected"):""}>${m.nome}</option>`)}</select>`,
+      temFilhas?"Tem subcategorias, então fica como categoria principal.":"Escolha uma categoria para esta virar subcategoria dela (ex.: Mercado dentro de Alimentação).")}
+    ${pai?"":campo("É de",h`<select name="natureza"${c?raw(" disabled"):""}><option value="DESPESA"${(c?.natureza||nat)==="DESPESA"?raw(" selected"):""}>Despesa</option><option value="RECEITA"${(c?.natureza||nat)==="RECEITA"?raw(" selected"):""}>Receita</option></select>`,c?"A natureza não muda: os lançamentos já feitos dependem dela.":"")}
+    <button class="btn larg" type="submit">${c?"Salvar":pai?"Criar subcategoria":"Criar categoria"}</button></form>`});
 }
 form("categoria",(f,d)=>{ const c=f.dataset.id?app.L.categorias.get(f.dataset.id):null;
-  return executar(()=>C.salvarCategoria(app.L,{...(c?{id:c.id}:{}),nome:d.get("nome"),natureza:c?c.natureza:d.get("natureza")}),{ok:"Categoria salva"}); });
+  const pai=c&&app.L.subcategorias(c.id).length?null:(d.get("pai")||null);
+  /* a subcategoria é sempre do mesmo tipo da mãe */
+  const natureza=pai?app.L.categorias.get(pai)?.natureza:(c?c.natureza:d.get("natureza"));
+  return executar(()=>C.salvarCategoria(app.L,{...(c?{id:c.id}:{}),nome:d.get("nome"),natureza,pai}),{ok:"Categoria salva"}); });
 acao("categoria-arquivar",el=>executar(()=>C.arquivar(app.L,"categorias",el.dataset.id,el.dataset.v==="1"),{ok:"Categoria atualizada",fechar:false}));

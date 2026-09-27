@@ -26,8 +26,19 @@ export function campoConta({nome="conta",rotulo="Conta",valor,ajuda="",vazio=fal
     ${juntar(cs,c=>h`<option value="${c.id}"${c.id===v?raw(" selected"):""}>${c.nome}${c.tipo!=="BANCO"?" · "+TIPO_CONTA[c.tipo]:""}</option>`)}</select>
     ${ajuda?h`<span class="ajuda">${ajuda}</span>`:""}</div>`;
 }
-export function opcoesCategoria(natureza,sel){
-  return h`<option value="">Sem categoria</option>${juntar(app.L.categoriasAtivas(natureza),c=>h`<option value="${c.id}"${c.id===sel?raw(" selected"):""}>${c.nome}</option>`)}`;
+/* Agrupada: cada categoria com subcategorias vira um grupo, e a própria
+   categoria entra no topo dele ("Alimentação (geral)"). Num filtro,
+   escolher a categoria traz também as subcategorias — daí o "(todas)".
+   Uma categoria arquivada que o lançamento já usa continua na lista, senão
+   salvar a edição apagaria a categoria dele sem ninguém pedir. */
+export function opcoesCategoria(natureza,sel,{filtro=false}={}){
+  const L=app.L, ativas=L.categoriasAtivas(natureza);
+  if(sel&&!ativas.some(c=>c.id===sel)&&L.categorias.has(sel)) ativas.push(L.categorias.get(sel));
+  const ids=new Set(ativas.map(c=>c.id));
+  const maes=ativas.filter(c=>!c.pai||!ids.has(c.pai)), filhas=id=>ativas.filter(c=>c.pai===id);
+  const opt=(c,rot)=>h`<option value="${c.id}"${c.id===sel?raw(" selected"):""}>${rot||c.nome}</option>`;
+  return h`<option value="">${filtro?"Todas as categorias":"Sem categoria"}</option>${juntar(maes,m=>{ const fs=filhas(m.id);
+    return fs.length?h`<optgroup label="${m.nome}">${opt(m,m.nome+(filtro?" (todas)":" (geral)"))}${juntar(fs,f=>opt(f))}</optgroup>`:opt(m); })}`;
 }
 export function opcoesParceiro(sel,{todos=false,nenhum="Nenhum"}={}){
   return h`${todos?h`<option value="">Todos os parceiros</option>`:h`<option value="">${nenhum}</option>`}

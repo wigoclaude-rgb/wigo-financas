@@ -376,5 +376,38 @@ g("iPhone trava só o zoom automático; Android continua com a pinça; topo do t
   t("Android: sem trava, a pinça continua livre", /maximum-scale/.test(and.meta), false);
   t("sem entalhe (área do sistema = 0), o topo continua com 58px", ios.topo, 58); }
 
+/* ─────────── 20. categorias sugeridas ─────────── */
+g("categorias: conta nova já nasce com as sugeridas; conta sem nenhuma ganha com um clique");
+{ ({p,erros,ctx}=await abrir({usuario:{uid:"u9",email:"a@b.c"},hoje:HOJE}));
+  await p.waitForSelector("#conteudo .hero",{timeout:15000}); await p.waitForTimeout(400);
+  const n=await p.evaluate(()=>({d:[...window.__app.L.categorias.values()].filter(c=>c.natureza==="DESPESA").length,r:[...window.__app.L.categorias.values()].filter(c=>c.natureza==="RECEITA").length}));
+  t("conta nova nasce com despesas e receitas sugeridas", n.d>=25&&n.r>=8, true);
+  await ir(p,"pagar"); await p.click('.conteudo [data-a="doc-novo"][data-v="PAGAR"]'); await p.waitForSelector("#fNovo");
+  t("o formulário já oferece as categorias", await p.locator('#fNovo [name="categoria"] option').count()>=25, true);
+  t("agrupadas: Mercado dentro de Alimentação", await p.evaluate(()=>[...document.querySelectorAll('#fNovo [name="categoria"] optgroup')].find(g=>g.label==="Alimentação")?.textContent.includes("Mercado")), true);
+  await p.selectOption('#fNovo [name="categoria"]',{label:"Mercado"});
+  await p.fill('#fNovo [name="descricao"]',"Compra do mês"); await p.fill('#fNovo [name="valor"]',"100");
+  await p.click('#painel [data-a="painel-fechar"]');
+  t("as regras aceitam", await p.evaluate(()=>window.__recusas), []);
+  await ctx.close();
+  /* quem criou a conta antes de existir isso: marca de conta nova já gravada, sem categorias */
+  ({p,erros,ctx}=await abrir({usuario:{uid:"u8",email:"b@c.d"},hoje:HOJE,fs:{"users/u8/meta/migracao":{id:"migracao",status:"CONCLUIDA",origem:"nova",_ts:{__tsms:1}}}}));
+  await p.waitForSelector("#conteudo .hero",{timeout:15000}); await ir(p,"categorias");
+  t("tela vazia oferece as sugeridas", /Comece com as categorias sugeridas/.test(await p.textContent("#conteudo")), true);
+  t("um clique", await enviar(p,'[data-a="categorias-sugeridas"]'), "Categorias sugeridas adicionadas");
+  t("apareceram nas duas colunas", [/Mercado/.test(await p.textContent("#conteudo")), /Pró-labore/.test(await p.textContent("#conteudo"))], [true,true]);
+  t("em árvore: as subcategorias ficam recuadas", await p.locator(".cat-sub").count()>=30, true);
+  /* criar uma subcategoria pela tela */
+  await p.locator('.cat-mae',{hasText:"Alimentação"}).locator('[data-a="categoria-nova"]').click();
+  await p.waitForSelector('#painel form[data-f="categoria"]');
+  t("formulário já vem dentro de Alimentação", await p.evaluate(()=>{ const s=document.querySelector('#painel [name="pai"]'); return s.options[s.selectedIndex].text; }), "Alimentação");
+  await p.fill('#painel [name="nome"]',"Feira");
+  t("subcategoria criada", await enviar(p,'#painel button[type="submit"]'), "Categoria salva");
+  t("Feira dentro de Alimentação", await p.evaluate(()=>{ const L=window.__app.L; const f=[...L.categorias.values()].find(c=>c.nome==="Feira"); return L.nomeCategoria(f.id); }), "Alimentação › Feira");
+  t("e o botão some quando não falta nenhuma", await p.locator('[data-a="categorias-sugeridas"]').count(), 0);
+  t("as regras aceitam", await p.evaluate(()=>window.__recusas), []);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
 await encerrar();
 fim();

@@ -232,6 +232,8 @@ table.tab{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
 .rapidas{margin:16px 0 22px}
 .sk{background:linear-gradient(90deg,var(--s3),var(--s4),var(--s3));background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px}
 @keyframes sk{to{background-position:-200% 0}}
+.lista>.cat-sub{padding-left:34px} .lista .cat-mae .meio .s,.lista .cat-sub .meio .s{white-space:normal;overflow:visible} .lista .cat-sub .meio .t{font-weight:500} .lista .cat-mae .meio .t{font-weight:650}
+.rank-sub{padding-left:18px;font-size:12.5px;color:var(--ink2)} .rank-sub .barra i{opacity:.55}
 .aviso{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.45;
   background:var(--warnSoft);color:var(--ink)}
 .aviso .icn{color:var(--warn);margin-top:1px}

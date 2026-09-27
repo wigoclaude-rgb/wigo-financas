@@ -130,6 +130,23 @@ export function compromissos(L,{meses=6}={}){
 export function saldoPrevistoDoMes(L){ const c=compromissos(L,{meses:1})[0];
   return { hoje:L.saldoDisponivel(hoje()), receber:c.receber, pagar:c.pagar, faturas:c.faturas, reservas:c.reservas, final:c.saldoFinal }; }
 
+/* Soma as subcategorias na categoria mãe. O que foi lançado direto na mãe
+   aparece como "Geral" dentro dela, para a soma das linhas bater. */
+export function agruparCategorias(L,cats){
+  const g=new Map();
+  for(const c of cats){
+    const gid=CATEGORIA_SISTEMA[c.id]?c.id:L.grupoCategoria(c.id), key=c.natureza+":"+gid;
+    if(!g.has(key)) g.set(key,{id:gid,nome:CATEGORIA_SISTEMA[gid]||L.nomeCurtoCategoria(gid)||"Sem categoria",natureza:c.natureza,total:0,subs:[]});
+    const x=g.get(key); x.total+=c.total;
+    x.subs.push({...c,nome:gid===c.id?"Geral":(L.nomeCurtoCategoria(c.id)||c.nome)});
+  }
+  const out=[...g.values()].filter(x=>x.total!==0).sort((a,b)=>b.total-a.total);
+  for(const x of out){ x.subs.sort((a,b)=>b.total-a.total);
+    /* só a própria mãe, sem subcategoria nenhuma: não há o que detalhar */
+    if(x.subs.length===1&&x.subs[0].id===x.id) x.subs=[]; }
+  return out;
+}
+
 /* ── RESULTADO POR COMPETÊNCIA ── receitas e despesas por categoria e mês */
 export function resultado(L,{de,ate}){
   const mesDeIni=de.slice(0,7), mesAte=ate.slice(0,7);
@@ -152,7 +169,7 @@ export function resultado(L,{de,ate}){
   }
   const meses=[...porMes.values()]; for(const r of meses) r.resultado=r.receitas-r.despesas;
   const categorias=[...cats.values()].filter(c=>c.total!==0).sort((a,b)=>b.total-a.total);
-  return { meses, categorias, receitas:soma(meses,r=>r.receitas), despesas:soma(meses,r=>r.despesas) };
+  return { meses, categorias, grupos:agruparCategorias(L,categorias), receitas:soma(meses,r=>r.receitas), despesas:soma(meses,r=>r.despesas) };
 }
 
 /* ── RESULTADO POR CAIXA ── o que foi pago/recebido, pela categoria do documento */
@@ -170,7 +187,8 @@ export function resultadoCaixa(L,{de,ate}){
       cats.get(key).total+=v; if(d.tipo===DOC.RECEBER) entradas+=v; else saidas+=v;
     }
   }
-  return { categorias:[...cats.values()].filter(c=>c.total).sort((a,b)=>b.total-a.total), entradas, saidas };
+  const categorias=[...cats.values()].filter(c=>c.total).sort((a,b)=>b.total-a.total);
+  return { categorias, grupos:agruparCategorias(L,categorias), entradas, saidas };
 }
 
 /* ── CONTAS A PAGAR / RECEBER: faixas de vencimento ── */

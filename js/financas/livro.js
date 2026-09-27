@@ -118,8 +118,12 @@ export class Livro{
   contasAtivas(){ return [...this.contas.values()].filter(c=>c.ativa!==false).sort(ordemNome); }
   cartoesAtivos(){ return [...this.cartoes.values()].filter(c=>c.ativo!==false).sort(ordemNome); }
   parceirosAtivos(){ return [...this.parceiros.values()].filter(p=>p.ativo!==false).sort(ordemNome); }
+  /* subcategoria de uma categoria arquivada também sai dos formulários */
   categoriasAtivas(natureza){ return [...this.categorias.values()]
-    .filter(c=>c.ativa!==false&&(!natureza||c.natureza===natureza)).sort(ordemNome); }
+    .filter(c=>c.ativa!==false&&(!natureza||c.natureza===natureza)&&(!c.pai||this.categorias.get(c.pai)?.ativa!==false)).sort(ordemNome); }
+  /* a categoria mãe de uma subcategoria — ou ela mesma, se não tem mãe */
+  grupoCategoria(id){ const c=this.categorias.get(id); return c?.pai&&this.categorias.has(c.pai)?c.pai:id; }
+  subcategorias(id){ return [...this.categorias.values()].filter(c=>c.pai===id).sort(ordemNome); }
 
   saldoDisponivel(ate){
     let s=0; for(const c of this.contas.values()) if(DISPONIVEL.has(c.tipo)) s+=this.saldoConta(c.id,ate); return s;
@@ -202,7 +206,10 @@ export class Livro{
 
   nomeConta(id){ return this.contas.get(id)?.nome||"—"; }
   nomeParceiro(id){ return id?(this.parceiros.get(id)?.nome||"—"):""; }
-  nomeCategoria(id){ return id?(this.categorias.get(id)?.nome||"—"):""; }
+  /* "Alimentação › Mercado"; nomeCurtoCategoria dá só "Mercado" */
+  nomeCategoria(id){ if(!id) return ""; const c=this.categorias.get(id); if(!c) return "—";
+    const m=c.pai&&this.categorias.get(c.pai); return m?m.nome+" › "+c.nome:c.nome; }
+  nomeCurtoCategoria(id){ return id?(this.categorias.get(id)?.nome||"—"):""; }
   nomeCartao(id){ return this.cartoes.get(id)?.nome||"—"; }
   contador(prefixo){ return (this.meta.get("contadores")||{})[prefixo]||0; }
   preferencias(){ return this.meta.get("preferencias")||{}; }

@@ -88,7 +88,7 @@ tela("visao",{titulo:"Visão geral",render(app){
         <div class="dir"><div class="num" style="font-weight:650">${R(fa.restante>0?fa.restante:fa.total)}</div>${chipSt(fa.status)}</div></div>`; })}</div></div>`:"";
 
   const rs=resultado(L,{de:inicioDoMes(mes),ate:fimDoMes(mes)});
-  const cats=rs.categorias.filter(c=>c.natureza==="DESPESA").slice(0,6);
+  const cats=rs.grupos.filter(c=>c.natureza==="DESPESA").slice(0,6);
   const fl=fluxoDeCaixa(L,{de:inicioDoMes(addMesesMes(mes,-5)),ate:fimDoMes(mes)});
 
   return h`${hero}

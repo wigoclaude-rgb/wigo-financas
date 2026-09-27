@@ -6,6 +6,7 @@ import * as C from "../js/financas/comandos.js";
 import { verificar } from "../js/financas/integridade.js";
 import { fatura, faturaDaCompra, datasFatura, limiteCartao } from "../js/financas/cartoes.js";
 import { definirRelogio } from "../js/nucleo/datas.js";
+import { resultado } from "../js/financas/relatorios.js";
 import { centavos, dividir } from "../js/nucleo/dinheiro.js";
 
 definirRelogio(()=>new Date(2026,8,27,12));   // hoje = 27/09/2026
@@ -269,5 +270,39 @@ g("Conciliação — marca sem alterar valor");
   t("valor intacto", l2.linhas[i].v, R(500));
   t("documento aparece como conciliado", L.documentoConciliado(d), true);
   integro(L); }
+
+
+/* ─────────── subcategorias ─────────── */
+g("Subcategorias: dois níveis, mesmo tipo, e o relatório soma na categoria");
+{ const L=novoLivro(); const a=conta(L,"Nubank",1000);
+  const alim=cat(L,"Alimentação");
+  const merc=ex(L,C.salvarCategoria(L,{nome:"Mercado",natureza:"DESPESA",pai:alim})).gravar.find(x=>x.colecao==="categorias").id;
+  t("nome completo", L.nomeCategoria(merc), "Alimentação › Mercado");
+  t("mãe", L.grupoCategoria(merc), alim);
+  const tenta=f=>{ try{ f(); return "aceito"; }catch(e){ return e.message; } };
+  t("sub dentro de sub é recusado", /já é uma subcategoria/.test(tenta(()=>C.salvarCategoria(L,{nome:"Feira",natureza:"DESPESA",pai:merc}))), true);
+  t("receita dentro de despesa é recusado", /mesmo tipo/.test(tenta(()=>C.salvarCategoria(L,{nome:"X",natureza:"RECEITA",pai:alim}))), true);
+  t("mãe com filhas não vira filha", /tem subcategorias/.test(tenta(()=>C.salvarCategoria(L,{id:alim,nome:"Alimentação",natureza:"DESPESA",pai:cat(L,"Casa")}))), true);
+  t("nome repetido na mesma mãe é recusado", /Já existe a subcategoria Mercado em Alimentação/.test(tenta(()=>C.salvarCategoria(L,{nome:"mercado",natureza:"DESPESA",pai:alim}))), true);
+  t("o mesmo nome em outra mãe pode", tenta(()=>C.salvarCategoria(L,{nome:"Mercado",natureza:"DESPESA"})), "aceito");
+  doc(L,{tipo:"PAGAR",descricao:"Compra do mês",valor:R(100),data:"2026-09-10",categoria:merc,quitar:{data:"2026-09-10",conta:a}});
+  doc(L,{tipo:"PAGAR",descricao:"Lanche",valor:R(50),data:"2026-09-11",categoria:alim,quitar:{data:"2026-09-11",conta:a}});
+  const r=resultado(L,{de:"2026-09-01",ate:"2026-09-30"});
+  const g0=r.grupos.find(x=>x.id===alim);
+  t("a categoria soma as subcategorias", g0.total, R(150));
+  t("detalhe: Mercado e o que foi lançado direto na mãe", g0.subs.map(s=>[s.nome,s.total]), [["Mercado",R(100)],["Geral",R(50)]]);
+  ex(L,C.arquivar(L,"categorias",alim,false));
+  t("arquivar a mãe tira as filhas dos formulários", L.categoriasAtivas("DESPESA").some(c=>c.id===merc), false);
+  integro(L); }
+
+g("Categorias sugeridas: em dois níveis, sem duplicar o que já existe");
+{ const L=novoLivro();
+  cat(L,"Mercado");   /* solta, como veio do 2.2 */
+  const m=ex(L,C.adicionarCategoriasSugeridas(L));
+  const alim=[...L.categorias.values()].find(c=>c.nome==="Alimentação"&&!c.pai);
+  t("criou as mães e as filhas", L.subcategorias(alim.id).map(c=>c.nome), ["Padaria/Lanches","Restaurantes/Delivery"]);
+  t("não duplicou o Mercado que já existia", [...L.categorias.values()].filter(c=>c.nome==="Mercado").length, 1);
+  t("de novo: nada a acrescentar", C.adicionarCategoriasSugeridas(L).vazia, true);
+  t("contou o que criou", m.criadas>30, true); }
 
 fim();

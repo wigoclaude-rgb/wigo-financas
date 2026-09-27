@@ -111,8 +111,9 @@ export function graficoColunas({rotulos,series,empilhar=false,altura=220,destaqu
 /* ranking horizontal de um valor só: uma cor, valor na ponta */
 export function barrasRanking(itens,{cor="var(--serie1)",max,acao}={}){
   const m=max||Math.max(1,...itens.map(x=>Math.abs(x.valor)));
-  return h`<div class="rank">${juntar(itens,x=>h`<div${acao?raw(' class="clic" style="cursor:pointer" data-a="'+acao+'" data-id="'+x.id+'"'):""}>
-    <span class="t" style="font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.nome}</span>
+  /* nivel:1 = subcategoria, recuada e mais leve, logo abaixo da categoria */
+  return h`<div class="rank">${juntar(itens,x=>h`<div class="${x.nivel?"rank-sub":""}${acao?" clic":""}"${acao?raw(' style="cursor:pointer" data-a="'+acao+'" data-id="'+x.id+'"'):""}>
+    <span class="t" style="font-weight:${x.nivel?450:550};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.nome}</span>
     <span class="num" style="font-weight:600">${R(x.valor)}${x.sub?h` <span class="fraco peq">${x.sub}</span>`:""}</span>
     <div class="barra"><i style="width:${Math.max(1.5,Math.abs(x.valor)/m*100)}%;background:${cor}"></i></div></div>`)}</div>`;
 }

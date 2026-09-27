@@ -29,7 +29,7 @@ function itens(L,lado,f){
     }
     if(de&&p.vencimento<de) return false; if(ate&&p.vencimento>ate) return false;
     if(f.pn==="-"){ if(doc.parceiro) return false; } else if(f.pn&&doc.parceiro!==f.pn) return false;
-    if(f.cat&&doc.categoria!==f.cat) return false;
+    if(f.cat&&doc.categoria!==f.cat&&L.grupoCategoria(doc.categoria)!==f.cat) return false;
     if(f.conta&&doc.conta!==f.conta) return false;
     if(f.min&&p.valor<centavos(f.min)) return false; if(f.max&&p.valor>centavos(f.max)) return false;
     if(f.q){ const q=normalizar(f.q), qv=f.q.replace(/[^\d,]/g,"");
@@ -85,7 +85,7 @@ function telaObrig(lado){
         <select data-c="obr-f" data-k="sit" data-tela="${nome}">${juntar(SIT,([k,r])=>h`<option value="${k}"${f.sit===k?raw(" selected"):""}>${r}</option>`)}</select>
         ${seletorPeriodo(f,nome,{opcoes:PERIODOS_VENC})}
         <select data-c="obr-f" data-k="pn" data-tela="${nome}">${opcoesParceiro(f.pn,{todos:true})}<option value="-"${f.pn==="-"?raw(" selected"):""}>Sem parceiro</option></select>
-        <select data-c="obr-f" data-k="cat" data-tela="${nome}"><option value="">Todas as categorias</option>${juntar(L.categoriasAtivas(receber?"RECEITA":"DESPESA"),c=>h`<option value="${c.id}"${f.cat===c.id?raw(" selected"):""}>${c.nome}</option>`)}</select>
+        <select data-c="obr-f" data-k="cat" data-tela="${nome}">${opcoesCategoria(receber?"RECEITA":"DESPESA",f.cat,{filtro:true})}</select>
         <select data-c="obr-f" data-k="conta" data-tela="${nome}">${opcoesContas(f.conta)}</select>
         <input class="valor" style="width:110px;height:36px" placeholder="Valor mín." value="${f.min}" data-c="obr-f" data-k="min" data-tela="${nome}">
         <input class="valor" style="width:110px;height:36px" placeholder="Valor máx." value="${f.max}" data-c="obr-f" data-k="max" data-tela="${nome}">

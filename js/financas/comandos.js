@@ -11,7 +11,7 @@
    Nada financeiro é apagado. Corrigir é estornar (um lançamento com as linhas
    invertidas) e, se for o caso, lançar de novo. */
 
-import { DOC, PREFIXO, K, COM_PARCELAS, DO_CARTAO, DISPONIVEL, TIPO_CONTA, ErroFinanceiro } from "./modelo.js";
+import { DOC, PREFIXO, K, COM_PARCELAS, DO_CARTAO, DISPONIVEL, TIPO_CONTA, ErroFinanceiro, CATEGORIAS_SUGERIDAS } from "./modelo.js";
 import { dividir, formatar, soma } from "../nucleo/dinheiro.js";
 import { hoje, mesDe, addMeses, addMesesMes, valida, fmtData } from "../nucleo/datas.js";
 import { novoId } from "../nucleo/ids.js";
@@ -188,11 +188,45 @@ export function salvarCategoria(L,dados){
   return salvarCadastro(L,"categorias","categoria",dados,c=>{
     if(!(c.nome||"").trim()) erro("Dê um nome à categoria.");
     if(c.natureza!=="DESPESA"&&c.natureza!=="RECEITA") erro("Escolha se é de despesa ou de receita.");
-    c.nome=c.nome.trim();
+    c.nome=c.nome.trim(); c.pai=c.pai||null;
+    /* dois níveis e nada mais: categoria (Alimentação) › subcategoria (Mercado) */
+    if(c.pai){ const m=L.categorias.get(c.pai);
+      if(!m) erro("A categoria escolhida não existe mais.");
+      if(m.id===c.id) erro("Uma categoria não pode ficar dentro dela mesma.");
+      if(m.natureza!==c.natureza) erro("A categoria e a subcategoria precisam ser do mesmo tipo (despesa ou receita).");
+      if(m.pai) erro(m.nome+" já é uma subcategoria. Escolha uma categoria principal.");
+      if([...L.categorias.values()].some(x=>x.pai===c.id)) erro(c.nome+" tem subcategorias, então não pode ficar dentro de outra."); }
+    /* o nome só não repete no mesmo lugar: "Outros" pode existir em cada categoria */
     const dup=[...L.categorias.values()].find(x=>x.id!==c.id&&x.ativa!==false&&x.natureza===c.natureza&&
-      x.nome.toLowerCase()===c.nome.toLowerCase());
-    if(dup) erro("Já existe a categoria "+dup.nome+".");
+      (x.pai||null)===c.pai&&x.nome.toLowerCase()===c.nome.toLowerCase());
+    if(dup) erro("Já existe "+(c.pai?"a subcategoria ":"a categoria ")+dup.nome+(c.pai?" em "+L.categorias.get(c.pai).nome:"")+".");
   });
+}
+/* Acrescenta, numa gravação só, as sugeridas que ainda não existem. A
+   categoria que já existe com o mesmo nome recebe as subcategorias que
+   faltam; uma subcategoria cujo nome já existe em qualquer lugar (como
+   "Mercado" solto, vindo do 2.2) não é duplicada; o que o usuário arquivou
+   fica como está. */
+export function adicionarCategoriasSugeridas(L){
+  const m=new Mudanca(L); let n=0;
+  const nova=(nome,natureza,pai)=>{ const id=novoId("c");
+    m.set("categorias",id,{id,nome,natureza,pai:pai||null,ativa:true,ativo:true,criadoEm:agora(),atualizadoEm:agora()}); n++; return id; };
+  for(const natureza of ["DESPESA","RECEITA"]){
+    const todas=[...L.categorias.values()].filter(c=>c.natureza===natureza);
+    const nomes=new Set(todas.map(c=>c.nome.trim().toLowerCase()));
+    for(const [mae,filhas] of CATEGORIAS_SUGERIDAS[natureza]){
+      const existe=todas.find(c=>!c.pai&&c.nome.trim().toLowerCase()===mae.toLowerCase());
+      if(existe&&existe.ativa===false) continue;
+      const faltam=filhas.filter(f=>!nomes.has(f.toLowerCase()));
+      if(existe&&!faltam.length) continue;
+      const mid=existe?existe.id:nova(mae,natureza);
+      for(const f of faltam) nova(f,natureza,mid);
+    }
+  }
+  if(!n) return new Mudanca(L);
+  m.auditar("CRIAR","categoria",null,null,n+" categorias sugeridas adicionadas");
+  m.criadas=n;
+  return m.fechar();
 }
 export function salvarCartao(L,dados){
   return salvarCadastro(L,"cartoes","cartao",dados,c=>{

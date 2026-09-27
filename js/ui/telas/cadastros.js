@@ -1,13 +1,14 @@
 /* ══════════ CADASTROS ══════════
    Parceiros de negócio, contas, cartões e categorias. Cada ficha mostra a
    posição financeira vinda do livro — nunca um saldo digitado. */
-import { app, tela, filtro, render, renderParte, aoDigitar, acao, ir } from "../base.js";
+import { app, tela, filtro, render, renderParte, aoDigitar, acao, ir, executar } from "../base.js";
 import { h, raw, juntar } from "../html.js";
 import { I, R, Rs, fmtData, chipSt, chip, kpi, tabela, vazio, aviso, rotuloMes, rotuloMesCurto, barrasRanking } from "../componentes.js";
 import { clic } from "../util.js";
 import { saldosParceiros, razao, relatorioCartoes, resultado } from "../../financas/relatorios.js";
 import { faturasDoCartao, limiteCartao, faturaCorrente } from "../../financas/cartoes.js";
-import { TIPO_CONTA, TIPO_PN, DISPONIVEL, K, DOC } from "../../financas/modelo.js";
+import { TIPO_CONTA, TIPO_PN, DISPONIVEL, K, DOC, CATEGORIAS_SUGERIDAS } from "../../financas/modelo.js";
+import { adicionarCategoriasSugeridas } from "../../financas/comandos.js";
 import { normalizar } from "../../nucleo/texto.js";
 import { hoje, mesDe, inicioDoMes, fimDoMes, addMesesMes } from "../../nucleo/datas.js";
 import { soma } from "../../nucleo/dinheiro.js";
@@ -169,13 +170,33 @@ tela("categorias",{titulo:"Categorias",grupo:"Cadastros",render(app){
   const L=app.L, mes=mesDe(hoje());
   const r=resultado(L,{de:inicioDoMes(addMesesMes(mes,-11)),ate:fimDoMes(mes)});
   const uso=new Map(); for(const d of L.documentos.values()) if(d.categoria) uso.set(d.categoria,(uso.get(d.categoria)||0)+1);
-  const col=(nat,tit)=>{ const cs=[...L.categorias.values()].filter(c=>c.natureza===nat).sort((a,b)=>(a.ativa===false)-(b.ativa===false)||a.nome.localeCompare(b.nome,"pt-BR"));
+  /* árvore: cada categoria com as subcategorias logo abaixo, recuadas; o
+     total de 12 meses da categoria já soma as subcategorias */
+  const ordem=(a,b)=>(a.ativa===false)-(b.ativa===false)||a.nome.localeCompare(b.nome,"pt-BR");
+  const linha=(c,sub)=>{ const tot=sub?(r.categorias.find(x=>x.id===c.id&&x.natureza===c.natureza)?.total||0)
+      :(r.grupos.find(x=>x.id===c.id&&x.natureza===c.natureza)?.total||0);
+    const docs=sub?(uso.get(c.id)||0):[c,...L.subcategorias(c.id)].reduce((n,x)=>n+(uso.get(x.id)||0),0);
+    return h`<div class="${c.ativa===false?"fraca":""} ${sub?"cat-sub":"cat-mae"}"><div class="meio"><div class="t">${sub?h`<span class="muito-fraco">↳ </span>`:""}${c.nome}${c.ativa===false?" (arquivada)":""}</div>
+        <div class="s">${docs} documento(s) · 12 meses: ${R(tot)}</div></div>
+      ${sub||c.ativa===false?"":h`<button class="btn peq fant" data-a="categoria-nova" data-v="${c.natureza}" data-pai="${c.id}" title="Nova subcategoria dentro de ${c.nome}">${I("plus","p")} Sub</button>`}
+      <button class="btn peq fant" data-a="categoria-editar" data-id="${c.id}">Editar</button>
+      <button class="btn peq fant" data-a="categoria-arquivar" data-id="${c.id}" data-v="${c.ativa===false?"1":"0"}">${c.ativa===false?"Reativar":"Arquivar"}</button></div>`; };
+  const col=(nat,tit)=>{ const todas=[...L.categorias.values()].filter(c=>c.natureza===nat);
+    const ids=new Set(todas.map(c=>c.id)), maes=todas.filter(c=>!c.pai||!ids.has(c.pai)).sort(ordem);
     return h`<div class="card"><div class="card-cab"><h2 class="t2">${tit}</h2><button class="btn peq sec" data-a="categoria-nova" data-v="${nat}">${I("plus","p")} Nova</button></div>
-      <div class="lista" style="margin-top:8px">${cs.length?juntar(cs,c=>{ const tot=r.categorias.find(x=>x.id===c.id&&x.natureza===nat)?.total||0;
-        return h`<div class="${c.ativa===false?"fraca":""}"><div class="meio"><div class="t">${c.nome}${c.ativa===false?" (arquivada)":""}</div><div class="s">${uso.get(c.id)||0} documento(s) · 12 meses: ${R(tot)}</div></div>
-          <button class="btn peq fant" data-a="categoria-editar" data-id="${c.id}">Editar</button>
-          <button class="btn peq fant" data-a="categoria-arquivar" data-id="${c.id}" data-v="${c.ativa===false?"1":"0"}">${c.ativa===false?"Reativar":"Arquivar"}</button></div>`; })
+      <div class="lista" style="margin-top:8px">${maes.length?juntar(maes,m=>h`${linha(m,false)}${juntar(L.subcategorias(m.id).sort(ordem),s=>linha(s,true))}`)
         :h`<div class="fraco peq" style="display:block">Nenhuma.</div>`}</div></div>`; };
-  return h`<div class="fraco" style="margin-bottom:14px">Arquivar esconde dos formulários; o histórico continua com a categoria.</div>
+  /* quantas das sugeridas faltam: o próprio comando, sem gravar, conta —
+     assim o número do botão é sempre o que ele vai criar */
+  const faltam=adicionarCategoriasSugeridas(L).criadas||0;
+  const nSug=nat=>CATEGORIAS_SUGERIDAS[nat].length, nSub=nat=>CATEGORIAS_SUGERIDAS[nat].reduce((n,[,fs])=>n+fs.length,0);
+  const vazio0=!L.categorias.size;
+  return h`${vazio0?h`<div class="card pad secao"><h2 class="t2" style="margin-bottom:6px">Comece com as categorias sugeridas</h2>
+      <div class="fraco" style="margin-bottom:14px">${nSug("DESPESA")} categorias de despesa com ${nSub("DESPESA")} subcategorias (Alimentação › Mercado, Moradia › Aluguel, Transporte › Combustível…) e ${nSug("RECEITA")} de receita com ${nSub("RECEITA")} subcategorias (Trabalho › Salário, Pró-labore…). Depois é só arquivar o que você não usar ou criar as suas.</div>
+      <button class="btn" data-a="categorias-sugeridas">${I("plus","p")} Adicionar categorias sugeridas</button></div>`:""}
+    <div class="btns" style="justify-content:space-between;margin-bottom:14px"><div class="fraco">Use <b>+ Sub</b> para criar subcategorias (ex.: Mercado dentro de Alimentação). Arquivar esconde dos formulários; o histórico continua.</div>
+      ${!vazio0&&faltam?h`<button class="btn peq sec" data-a="categorias-sugeridas">${I("plus","p")} Adicionar sugeridas (${faltam})</button>`:""}</div>
     <div class="grade g2">${col("DESPESA","Despesas")}${col("RECEITA","Receitas")}</div>`;
 }});
+
+acao("categorias-sugeridas",()=>executar(()=>adicionarCategoriasSugeridas(app.L),{ok:"Categorias sugeridas adicionadas",fechar:false}));

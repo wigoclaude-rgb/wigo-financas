@@ -27,11 +27,11 @@ e é público de propósito (ver "Netlify e repositório").
 ### Testes
 
 ```bash
-node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno… (108)
+node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno… (123)
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
 node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (77)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (39)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (114)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (128)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -163,6 +163,23 @@ de saldo gravado em lugar nenhum.
 - **Com uma conta só, o campo Conta não aparece** e tudo vai para ela
   (`campoConta`/`contaPadrao` em `js/ui/util.js`) — herança do 2.2 que o usuário
   pediu.
+
+### Categorias e subcategorias
+
+- **Dois níveis e nada mais**: categoria (Alimentação) › subcategoria
+  (Mercado), no campo `pai` da categoria. A subcategoria é do mesmo tipo da
+  mãe; uma subcategoria não tem filhas; uma categoria com filhas não vira
+  filha. O nome só não repete no mesmo lugar ("Outros" pode existir em cada
+  categoria). Validação em `salvarCategoria`.
+- **O lançamento guarda a subcategoria** (a chave do razão é `E:<sub>`);
+  relatórios e a Visão geral somam na mãe com `agruparCategorias()`, e o que
+  foi lançado direto na mãe aparece como "Geral" dentro dela.
+- Nos formulários a lista vem agrupada (`<optgroup>`); nos filtros, escolher
+  a categoria traz as subcategorias junto ("Alimentação (todas)").
+- Categorias sem mãe (como as migradas do 2.2) continuam valendo.
+- **Conta nova já nasce com `CATEGORIAS_SUGERIDAS`** (`modelo.js`); em
+  Cadastros → Categorias um botão acrescenta as que faltarem, sem duplicar
+  nome que já exista e sem reativar o que foi arquivado.
 
 ### Integridade
 
