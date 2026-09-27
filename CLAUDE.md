@@ -365,25 +365,20 @@ Arquivos que sobraram:
 
 ## Estado atual
 
-A versão 3 inteira está em commits locais na branch
-`claude/wigo-financas-code-v3ftgg` e **não foi enviada**: o usuário pediu para
-ver localmente antes. `main` continua no 2.2.
+Versão 3 publicada no `main` em 27/09/2026, direto, sem PR, a pedido do
+usuário. As regras de `firestore.rules` foram coladas no console no mesmo dia.
+Cada usuário (eram 8, todos com e-mail e senha) migra os dados do 2.2 no
+primeiro login na versão 3.
 
 ## Pendente de ação manual
 
-1. **Colar `firestore.rules` no console do Firebase ANTES de publicar a 3**:
-   https://console.firebase.google.com/project/app-fin-ebcfe/firestore/rules.
-   A regra atual só permite `users/{uid}`. Com ela, a 3 abre, tenta migrar e
-   recebe "O servidor recusou a gravação (permissão)": nada é gravado nem
-   perdido, mas nada funciona.
-2. As regras não foram testadas no emulador do Firestore, só conferidas contra o
-   que o app grava:
-   - nenhum delete fora da migração;
-   - pagamentos e auditoria são só criados.
-3. **Para o login com Google funcionar** (sem isso o botão mostra a
+1. **Para o login com Google funcionar** (sem isso o botão mostra a
    mensagem de onde ativar):
    - Authentication → **Método de login** → Adicionar novo provedor →
      **Google** → Ativar → e-mail de suporte → Salvar;
    - Authentication → **Configurações → Domínios autorizados** → adicionar
      `fastidious-hamster-2b9ffd.netlify.app`.
-4. Decidir o destino de `stalwart-capibara-312533` no Netlify.
+2. As regras do Firestore não foram testadas no emulador oficial. Os testes
+   reproduzem a mesma lógica no Firestore simulado (ver "Testes"), e o app
+   não grava nada que elas recusem.
+3. Decidir o destino de `stalwart-capibara-312533` no Netlify.
