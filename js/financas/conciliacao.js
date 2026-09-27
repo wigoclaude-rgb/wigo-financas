@@ -13,7 +13,7 @@
 
 import { K, idChave } from "./modelo.js";
 import { soma } from "../nucleo/dinheiro.js";
-import { diasEntre, addDias } from "../nucleo/datas.js";
+import { diasEntre, addDias, fmtData } from "../nucleo/datas.js";
 import { semelhanca, normalizar } from "../nucleo/texto.js";
 import { contextoLancamento } from "./relatorios.js";
 
@@ -88,7 +88,7 @@ export function resumoConciliacao(L,{conta,de,ate,bancoInicial,bancoFinal}){
   const pares=sugerirPares(soNoBanco,soNoWigo);
   /* pistas do que costuma causar diferença */
   const pistas=[];
-  if(difInicial) pistas.push({tipo:"INICIAL",valor:difInicial,texto:"O saldo inicial do banco e o do WIGO já começam diferentes no dia "+de+"."});
+  if(difInicial) pistas.push({tipo:"INICIAL",valor:difInicial,texto:"O saldo inicial do banco e o do WIGO já começam diferentes no dia "+fmtData(de)+"."});
   const repetidos=new Map();
   for(const x of soNoWigo){ const k=x.valor+"|"+x.data; repetidos.set(k,(repetidos.get(k)||[]).concat(x)); }
   for(const [,xs] of repetidos) if(xs.length>1) pistas.push({tipo:"DUPLICADO",valor:xs[0].valor,texto:xs.length+" movimentos iguais no mesmo dia no WIGO — pode ser lançamento em dobro.",itens:xs});

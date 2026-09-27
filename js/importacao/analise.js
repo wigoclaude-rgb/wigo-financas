@@ -26,7 +26,7 @@ import * as Lt from "./leitura.js";
 import { Mudanca, criarDocumento, registrarPagamento, pagarFatura, criarTransferencia, estornarPagamento, cancelarDocumento } from "../financas/comandos.js";
 import { DOC, K, PREFIXO, ErroFinanceiro } from "../financas/modelo.js";
 import { faturasDoCartao, fatura as faturaDe, faturaDaCompra, datasFatura } from "../financas/cartoes.js";
-import { diasEntre, hoje, mesDe, addMesesMes } from "../nucleo/datas.js";
+import { diasEntre, hoje, mesDe, addMesesMes, fmtData, rotuloMes } from "../nucleo/datas.js";
 import { normalizar, semelhanca } from "../nucleo/texto.js";
 import { novoId } from "../nucleo/ids.js";
 import { formatar } from "../nucleo/dinheiro.js";
@@ -156,7 +156,7 @@ function analisarConta(L,linha,{conta,mov,usados}){
   }
   if(igual){ usados.add(igual.l.id+"#"+igual.i);
     return {...linha,estado:"NO_APP",acao:"VINCULAR",alvo:{tipo:"LANCAMENTO",lancamento:igual.l.id,linha:igual.i},
-      motivo:"Já está no app: "+igual.l.descricao+" · "+igual.data}; }
+      motivo:"Já está no app: "+igual.l.descricao+" · "+fmtData(igual.data)}; }
   /* 2) pagamento de fatura de cartão do app */
   if(!entrada&&(Lt.ehPagamentoFatura(mov.desc)||/fatura|cartao|cartão/i.test(mov.desc))){
     const f=faturaParaPagar(L,conta,-linha.valor,linha.data);
@@ -231,7 +231,7 @@ function analisarCartao(L,linha,{cartao,faturaRef,mov,usados}){
       const mesma=doc.chaveCompra?doc.chaveCompra===ch:Lt.compararDescricoesImportacao(semParcela(doc.descricao),semParcela(mov.desc));
       if(mesma&&!usados.has("parcela:"+p.id)){ usados.add("parcela:"+p.id);
         return {...linha,estado:"DUPLICADA",acao:"IGNORAR",alvo:{tipo:"PARCELA",parcela:p.id,documento:doc.id},
-          motivo:"Parcela "+p.n+"/"+p.de+" de "+doc.numero+" já está no app (fatura "+p.fatura+")."}; }
+          motivo:"Parcela "+p.n+"/"+p.de+" de "+doc.numero+" já está no app (fatura de "+rotuloMes(p.fatura)+")."}; }
     }
   }
   /* compra à vista digitada à mão: mesmo valor, data da compra ±1 dia */

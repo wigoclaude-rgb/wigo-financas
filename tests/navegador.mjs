@@ -14,7 +14,7 @@ let servidor=null, navegador=null;
 export async function iniciar(){
   servidor=spawn("python3",["-m","http.server",String(PORTA),"--bind","127.0.0.1"],{cwd:RAIZ,stdio:"ignore"});
   await new Promise(r=>setTimeout(r,700));
-  navegador=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+  navegador=await chromium.launch({executablePath:"/opt/pw-browsers/chromium-1194/chrome-linux/chrome",args:["--lang=pt-BR"],env:{...process.env,LANG:"pt_BR.UTF-8",LANGUAGE:"pt_BR:pt"}});
   return navegador;
 }
 export async function encerrar(){ await navegador?.close(); servidor?.kill(); }

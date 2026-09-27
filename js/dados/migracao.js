@@ -29,7 +29,8 @@ import { Livro } from "../financas/livro.js";
 import * as C from "../financas/comandos.js";
 import { DOC, PREFIXO } from "../financas/modelo.js";
 import { verificar } from "../financas/integridade.js";
-import { hoje, mesDe, fimDoMes, diaNoMes, addMesesMes, valida } from "../nucleo/datas.js";
+import { hoje, mesDe, fimDoMes, diaNoMes, addMesesMes, valida, fmtData, rotuloMes } from "../nucleo/datas.js";
+import { formatar } from "../nucleo/dinheiro.js";
 import { novoId } from "../nucleo/ids.js";
 import { saldoLegado, cartaoLegado, abertoLegado, legadoAtivos } from "./legado.js";
 
@@ -105,8 +106,8 @@ export function migrarLegado(S0){
     const m=run(C.criarConta(L,{nome:a.name||"Conta",tipo:TIPO_CONTA[a.type]||"BANCO",instituicao:a.bank||"",cor:a.color||"#7c5cff",
       origem:"MIGRACAO",legado:{id:a.id}},{saldoInicial:saldoIni,dataAbertura:dataAb}));
     acc.set(a.id,primeiroId(m,"contas")); cont.contas++;
-    if(pre&&a.opening) avisos.push("Saldo inicial de "+a.name+": R$ "+(c(a.opening.amount)/100).toFixed(2)+" em "+a.opening.month+
-      ", descontados "+(pre/100).toFixed(2)+" de movimentos anteriores que o 2.2 não somava. O saldo a partir de "+a.opening.month+" é o mesmo.");
+    if(pre&&a.opening) avisos.push("Saldo inicial de "+a.name+": "+formatar(c(a.opening.amount))+" em "+rotuloMes(a.opening.month)+
+      ", descontados "+formatar(pre)+" de movimentos anteriores que o 2.2 não somava. O saldo a partir de "+rotuloMes(a.opening.month)+" é o mesmo.");
     if(a.type==="investimento") avisos.push("A conta "+a.name+" (investimento) passa a ser Reserva: continua no patrimônio, fora do disponível.");
   }
 
@@ -258,7 +259,7 @@ export function migrarLegado(S0){
       return sinal>0?{parcela,valor:v,juros:Math.max(0,pv-v),desconto:Math.max(0,v-pv)}:{parcela,valor:v}; });
     try{ C.registrarPagamento(L,{direcao:"SAIDA",data:f.data,conta:f.conta,cartao:f.cartao,forma:"debito",origem:"MIGRACAO",
       silencioso:true,descricao:"Fatura "+L.nomeCartao(f.cartao),alocacoes},M); cont.pagamentos++; }
-    catch(e){ avisos.push("Pagamento de fatura de "+f.data+" não pôde ser migrado: "+e.message); }
+    catch(e){ avisos.push("Pagamento de fatura de "+fmtData(f.data)+" não pôde ser migrado: "+e.message); }
   }
   M.fechar();
   L.aplicar(M);

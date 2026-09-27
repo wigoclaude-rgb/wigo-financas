@@ -13,7 +13,7 @@
 
 import { DOC, PREFIXO, K, COM_PARCELAS, DO_CARTAO, DISPONIVEL, TIPO_CONTA, ErroFinanceiro } from "./modelo.js";
 import { dividir, formatar, soma } from "../nucleo/dinheiro.js";
-import { hoje, mesDe, addMeses, addMesesMes, valida } from "../nucleo/datas.js";
+import { hoje, mesDe, addMeses, addMesesMes, valida, fmtData } from "../nucleo/datas.js";
 import { novoId } from "../nucleo/ids.js";
 import { faturaDaCompra, datasFatura, alocarPagamentoFatura } from "./cartoes.js";
 
@@ -146,7 +146,7 @@ export function corrigirSaldoInicial(L,contaId,{valor,data,motivo}){
   }
   if(valor) postarAbertura(m,c,valor,data,"MANUAL",motivo);
   m.set("contas",c.id,{...c,abertura:data,atualizadoEm:agora()});
-  m.auditar("CORRIGIR","conta",c.id,null,"Saldo inicial de "+c.nome+" corrigido para "+formatar(valor||0)+" em "+data,
+  m.auditar("CORRIGIR","conta",c.id,null,"Saldo inicial de "+c.nome+" corrigido para "+formatar(valor||0)+" em "+fmtData(data),
     [{campo:"saldoInicial",de:soma(antigos,d=>d.valor),para:valor||0},{campo:"motivo",de:null,para:motivo}]);
   return m.fechar();
 }
