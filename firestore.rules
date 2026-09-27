@@ -33,7 +33,8 @@ service cloud.firestore {
       allow read, write: if dono(uid);
     }
 
-    // Registros que nunca mudam depois de criados.
+    // Os registros do app. Pagamentos e auditoria nunca mudam depois de
+    // criados; o resto pode ser atualizado; nada é apagado.
     match /users/{uid}/{colecao}/{id} {
       allow read: if dono(uid);
       allow create: if dono(uid)
