@@ -1,7 +1,7 @@
 /* Migração do JSON do 2.2 para o modelo novo, conferindo saldo a saldo.
    Rodar: node tests/migracao.test.mjs */
 import { g, t, fim } from "./util.mjs";
-import { migrarLegado, temLegado } from "../js/dados/migracao.js";
+import { migrarLegado, temLegado, normData } from "../js/dados/migracao.js";
 import { saldoLegado } from "../js/dados/legado.js";
 import { verificar } from "../js/financas/integridade.js";
 import { fatura } from "../js/financas/cartoes.js";
@@ -90,5 +90,17 @@ g("detecção de dados antigos");
 t("JSON com lançamentos", temLegado(JSON.stringify(S)), true);
 t("conta vazia", temLegado(JSON.stringify({tx:[],accounts:[]})), false);
 t("lixo", temLegado("{"), false);
+
+g("Datas como ficaram na vida real: nenhuma derruba a migração");
+{ t("formatos lidos", ["2026-9-5","05/09/2026","2026-09-05T03:00:00.000Z"," 2026-09-05 "].map(normData), ["2026-09-05","2026-09-05","2026-09-05","2026-09-05"]);
+  t("ilegíveis viram nada", ["","0025-09-05","2026-02-30","ontem",null,undefined,20260905].map(normData), [null,null,null,null,null,null,null]);
+  const Sb={...S,tx:[tx("ok1",{due:"2026-9-3"}),tx("br",{due:"04/09/2026",paid:true,payDate:"04/09/2026"}),
+    tx("semdata",{due:"",desc:"Padaria"}),tx("ano0025",{due:"0025-09-10",desc:"Farmácia",paid:true,payDate:""}),tx("comp",{due:"2026-09-06",comp:"2026"})]};
+  let r; try{ r=migrarLegado(Sb); }catch(e){ r={erro:e.message}; }
+  t("a migração termina", r.erro, undefined);
+  t("datas legíveis foram corrigidas", [...r.livro.documentos.values()].filter(d=>["ok1","br","comp"].includes(d.legado?.tx?.[0])).map(d=>d.data).sort(), ["2026-09-03","2026-09-04","2026-09-06"]);
+  t("as ilegíveis ficaram de fora, contadas", r.relatorio.contagem.ignorados, 2);
+  t("e o relatório diz quais", /2 lançamento\(s\) do 2.2 ficaram de fora.*Padaria.*Farmácia/.test(r.relatorio.avisos.join(" ")), true);
+  t("integridade", verificar(r.livro).problemas.map(p=>p.msg), []); }
 
 fim();

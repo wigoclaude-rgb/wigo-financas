@@ -305,5 +305,30 @@ g("Google: entra, liga à conta que já tem senha e conecta em Ajustes");
   t("sem erro de JS", erros, []);
   await ctx.close(); }
 
+/* ─────────── 17. tema e migração lenta ─────────── */
+g("tema: escuro por padrão, automático pelo horário; migração mostra progresso e avisa se o Firebase não responde");
+{ const tema=async(op)=>{ const x=await abrir({...op,usuario:{uid:"u9",email:"a@b.c"}}); await x.p.waitForSelector("#conteudo .hero",{timeout:15000});
+    const v=await x.p.evaluate(()=>document.documentElement.dataset.tema||"(aparelho)"); await x.ctx.close(); return v; };
+  t("sem escolha: escuro", await tema({tema:null,hoje:HOJE}), "escuro");
+  t("automático ao meio-dia: claro", await tema({tema:"auto",hoje:"2026-09-27T12:00:00-03:00"}), "claro");
+  t("automático às 21h: escuro", await tema({tema:"auto",hoje:"2026-09-27T21:00:00-03:00"}), "escuro");
+  t("do aparelho: sem marca, o CSS decide", await tema({tema:"sistema",hoje:HOJE}), "(aparelho)");
+  ({p,erros,ctx}=await abrir({usuario:{uid:"u9",email:"a@b.c"},hoje:HOJE}));
+  await p.waitForSelector("#conteudo .hero",{timeout:15000}); await ir(p,"ajustes");
+  t("quatro opções de tema", await p.locator('[data-a="tema"]').allTextContents(), ["Escuro","Claro","Automático","Do aparelho"]);
+  t("sem o campo de nome no menu", /Nome no menu/.test(await p.textContent("#conteudo")), false);
+  await p.click('[data-a="tema"][data-v="claro"]'); await p.waitForTimeout(150);
+  t("trocar para claro vale na hora", await p.evaluate(()=>document.documentElement.dataset.tema), "claro");
+  await ctx.close();
+  ({p,erros,ctx}=await abrir({legado:legadoDemo("2026-09-27"),hoje:HOJE,globais:{__latencia:900,__prazoGravacao:300}}));
+  await p.waitForSelector("#carConta:not(:empty)",{timeout:15000});
+  t("mostra quanto já gravou", /Gravando \d+ de \d+ registros/.test(await p.textContent("#carConta")), true);
+  await p.waitForSelector("#carAviso .aviso",{timeout:15000});
+  t("avisa que o Firebase não confirma, sem desistir", /não está confirmando a gravação/.test(await p.textContent("#carAviso")), true);
+  await p.waitForSelector("#painel.on",{timeout:60000});
+  t("e termina quando o Firebase responde", /Tudo conferido/.test(await p.textContent("#painel")), true);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
 await encerrar();
 fim();

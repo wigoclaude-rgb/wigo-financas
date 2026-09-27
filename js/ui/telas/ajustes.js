@@ -11,15 +11,16 @@ import { baixar } from "./obrigacoes.js";
 import { hoje } from "../../nucleo/datas.js";
 import { numero } from "../../nucleo/dinheiro.js";
 import { Mudanca } from "../../financas/comandos.js";
+import { TEMAS, temaEscolhido, escolherTema } from "../tema.js";
 
 export const VERSAO="3.0";
 tela("ajustes",{titulo:"Ajustes",render(app){
-  const L=app.L, saude=verificar(L), tema=(()=>{ try{ return localStorage.getItem("wigo3.tema")||"sistema"; }catch{ return "sistema"; } })();
+  const L=app.L, saude=verificar(L), tema=temaEscolhido();
   const n={documentos:L.documentos.size,pagamentos:L.pagamentos.size,lancamentos:L.lancamentos.size,contas:L.contas.size};
   return h`<div class="grade g2">
     <div class="card pad"><h2 class="t2" style="margin-bottom:14px">Aparência</h2>
-      <div class="seg larg">${juntar([["sistema","Do aparelho"],["claro","Claro"],["escuro","Escuro"]],([k,t])=>h`<button class="${tema===k?"on":""}" data-a="tema" data-v="${k}">${t}</button>`)}</div>
-      <div class="campo" style="margin-top:16px"><label>Nome no menu</label><input value="${L.preferencias().nomeApp||"WIGO"}" data-c="pref-nome"></div></div>
+      <div class="seg larg">${juntar(TEMAS,([k,t])=>h`<button class="${tema===k?"on":""}" data-a="tema" data-v="${k}">${t}</button>`)}</div>
+      <div class="fraco peq" style="margin-top:8px">${tema==="auto"?"Escuro das 18h às 6h, claro durante o dia.":tema==="sistema"?"Segue o modo claro ou escuro do celular ou computador.":"Automático: escuro das 18h às 6h, claro durante o dia."}</div></div>
     <div class="card pad"><h2 class="t2" style="margin-bottom:6px">Saúde dos dados</h2>
       <div class="fraco peq" style="margin-bottom:12px">Confere que cada saldo é explicado pelo razão: lançamentos somam zero, dívida do cartão = parcelas em aberto, a pagar de cada parceiro = documentos em aberto, pagamentos batem com o que quitaram.</div>
       ${saude.ok?aviso(h`<b>Tudo consistente.</b> ${n.documentos} documentos, ${n.pagamentos} pagamentos e ${n.lancamentos} lançamentos conferidos.`,{tipo:"bom",icone:"shield"})
@@ -45,9 +46,7 @@ tela("ajustes",{titulo:"Ajustes",render(app){
         <div class="btns">${google?"":h`<button class="btn sec" data-a="conta-google">${I("link","p")} Conectar conta Google</button>`}
         <button class="btn sec" data-a="sair">Sair</button></div>`; })()}</div>`;
 }});
-acao("tema",el=>{ const v=el.dataset.v; try{ localStorage.setItem("wigo3.tema",v); }catch{}
-  if(v==="sistema") delete document.documentElement.dataset.tema; else document.documentElement.dataset.tema=v; render(); });
-aoMudar("pref-nome",el=>executar(()=>{ const m=new Mudanca(app.L); m.set("meta","preferencias",{...app.L.preferencias(),id:"preferencias",nomeApp:el.value.trim()||"WIGO"}); return m; },{ok:"Salvo",fechar:false}));
+acao("tema",el=>{ escolherTema(el.dataset.v); render(); });
 acao("backup",()=>{ const dados={app:"WIGO",versao:VERSAO,exportadoEm:new Date().toISOString(),...app.L.exportar()};
   baixar("WIGO_backup_"+hoje()+".json",JSON.stringify(dados,null,1),"application/json"); toast("Backup baixado"); });
 acao("csv-mov",()=>{ const L=app.L, linhas=[];

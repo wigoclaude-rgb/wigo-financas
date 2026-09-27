@@ -30,8 +30,8 @@ e é público de propósito (ver "Netlify e repositório").
 node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno… (108)
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
 node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (77)
-node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (32)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (95)
+node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (39)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (106)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -255,6 +255,16 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
     (no 2.2 pesava em cada fatura);
   - quando o 2.2 não guardava a data da compra no cartão, a migração usa a do
     1º vencimento.
+- **Data ruim não derruba a migração.** `normData()` lê "2026-9-5",
+  "10/09/2026" e data com hora; ano fora de 1990–2100 é ilegível. O lançamento
+  sem data legível fica de fora, contado em `ignorados` e nomeado nos avisos;
+  a conferência compara com o 2.2 **com** ele, para a diferença aparecer.
+- **A tela da migração mostra "Gravando X de Y"** (lotes de 200) e, se o
+  Firebase passar 45 s sem confirmar um lote, explica — sem desistir. O
+  Firestore trata cota diária estourada, servidor ocupado e conexão ruim como
+  passageiros e tenta de novo para sempre em silêncio; foi isso que deixou o
+  primeiro acesso real parado na tela de carregamento sem explicação. Nas
+  gravações do dia a dia o mesmo prazo vira um aviso.
 - **Depois de migrar, o 2.2 não conversa mais com a 3.** Lançar em
   `legado/wigo-2.2.html` depois disso muda só o JSON antigo, que a 3 não relê.
 
@@ -318,8 +328,12 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
   - cor de estado nunca é cor de série;
   - dica ao passar o mouse;
   - tabela junto de todo gráfico.
-- **Tema claro/escuro/do aparelho**, aplicado antes do primeiro desenho
-  (`localStorage wigo3.tema`) para não piscar.
+- **Tema: escuro por padrão** (como o 2.2), claro, automático (escuro das
+  18h às 6h, virando sozinho sem recarregar) ou igual ao aparelho —
+  `js/ui/tema.js`. O `index.html` repete a regra antes do primeiro desenho
+  (`localStorage wigo3.tema`) para a tela não piscar branca.
+- **O nome no menu é sempre WIGO.** O campo de renomear saiu a pedido do
+  usuário; `preferencias.nomeApp` continua gravado pela migração, sem uso.
 
 ---
 

@@ -24,6 +24,7 @@ import "./ui/telas/importacao.js";
 import "./ui/telas/ajustes.js";
 import "./ui/documento.js";
 import "./ui/formularios.js";
+import { aplicarTema } from "./ui/tema.js";
 
 const NAV=[
   {itens:[["visao","Visão geral","home"],["movimentos","Movimentações","flow"]]},
@@ -43,7 +44,7 @@ function navHtml(){
 function shell(){
   document.getElementById("raiz").innerHTML=String(h`
   <aside class="lado">
-    <div class="topo"><div class="marca">WIG<b>O</b></div><div class="fraco peq">${app.L.preferencias().nomeApp&&app.L.preferencias().nomeApp!=="WIGO"?app.L.preferencias().nomeApp:"Finanças"}</div></div>
+    <div class="topo"><div class="marca">WIG<b>O</b></div><div class="fraco peq">Finanças</div></div>
     <button class="btn novo" data-a="novo-menu">${I("plus")} Novo</button>
     <nav id="nav">${navHtml()}</nav>
     <div class="base">
@@ -216,15 +217,28 @@ acao("sair",async()=>{ await signOut(auth); location.hash=""; });
 function telaCarregando(texto){
   document.getElementById("raiz").innerHTML=String(h`<div class="entrar"><div class="card" style="text-align:center">
     <div class="marca" style="margin-bottom:10px">WIG<b>O</b></div><div class="fraco">${texto}</div>
-    <div class="barra" style="margin-top:16px"><i class="sk" style="width:100%"></i></div></div></div>`);
+    <div class="barra" style="margin-top:16px"><i class="sk" id="carBarra" style="width:100%"></i></div>
+    <div class="fraco peq" id="carConta" style="margin-top:10px"></div><div id="carAviso"></div></div></div>`);
+}
+/* a migração conta o que já gravou; se o Firebase parar de responder, a tela
+   diz isso em vez de ficar parada sem explicação */
+function progressoMigracao(f,{feitos,total}={}){
+  const barra=document.getElementById("carBarra"), conta=document.getElementById("carConta"), av=document.getElementById("carAviso");
+  if(!barra) return;
+  if(f==="progresso"&&total){ barra.classList.remove("sk"); barra.style.width=Math.max(3,Math.round(feitos/total*100))+"%";
+    conta.textContent="Gravando "+feitos.toLocaleString("pt-BR")+" de "+total.toLocaleString("pt-BR")+" registros"; }
+  if(f==="lento") av.innerHTML=String(h`<div class="aviso warn" style="margin-top:16px;text-align:left">${I("clock")}<div>
+    <b>O Firebase não está confirmando a gravação.</b> Isso costuma ser o limite diário do plano gratuito do Firebase ou a conexão.
+    Seus dados do 2.2 continuam intactos. Pode deixar esta página aberta (se o Firebase voltar a responder, a migração segue sozinha)
+    ou fechar e tentar mais tarde.</div></div>`);
 }
 async function iniciar(usuario){
   app.usuario=usuario;
   app.L=new Livro();
-  app.repo=new Repositorio(app.L,{aoMudarEstado:st=>{ const s=document.getElementById("sync"); if(s){ s.classList.toggle("salvando",st==="salvando"); s.title=st==="salvando"?"Salvando…":"Sincronizado"; } }});
+  app.repo=new Repositorio(app.L,{aoMudarEstado:st=>{ if(st==="lento"){ toast("O Firebase ainda não confirmou a gravação. Se demorar mais, confira a conexão.",{erro:true}); return; } const s=document.getElementById("sync"); if(s){ s.classList.toggle("salvando",st==="salvando"); s.title=st==="salvando"?"Salvando…":"Sincronizado"; } }});
   telaCarregando("Carregando seus dados…");
   let r;
-  try{ r=await app.repo.carregar(usuario.uid,{aoMigrar:f=>{ if(f==="inicio") telaCarregando("Primeira vez na versão 3: convertendo seus dados do WIGO 2.2. O original não é alterado."); }}); }
+  try{ r=await app.repo.carregar(usuario.uid,{aoMigrar:(f,info)=>{ if(f==="inicio") telaCarregando("Primeira vez na versão 3: convertendo seus dados do WIGO 2.2. O original não é alterado."); else progressoMigracao(f,info); }}); }
   catch(e){ console.error(e);
     document.getElementById("raiz").innerHTML=String(h`<div class="entrar"><div class="card"><div class="marca">WIG<b>O</b></div>
       <div class="aviso ruim" style="margin:16px 0">${I("alert")}<div><b>Não foi possível abrir seus dados.</b><br>${e.message}</div></div>
@@ -242,5 +256,6 @@ import { verificar } from "./financas/integridade.js";
 import * as Faturas from "./financas/cartoes.js";
 window.__app=app; window.__verificar=()=>verificar(app.L); window.__faturas=Faturas;
 
+aplicarTema();
 ligarEventos(); ligarDicas();
 onAuthStateChanged(auth,u=>{ if(u) iniciar(u); else { app.L=null; telaLogin(); } });

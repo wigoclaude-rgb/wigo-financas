@@ -42,10 +42,41 @@ const mk=iso=>(iso||"").slice(0,7);
 const pagoEm=t=>t.payDate||t.due;
 const efMes=t=>t.comp||(t.paid?mk(pagoEm(t)):mk(t.due));
 
+/* Datas do 2.2 como ficaram na vida real: "2026-9-5", "10/09/2026", com
+   hora, vazias, ou com o ano digitado errado (0025). Uma data ruim não pode
+   derrubar a migração inteira: a que dá para ler é corrigida; o lançamento
+   cuja data não dá para ler fica de fora, e o relatório diz qual. */
+const anoOk=a=>a>=1990&&a<=2100;
+export function normData(v){
+  if(typeof v!=="string") return null;
+  const t=v.trim(); let m, y, mo, d;
+  if((m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) [y,mo,d]=[+m[1],+m[2],+m[3]];
+  else if((m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) [y,mo,d]=[+m[3],+m[2],+m[1]];
+  else return null;
+  const dt=new Date(y,mo-1,d);
+  if(!anoOk(y)||dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d) return null;
+  return y+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+}
+const normMes=v=>typeof v==="string"&&/^\d{4}-\d{2}$/.test(v.trim())&&anoOk(+v.slice(0,4))&&+v.slice(5,7)>=1&&+v.slice(5,7)<=12?v.trim():null;
+
 export function migrarLegado(S0){
-  const S={...S0,tx:(S0.tx||[]).filter(t=>t&&t.id),accounts:S0.accounts||[],cards:S0.cards||[],tickets:S0.tickets||[],
-    goals:S0.goals||[],people:S0.people||[],expCats:S0.expCats||[],incCats:S0.incCats||[]};
-  const L=new Livro(), avisos=[], cont={contas:0,parceiros:0,categorias:0,cartoes:0,documentos:0,pagamentos:0,recorrencias:0,cancelados:0,ignorados:0};
+  const ruins=[], txOk=[];
+  for(const t of (S0.tx||[])){ if(!t||!t.id) continue;
+    const due=normData(t.due)||normData(t.payDate);
+    if(!due){ ruins.push(t); continue; }
+    txOk.push({...t,due,payDate:normData(t.payDate)||(t.paid?due:null),comp:normMes(t.comp)}); }
+  const S={...S0,tx:txOk,
+    accounts:(S0.accounts||[]).map(a=>a&&a.opening?{...a,opening:{...a.opening,month:normMes(a.opening.month)}}:a),
+    opening:S0.opening?{...S0.opening,month:normMes(S0.opening.month)}:S0.opening,
+    goals:(S0.goals||[]).map(g=>({...g,moves:(g.moves||[]).map(mv=>({...mv,date:normData(mv.date)})).filter(mv=>mv.date)})),
+    cards:S0.cards||[],tickets:S0.tickets||[],people:S0.people||[],expCats:S0.expCats||[],incCats:S0.incCats||[]};
+  /* a conferência compara com o 2.2 COM os lançamentos que ficaram de fora:
+     se algum pesava num saldo, a diferença aparece, em vez de sumir calada */
+  const Sconf=ruins.length?{...S,tx:[...S.tx,...ruins]}:S;
+  const L=new Livro(), avisos=[], cont={contas:0,parceiros:0,categorias:0,cartoes:0,documentos:0,pagamentos:0,recorrencias:0,cancelados:0,ignorados:ruins.length};
+  if(ruins.length) avisos.push(ruins.length+" lançamento(s) do 2.2 ficaram de fora porque a data não pôde ser lida: "+
+    ruins.slice(0,6).map(t=>"\""+(t.desc||"sem descrição")+"\" ("+(t.due||"sem data")+")").join(", ")+(ruins.length>6?" e outros":"")+
+    ". Se precisar deles, lance de novo na versão 3.");
   const run=m=>{ L.aplicar(m); return m; };
   const primeiroId=(m,col)=>m.gravar.find(x=>x.colecao===col).id;
   const h=hoje(), mesAtual=mesDe(h);
@@ -272,20 +303,20 @@ export function migrarLegado(S0){
   const conferencia=[];
   const fim=fimDoMes(mesAtual);
   for(const a of contas){
-    const antes=a.id==="__principal"&&semContaNoLegado?saldoLegado(S,mesAtual,null):saldoLegado(S,mesAtual,a.id==="__semconta"?"__semconta":a.id);
+    const antes=a.id==="__principal"&&semContaNoLegado?saldoLegado(Sconf,mesAtual,null):saldoLegado(Sconf,mesAtual,a.id==="__semconta"?"__semconta":a.id);
     const depois=L.saldoConta(acc.get(a.id),fim);
     if(a.id==="__semconta") continue;
     conferencia.push({item:"Saldo de "+(a.name||"conta"),antes,depois,ok:antes===depois});
   }
-  const legadoTotal=saldoLegado(S,mesAtual,null);
+  const legadoTotal=saldoLegado(Sconf,mesAtual,null);
   const novoTotal=contas.reduce((s,a)=>s+L.saldoConta(acc.get(a.id),fim),0);
   conferencia.push({item:"Saldo total (sem metas nem vales)",antes:legadoTotal,depois:novoTotal,ok:legadoTotal===novoTotal});
-  for(const k of S.cards){ const antes=cartaoLegado(S,k.id), depois=L.dividaCartao(card.get(k.id));
+  for(const k of S.cards){ const antes=cartaoLegado(Sconf,k.id), depois=L.dividaCartao(card.get(k.id));
     conferencia.push({item:"Em aberto no cartão "+(k.nick||k.bank),antes,depois,ok:antes===depois}); }
   const valeContas=new Set(vale.values());
   const aberto=tipo=>[...L.documentos.values()].filter(d=>d.tipo===tipo&&!valeContas.has(d.conta)&&d.status!=="CANCELADO")
     .reduce((s,d)=>s+L.estadoDocumento(d).restante,0);
-  const apAntes=abertoLegado(S,"exp"), arAntes=abertoLegado(S,"inc");
+  const apAntes=abertoLegado(Sconf,"exp"), arAntes=abertoLegado(Sconf,"inc");
   conferencia.push({item:"Total a pagar em aberto",antes:apAntes,depois:aberto(DOC.PAGAR)-L.documentos.size*0,ok:apAntes===aberto(DOC.PAGAR)});
   conferencia.push({item:"Total a receber em aberto",antes:arAntes,depois:aberto(DOC.RECEBER),ok:arAntes===aberto(DOC.RECEBER)});
   const saude=verificar(L);

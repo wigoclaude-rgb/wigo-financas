@@ -26,6 +26,17 @@ import { migrarLegado, temLegado, VERSAO_DADOS } from "./migracao.js";
 import { novoId } from "../nucleo/ids.js";
 
 const LIMITE_LOTE=450;           // o Firestore aceita 500 escritas por batch
+const LOTE_MIGRACAO=200;         // lotes menores: progresso visível e pedidos mais leves
+const PRAZO=()=>globalThis.__prazoGravacao||45000;   // os testes encurtam o prazo
+
+/* O Firestore trata alguns erros como passageiros (cota diária do plano
+   gratuito estourada, servidor ocupado, conexão ruim) e tenta de novo para
+   sempre, sem avisar: a gravação fica pendurada e a tela, parada. Depois do
+   prazo, avisamos — sem desistir, porque a gravação ainda pode passar. */
+async function comAviso(p,aoDemorar,ms=PRAZO()){
+  const t=setTimeout(()=>{ console.warn("[WIGO] o Firebase não confirmou a gravação em "+ms/1000+" s"); aoDemorar&&aoDemorar(); },ms);
+  try{ return await p; } finally{ clearTimeout(t); }
+}
 const CARREGAR=COLECOES;         // auditoria fica fora: é lida sob demanda
 
 const ref=(uid,col,id)=>doc(db,"users",uid,col,id);
@@ -49,7 +60,7 @@ export class Repositorio{
       if(status==="EM_ANDAMENTO") await this.limparTentativa(marca.data().tentativa);
       if(temLegado(json)){
         aoMigrar&&aoMigrar("inicio");
-        const r=await this.migrar(json);
+        const r=await this.migrar(json,(f,info)=>aoMigrar&&aoMigrar(f,info));
         aoMigrar&&aoMigrar("fim",r);
         return {migrou:true,relatorio:r};
       }
@@ -90,19 +101,23 @@ export class Repositorio{
      EM_ANDAMENTO vai primeiro; CONCLUIDA, por último. Se cair no meio, a
      próxima abertura apaga o que essa tentativa gravou e recomeça — nada da
      tentativa quebrada fica misturado com os dados. */
-  async migrar(json){
+  async migrar(json,avisar=()=>{}){
     const uid=this.uid, tentativa=novoId("t");
     const S=JSON.parse(json);
     const {livro,relatorio}=migrarLegado(S);
     const ini=writeBatch(db);
     ini.set(ref(uid,"meta","migracao"),{id:"migracao",status:"EM_ANDAMENTO",tentativa,versao:VERSAO_DADOS,em:new Date().toISOString(),_ts:serverTimestamp()});
-    await ini.commit().catch(e=>{ throw traduzir(e); });
     const tudo=[];
     for(const col of COLECOES) for(const d of livro[col].values()) tudo.push({col,d});
-    for(let i=0;i<tudo.length;i+=LIMITE_LOTE){
-      const b=writeBatch(db);
-      for(const {col,d} of tudo.slice(i,i+LIMITE_LOTE)) b.set(ref(uid,col,d.id),{...d,_mig:tentativa,_ts:serverTimestamp()});
-      await b.commit().catch(e=>{ throw traduzir(e); });
+    const total=tudo.length; let feitos=0;
+    const lento=()=>avisar("lento",{feitos,total});
+    avisar("progresso",{feitos,total});
+    await comAviso(ini.commit().catch(e=>{ throw traduzir(e); }),lento);
+    for(let i=0;i<tudo.length;i+=LOTE_MIGRACAO){
+      const b=writeBatch(db), parte=tudo.slice(i,i+LOTE_MIGRACAO);
+      for(const {col,d} of parte) b.set(ref(uid,col,d.id),{...d,_mig:tentativa,_ts:serverTimestamp()});
+      await comAviso(b.commit().catch(e=>{ throw traduzir(e); }),lento);
+      feitos+=parte.length; avisar("progresso",{feitos,total});
     }
     const fimB=writeBatch(db);
     fimB.set(ref(uid,"meta","migracao"),{id:"migracao",status:"CONCLUIDA",tentativa,versao:VERSAO_DADOS,origem:"2.2",
@@ -110,7 +125,7 @@ export class Repositorio{
     fimB.set(ref(uid,"auditoria",novoId("h")),{acao:"MIGRAR",entidade:"sistema",entidadeId:uid,em:new Date().toISOString(),
       resumo:"Dados do WIGO 2.2 migrados: "+relatorio.contagem.documentos+" documentos, "+relatorio.contagem.pagamentos+" pagamentos",
       mudancas:[],_ts:serverTimestamp()});
-    await fimB.commit().catch(e=>{ throw traduzir(e); });
+    await comAviso(fimB.commit().catch(e=>{ throw traduzir(e); }),lento);
     this.L.carregar(livro.exportar());
     /* a marca CONCLUIDA foi a última gravação: o _ts dela cobre tudo que a
        migração gravou. Sem guardar isso, a próxima abertura leria de novo
@@ -141,7 +156,7 @@ export class Repositorio{
       for(const lote of lotes){
         const b=writeBatch(db);
         for(const g of lote) b.set(ref(this.uid,g.colecao,g.id),{...g.dados,_ts:serverTimestamp()});
-        await b.commit();
+        await comAviso(b.commit(),()=>this.aoMudarEstado("lento"));
         gravados++;
       }
     }catch(e){

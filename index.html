@@ -11,8 +11,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/wigo.css">
 <script>
-/* tema antes do primeiro desenho, para não piscar */
-try{ const t=localStorage.getItem("wigo3.tema"); if(t==="claro"||t==="escuro") document.documentElement.dataset.tema=t; }catch(e){}
+/* tema antes do primeiro desenho, para não piscar — mesma regra de js/ui/tema.js:
+   escuro por padrão; "auto" é escuro das 18h às 6h; "sistema" segue o aparelho */
+(function(){ var r=document.documentElement, t=null; try{ t=localStorage.getItem("wigo3.tema"); }catch(e){}
+  if(t==="sistema") return;
+  if(t==="auto"){ var h=new Date().getHours(); t=(h>=18||h<6)?"escuro":"claro"; }
+  r.dataset.tema=(t==="claro")?"claro":"escuro"; })();
 </script>
 </head>
 <body>

@@ -19,7 +19,7 @@ export async function iniciar(){
 }
 export async function encerrar(){ await navegador?.close(); servidor?.kill(); }
 /* abre o app com um usuário logado e, opcionalmente, o JSON do 2.2 */
-export async function abrir({largura=1366,altura=900,legado=null,fs=null,usuario={uid:"u1",email:"voce@exemplo.com"},hoje=null,tema="escuro"}={}){
+export async function abrir({largura=1366,altura=900,legado=null,fs=null,usuario={uid:"u1",email:"voce@exemplo.com"},hoje=null,tema="escuro",globais={}}={}){
   const ctx=await navegador.newContext({viewport:{width:largura,height:altura},deviceScaleFactor:2,locale:"pt-BR",timezoneId:"America/Sao_Paulo"});
   const p=await ctx.newPage();
   const erros=[];
@@ -31,12 +31,12 @@ export async function abrir({largura=1366,altura=900,legado=null,fs=null,usuario
   const seed={};
   if(legado) seed["users/"+usuario.uid]={data:JSON.stringify(legado)};
   if(fs) Object.assign(seed,fs);
-  await p.addInitScript(({seed,usuario,hoje,tema})=>{
-    window.__seedFs=seed; window.__usuario=usuario;
-    try{ localStorage.setItem("wigo3.tema",tema); }catch{}
+  await p.addInitScript(({seed,usuario,hoje,tema,globais})=>{
+    window.__seedFs=seed; window.__usuario=usuario; Object.assign(window,globais);
+    if(tema) try{ localStorage.setItem("wigo3.tema",tema); }catch{}
     if(hoje){ const alvo=new Date(hoje).getTime(), real=Date.now(), D=Date;
       window.Date=class extends D{ constructor(...a){ super(...(a.length?a:[alvo+(D.now()-real)])); } static now(){ return alvo+(D.now()-real); } }; }
-  },{seed,usuario,hoje,tema});
+  },{seed,usuario,hoje,tema,globais});
   await p.goto("http://127.0.0.1:"+PORTA+"/index.html");
   return {p,ctx,erros};
 }
