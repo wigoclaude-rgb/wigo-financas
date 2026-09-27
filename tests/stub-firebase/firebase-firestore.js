@@ -31,12 +31,39 @@ export async function getDocs(q){
 }
 /* o cache não conta como leitura cobrada */
 export async function getDocsFromCache(q){ const antes=window.__leituras; const r=await getDocs(q); window.__leituras=antes; return r; }
+/* As regras de firestore.rules, reproduzidas aqui: uma gravação que o
+   servidor de verdade recusaria falha também no teste (permission-denied).
+   Como no Firestore, cada escrita do lote é julgada contra o estado de
+   ANTES do lote. Mudou firestore.rules? Mude aqui junto. */
+const COLS=["contas","parceiros","categorias","cartoes","documentos","pagamentos","lancamentos",
+  "recorrencias","importacoes","extrato","conciliacoes","meta","auditoria"];
+function recusa(o){
+  const m=o.path.match(/^users\/([^/]+)(?:\/([^/]+)\/([^/]+))?$/);
+  if(!m) return "caminho fora de users/{uid}";
+  const [,uid,col,id]=m;
+  if(!window.__usuario||window.__usuario.uid!==uid) return "não é o dono";
+  if(!col) return null;                                   // o JSON do 2.2
+  const atual=fs().get(o.path);
+  if(o.t==="del"){ const marca=fs().get("users/"+uid+"/meta/migracao");
+    return atual&&atual._mig!=null&&marca&&marca.status==="EM_ANDAMENTO"?null:"delete proibido"; }
+  if(!o.dados||o.dados._ts!==SENTINELA) return "sem o carimbo _ts do servidor";
+  if(atual===undefined){
+    if(!COLS.includes(col)) return "coleção fora da lista";
+    if(col!=="auditoria"&&o.dados.id!==id) return "id do registro diferente do id do documento";
+    return null; }
+  if(col==="auditoria"||col==="pagamentos") return "alterar "+col+" é proibido";
+  if(o.dados.id!==atual.id) return "id mudou";
+  return null;
+}
+window.__recusas=[];
 export function writeBatch(){
   const ops=[];
   return { set(ref,dados){ ops.push({t:"set",path:ref.path,dados}); }, delete(ref){ ops.push({t:"del",path:ref.path}); },
     async commit(){
       await new Promise(r=>setTimeout(r,window.__latencia||5));
       if(window.__falharGravacao>0){ window.__falharGravacao--; const e=new Error("Missing or insufficient permissions."); e.code="permission-denied"; throw e; }
+      for(const o of ops){ const r=recusa(o); if(r){ window.__recusas.push(o.path+": "+r);
+        const e=new Error("Missing or insufficient permissions."); e.code="permission-denied"; throw e; } }
       const agora=Date.now();
       for(const o of ops){ if(o.t==="del") fs().delete(o.path);
         else fs().set(o.path,JSON.parse(JSON.stringify(o.dados,(k,v)=>v===SENTINELA?{__tsms:agora}:v))); }

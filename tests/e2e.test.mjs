@@ -202,6 +202,7 @@ await p.reload(); await p.waitForSelector("#conteudo .hero",{timeout:15000}); aw
 t("2ª recarga, sem mudanças: zero leituras cobradas", await p.evaluate(()=>window.__leituras), 0);
 t("integridade", await integridade(p), []);
 t("sem erro de JS (fora a recusa provocada no passo 8)", erros.filter(e=>!/Nenhuma alteração foi aplicada/.test(e)), []);
+t("as regras do Firestore aceitam tudo que o app gravou", await p.evaluate(()=>window.__recusas), []);
 await ctx.close();
 
 /* ─────────── 13. conta nova e celular ─────────── */
@@ -222,6 +223,7 @@ await p.fill('#fNovo [name="descricao"]',"Café"); await p.fill('#fNovo [name="v
 await enviar(p,'#fNovo button[type="submit"]');
 t("foi para a única conta", await saldoConta(p,"Caixa"), 99200);
 t("sem erro de JS", erros, []);
+t("as regras do Firestore aceitam tudo que o app gravou", await p.evaluate(()=>window.__recusas), []);
 await ctx.close();
 
 /* ─────────── 14. celular: nenhuma tela vaza para o lado ─────────── */
@@ -241,7 +243,30 @@ t("filtros recolhidos atrás de um botão", await ir(p,"pagar").then(()=>p.locat
 await p.click(".filtros-bt");
 t("abrir os filtros mostra os campos", await p.locator('.filtros [data-k="pn"]').isVisible(), true);
 t("sem erro de JS", erros, []);
+t("as regras do Firestore aceitam tudo que o app gravou", await p.evaluate(()=>window.__recusas), []);
 await ctx.close();
+
+/* ─────────── 15. as regras do Firestore, no simulado ─────────── */
+g("regras: recusam o proibido, e uma migração que caiu no meio se refaz");
+{ /* uma tentativa que caiu: marca EM_ANDAMENTO e um registro dela gravado */
+  const fs0={"users/u1/meta/migracao":{id:"migracao",status:"EM_ANDAMENTO",tentativa:"tX",_ts:{__tsms:1}},
+    "users/u1/contas/velha":{id:"velha",nome:"Sobra da tentativa",tipo:"BANCO",_mig:"tX",_ts:{__tsms:1}}};
+  ({p,erros,ctx}=await abrir({legado:legadoDemo("2026-09-27"),fs:fs0,hoje:HOJE}));
+  await p.waitForSelector("#painel.on",{timeout:15000});
+  t("a sobra da tentativa foi apagada", await p.evaluate(()=>window.__fs.has("users/u1/contas/velha")), false);
+  t("migração concluída desta vez", await p.evaluate(()=>window.__fs.get("users/u1/meta/migracao").status), "CONCLUIDA");
+  t("tudo conferido", /Tudo conferido/.test(await p.textContent("#painel")), true);
+  const tenta=async(fn)=>p.evaluate(async(corpo)=>{ const f=await import("/js/dados/firebase.js");
+    try{ await (new Function("f",corpo))(f); return "aceita"; }catch(e){ return e.code||String(e); } },fn);
+  const pg=await p.evaluate(()=>[...window.__app.L.pagamentos.values()][0].id);
+  t("alterar um pagamento é recusado", await tenta(`const b=f.writeBatch(f.db); b.set(f.doc(f.db,"users","u1","pagamentos","${pg}"),{id:"${pg}",valor:1,_ts:f.serverTimestamp()}); return b.commit();`), "permission-denied");
+  t("apagar um documento é recusado", await tenta(`const b=f.writeBatch(f.db); b.delete(f.doc(f.db,"users","u1","pagamentos","${pg}")); return b.commit();`), "permission-denied");
+  t("gravar sem o carimbo do servidor é recusado", await tenta(`const b=f.writeBatch(f.db); b.set(f.doc(f.db,"users","u1","contas","nova"),{id:"nova"}); return b.commit();`), "permission-denied");
+  t("gravar na conta de outra pessoa é recusado", await tenta(`const b=f.writeBatch(f.db); b.set(f.doc(f.db,"users","outro","contas","x"),{id:"x",_ts:f.serverTimestamp()}); return b.commit();`), "permission-denied");
+  t("gravar numa coleção fora da lista é recusado", await tenta(`const b=f.writeBatch(f.db); b.set(f.doc(f.db,"users","u1","qualquer","x"),{id:"x",_ts:f.serverTimestamp()}); return b.commit();`), "permission-denied");
+  t("uma conta nova, carimbada, é aceita", await tenta(`const b=f.writeBatch(f.db); b.set(f.doc(f.db,"users","u1","contas","nova"),{id:"nova",_ts:f.serverTimestamp()}); return b.commit();`), "aceita");
+  t("sem erro de JS", erros.filter(e=>!/permission|Missing or insufficient/i.test(e)), []);
+  await ctx.close(); }
 
 await encerrar();
 fim();
