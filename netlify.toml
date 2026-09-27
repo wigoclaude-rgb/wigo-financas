@@ -1,14 +1,16 @@
 # Configuracao do deploy no Netlify.
 #
-# O app e um HTML unico, sem etapa de build: o Netlify so precisa publicar
-# a raiz do repositorio como esta. Por isso "command" fica vazio — e o que
-# mantem o consumo de build minutes proximo de zero.
+# O app sao modulos ES servidos como estao, sem etapa de build: o Netlify so
+# precisa publicar a raiz do repositorio. Por isso "command" fica vazio — e o
+# que mantem o consumo de build minutes proximo de zero.
 
 [build]
   command = ""
   publish = "."
 
-# SPA: qualquer rota cai no index.html
+# As rotas sao por hash (#/pagar), entao este redirect so pega quem digitar
+# um caminho que nao existe. Arquivo que existe (js/, css/, legado/) e servido
+# normalmente: redirect com status 200 nao passa por cima de arquivo real.
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -20,3 +22,16 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Os modulos nao tem hash no nome. Sem revalidar, um aparelho podia juntar o
+# app.js novo com um base.js velho do cache e quebrar na importacao. "no-cache"
+# nao impede cache: obriga a perguntar ao servidor (ETag) antes de usar.
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache"

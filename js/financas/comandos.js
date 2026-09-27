@@ -18,19 +18,20 @@ import { novoId } from "../nucleo/ids.js";
 import { faturaDaCompra, datasFatura, alocarPagamentoFatura } from "./cartoes.js";
 
 /* ── o lote de gravação ── */
+let SEQ=0;   // global: dois comandos no mesmo milissegundo continuam em ordem
 export class Mudanca{
-  constructor(L){ this.L=L; this.gravar=[]; this.pend={}; this.contadores=null;
+  constructor(L){ this.L=L; this.gravar=[]; this.pos=new Map(); this.pend={}; this.contadores=null;
     this.alocPend=new Map(); this.seq=0; this.base=new Date().toISOString(); this.resumo=[]; }
   set(colecao,id,dados){
-    const i=this.gravar.findIndex(g=>g.colecao===colecao&&g.id===id);
-    if(i>=0) this.gravar[i].dados=dados; else this.gravar.push({colecao,id,dados});
+    const k=colecao+"/"+id, i=this.pos.get(k);
+    if(i!=null) this.gravar[i].dados=dados; else { this.pos.set(k,this.gravar.length); this.gravar.push({colecao,id,dados}); }
     (this.pend[colecao]||(this.pend[colecao]=new Map())).set(id,dados);
     return dados;
   }
   obter(colecao,id){ const p=this.pend[colecao]?.get(id); return p!==undefined?p:this.L[colecao].get(id); }
   /* carimbo que preserva a ordem dentro do lote: a provisão antes do
      pagamento, mesmo que caiam no mesmo milissegundo */
-  carimbo(){ return this.base+"#"+String(this.seq++).padStart(4,"0"); }
+  carimbo(){ this.seq++; return this.base+"#"+String(SEQ++).padStart(7,"0"); }
   numero(prefixo){
     if(!this.contadores) this.contadores={...(this.L.meta.get("contadores")||{})};
     this.contadores[prefixo]=(this.contadores[prefixo]||0)+1;
@@ -233,7 +234,7 @@ function montarParcelas(L,d,spec){
     const cartao=L.cartoes.get(d.cartao);
     const f0=spec.fatura||faturaDaCompra(cartao,d.data);
     return lista.map((x,i)=>{ const fatura=x.fatura||addMesesMes(f0,i);
-      return {id:docId+"."+(ini+i),n:ini+i,de,valor:x.valor,fatura,vencimento:datasFatura(cartao,fatura).vencimento}; });
+      return {id:docId+"."+(ini+i),n:ini+i,de,valor:x.valor,fatura,vencimento:x.vencimento||datasFatura(cartao,fatura).vencimento}; });
   }
   const v0=spec.primeiroVencimento||d.data;
   return lista.map((x,i)=>({id:docId+"."+(ini+i),n:ini+i,de,valor:x.valor,vencimento:x.vencimento||addMeses(v0,i)}));
@@ -513,16 +514,18 @@ export function estornarPagamento(L,id,{data,motivo}={},m){
    lançamento que tira de uma conta é o mesmo que põe na outra. */
 export function criarTransferencia(L,spec,m){
   const proprio=!m; m=m||new Mudanca(L);
-  const {origem,destino,valor,data}=spec;
-  const a=L.contas.get(origem), b=L.contas.get(destino);
+  /* de/para, e não origem/destino: "origem" é de onde veio o registro
+     (manual, importação, migração) em todo o resto do modelo */
+  const {de,para,valor,data}=spec;
+  const a=L.contas.get(de), b=L.contas.get(para);
   if(!a||!b) erro("Escolha as duas contas.");
-  if(origem===destino) erro("Escolha contas diferentes.");
+  if(de===para) erro("Escolha contas diferentes.");
   if(!inteiro(valor)||valor<=0) erro("Informe um valor maior que zero.");
   exigirData(data);
   const id=spec.id||novoId("d"), numero=spec.numero||m.numero(PREFIXO.TRANSFERENCIA);
   const descricao=(spec.descricao||"").trim()||("Transferência "+a.nome+" → "+b.nome);
   const d={id,numero,tipo:DOC.TRANSF,status:spec.planejada?"PLANEJADA":"EFETIVADO",descricao,valor,data,
-    competencia:mesDe(data),conta:origem,contaDestino:destino,origem:spec.origem||"MANUAL",obs:spec.obs||"",
+    competencia:mesDe(data),conta:de,contaDestino:para,origem:spec.origem||"MANUAL",obs:spec.obs||"",
     parcelas:[],importacao:spec.importacao||null,legado:spec.legado||null,criadoEm:agora(),atualizadoEm:agora()};
   m.set("documentos",id,d);
   if(!spec.planejada) postarTransferencia(m,d);

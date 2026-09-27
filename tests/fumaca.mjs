@@ -1,0 +1,10 @@
+import { iniciar, encerrar, abrir } from "./navegador.mjs";
+import { legadoDemo } from "./fixtures.mjs";
+await iniciar();
+const hoje="2026-09-27T12:00:00-03:00";
+const {p,erros}=await abrir({legado:legadoDemo("2026-09-27"),hoje});
+await p.waitForTimeout(3500);
+console.log("titulo:",await p.title());
+console.log("erros:",erros);
+await p.screenshot({path:process.argv[2]||"/tmp/fumaca.png"});
+await encerrar();

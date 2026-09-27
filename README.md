@@ -1,6 +1,6 @@
 # WIGO — Finanças
 
-App de finanças pessoais em arquivo único (`index.html`), com Firebase Auth + Firestore.
+App de finanças pessoais (versão 3: documento → parcela → pagamento → razão em partidas dobradas), em módulos ES sem build, com Firebase Auth + Firestore. Arquitetura, decisões e testes estão em `CLAUDE.md`; a versão 2.2 ficou em `legado/wigo-2.2.html`.
 
 - **Site:** https://fastidious-hamster-2b9ffd.netlify.app (projeto `hamster-fastidious-2b9ffd`)
 - **Repositório:** https://github.com/wigoclaude-rgb/wigo-financas (público)

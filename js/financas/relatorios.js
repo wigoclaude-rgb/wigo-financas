@@ -59,13 +59,19 @@ export function razao(L,chave,{de,ate}={}){
    Mandar para a reserva é: o dinheiro sai do disponível. */
 export function fluxoDeCaixa(L,{de,ate}){
   const meses=new Map();
-  const mes=m=>{ if(!meses.has(m)) meses.set(m,{mes:m,entradas:0,saidas:0,paraReservas:0,dasReservas:0}); return meses.get(m); };
+  const mes=m=>{ if(!meses.has(m)) meses.set(m,{mes:m,entradas:0,saidas:0,paraReservas:0,dasReservas:0,ajustes:0}); return meses.get(m); };
+  const tipoDoc=l=>l.documento?L.documentos.get(l.documento)?.tipo:null;
   for(let m=mesDe(de);m<=mesDe(ate);m=addMesesMes(m,1)) mes(m);
   for(const c of L.contas.values()){
     if(!disponivel(L,c.id)) continue;
     for(const x of L.linhasDaChave(K.conta(c.id))){
       if(x.data<de||x.data>ate) continue;
       const r=mes(mesDe(x.data));
+      /* saldo inicial é o ponto de partida, não dinheiro que entrou; ajuste
+         é correção — os dois ficam fora de entradas e saídas */
+      const td=tipoDoc(x.l);
+      if(td==="ABERTURA") continue;
+      if(td==="AJUSTE"){ r.ajustes+=x.v; continue; }
       if(x.l.natureza==="TRANSFERENCIA"||(x.l.natureza==="ESTORNO"&&x.l.linhas.every(y=>y.k.startsWith("A:")))){
         const outra=x.l.linhas.find((y,j)=>j!==x.i&&y.k.startsWith("A:"));
         const outraDisp=outra&&disponivel(L,idChave(outra.k));
@@ -168,12 +174,13 @@ export function resultadoCaixa(L,{de,ate}){
 }
 
 /* ── CONTAS A PAGAR / RECEBER: faixas de vencimento ── */
-export function faixas(L,lado,{parceiro}={}){
+export function faixas(L,lado,{parceiro,ate}={}){
   const h=hoje(); const f={total:0,vencido:0,hoje:0,sete:0,trinta:0,depois:0,parcial:0,
     nVencido:0,nHoje:0,nSete:0,nTrinta:0,nParcial:0,n:0};
   for(const {doc,p,e} of L.obrigacoes(lado)){
     if(e.restante<=0||doc.status==="CANCELADO") continue;
     if(parceiro&&doc.parceiro!==parceiro) continue;
+    if(ate&&p.vencimento>ate) continue;
     f.total+=e.restante; f.n++;
     const d=diasEntre(h,p.vencimento);
     if(d<0){ f.vencido+=e.restante; f.nVencido++; }

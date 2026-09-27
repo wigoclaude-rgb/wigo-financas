@@ -105,14 +105,14 @@ g("Caso 7 — pagamento parcial deixa o resto em aberto");
 g("Caso 8 — transferência não cria nem destrói dinheiro");
 { const L=novoLivro(); const a=conta(L,"A",2000); const b=conta(L,"B",0);
   const total=L.saldoTodasContas();
-  const m=ex(L,C.criarTransferencia(L,{origem:a,destino:b,valor:R(500),data:"2026-09-15"}));
+  const m=ex(L,C.criarTransferencia(L,{de:a,para:b,valor:R(500),data:"2026-09-15"}));
   t("A = 1.500", L.saldoConta(a), R(1500));
   t("B = 500", L.saldoConta(b), R(500));
   t("patrimônio igual", L.saldoTodasContas(), total);
   const lanc=m.gravar.filter(x=>x.colecao==="lancamentos");
   t("um único lançamento com as duas pernas", [lanc.length, lanc[0].dados.linhas.length], [1,2]);
   t("não é receita nem despesa", lanc[0].dados.linhas.every(x=>x.k.startsWith("A:")), true);
-  lanca("mesma conta nos dois lados",()=>C.criarTransferencia(L,{origem:a,destino:a,valor:100,data:"2026-09-15"}),"contas diferentes");
+  lanca("mesma conta nos dois lados",()=>C.criarTransferencia(L,{de:a,para:a,valor:100,data:"2026-09-15"}),"contas diferentes");
   integro(L); }
 
 /* ─────────── 11. Estorno ─────────── */
@@ -240,7 +240,7 @@ g("Saldo inicial e ajuste — nunca substituem, sempre acrescentam");
 
 g("Transferência planejada só mexe no saldo quando é feita");
 { const L=novoLivro(); const a=conta(L,"Conta",1000); const r=conta(L,"Reserva",0,"2026-09-01","RESERVA");
-  const m=ex(L,C.criarTransferencia(L,{origem:a,destino:r,valor:R(200),data:"2026-10-05",planejada:true}));
+  const m=ex(L,C.criarTransferencia(L,{de:a,para:r,valor:R(200),data:"2026-10-05",planejada:true}));
   const id=m.gravar.find(x=>x.colecao==="documentos").id;
   t("planejada: nada moveu", [L.saldoConta(a),L.saldoConta(r)], [R(1000),0]);
   ex(L,C.efetivarTransferencia(L,id,{data:"2026-09-26"}));

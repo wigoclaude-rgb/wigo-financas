@@ -1,0 +1,55 @@
+// ============================================================
+// REGRAS DO FIRESTORE — WIGO 3
+// ============================================================
+// Não são publicadas pelo deploy do Netlify. Cole no console:
+//   https://console.firebase.google.com/project/app-fin-ebcfe/firestore/rules
+// ANTES de publicar a versão 3: as regras antigas só permitem users/{uid},
+// e o app novo grava em subcoleções — sem esta troca, nada salva.
+//
+// O que estas regras garantem, sem confiar na tela:
+//  - cada usuário só lê e escreve dentro de users/{seu uid};
+//  - auditoria e pagamentos são só-criação: um pagamento errado se corrige
+//    com um estorno (outro pagamento), nunca editando ou apagando o original;
+//  - nada financeiro é apagado — com UMA exceção: os registros de uma
+//    tentativa de migração que caiu no meio (marcados com _mig), e só
+//    enquanto a migração estiver EM_ANDAMENTO;
+//  - todo registro gravado carrega o próprio id e o carimbo do servidor.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function dono(uid) { return request.auth != null && request.auth.uid == uid; }
+    function carimbado() { return request.resource.data._ts == request.time; }
+    function migracaoEmAndamento(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)/meta/migracao).data.status == 'EM_ANDAMENTO';
+    }
+    function sobraDeMigracao(uid) {
+      return resource.data.get('_mig', null) != null && migracaoEmAndamento(uid);
+    }
+
+    // O documento do 2.2 (JSON único). Continua legível para a migração.
+    match /users/{uid} {
+      allow read, write: if dono(uid);
+    }
+
+    // Registros que nunca mudam depois de criados.
+    match /users/{uid}/{colecao}/{id} {
+      allow read: if dono(uid);
+      allow create: if dono(uid)
+        && colecao in ['contas','parceiros','categorias','cartoes','documentos','pagamentos','lancamentos',
+                       'recorrencias','importacoes','extrato','conciliacoes','meta','auditoria']
+        && (colecao == 'auditoria' || request.resource.data.id == id)
+        && carimbado();
+      allow update: if dono(uid)
+        && !(colecao in ['auditoria','pagamentos'])
+        && request.resource.data.id == resource.data.id
+        && carimbado();
+      allow delete: if dono(uid) && sobraDeMigracao(uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

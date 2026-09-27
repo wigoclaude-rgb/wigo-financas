@@ -23,7 +23,7 @@
    do banco de onde veio. */
 
 import * as Lt from "./leitura.js";
-import { Mudanca, criarDocumento, registrarPagamento, pagarFatura, criarTransferencia } from "../financas/comandos.js";
+import { Mudanca, criarDocumento, registrarPagamento, pagarFatura, criarTransferencia, estornarPagamento, cancelarDocumento } from "../financas/comandos.js";
 import { DOC, K, PREFIXO, ErroFinanceiro } from "../financas/modelo.js";
 import { faturasDoCartao, fatura as faturaDe, faturaDaCompra, datasFatura } from "../financas/cartoes.js";
 import { diasEntre, hoje, mesDe, addMesesMes } from "../nucleo/datas.js";
@@ -100,7 +100,8 @@ function acharCategoria(L,desc,natureza){
 export function analisar(L,{modo,conta,cartao,movs,faturaRef}){
   const dono=modo==="CARTAO"?"card:"+cartao:conta;
   const extratoDono=[...L.extrato.values()].filter(e=>modo==="CARTAO"?e.cartao===cartao:e.conta===conta);
-  const digitais=new Map(extratoDono.filter(e=>e.estado!=="IGNORADA").map(e=>[e.digital,e]));
+  /* linha de importação desfeita não conta: reimportar o arquivo deve trazê-la de volta */
+  const digitais=new Map(extratoDono.filter(e=>e.estado!=="IGNORADA"&&e.estado!=="DESFEITA").map(e=>[e.digital,e]));
   const sinalCompra=modo==="CARTAO"?Lt.sinalFatura(movs):-1;
   const ocorr=new Map();
   const usados=new Set();   // cada movimento do app casa com uma linha só
@@ -274,40 +275,7 @@ export function confirmar(L,{arquivo,formato,modo,conta,cartao,faturaRef,linhas,
       if(acao==="IGNORAR"){ contagem.ignoradas++; ext.estado="IGNORADA"; m.set("extrato",eid,ext); m.marcos.push(m.gravar.length); continue; }
       const imp={lote,linha:eid};
       if(modo==="CONTA"){
-        let lanc=null, linhaIdx=null;
-        if(acao==="VINCULAR"){
-          lanc=m.obter("lancamentos",l.alvo.lancamento); linhaIdx=l.alvo.linha; contagem.vinculadas++;
-        } else if(acao==="QUITAR"){
-          const info=m.infoParcela(l.alvo.parcela);
-          const abs=Math.abs(l.valor), valor=Math.min(abs,info.restante), juros=Math.max(0,abs-info.restante);
-          registrarPagamento(L,{direcao:l.valor>0?"ENTRADA":"SAIDA",data:l.data,conta,forma:l.forma,parceiro:info.doc.parceiro,
-            alocacoes:[{parcela:l.alvo.parcela,valor,juros}],origem:"IMPORTACAO",importacao:imp},m);
-          lanc=m.ultimoLancamento; ext.pagamento=m.ultimoPagamento.id; ext.documento=info.doc.id; contagem.quitadas++;
-        } else if(acao==="PAGAR_FATURA"){
-          pagarFatura(L,{cartao:l.alvo.cartao,ref:l.alvo.ref,valor:-l.valor,data:l.data,conta,origem:"IMPORTACAO",importacao:imp},m);
-          lanc=m.ultimoLancamento; ext.pagamento=m.ultimoPagamento.id; contagem.faturas++;
-        } else if(acao==="TRANSFERIR"){
-          const outra=l.contaDestino; if(!outra) throw new ErroFinanceiro("Escolha a outra conta da transferência.");
-          const d=novoId("d");
-          criarTransferencia(L,{id:d,origem:l.valor<0?conta:outra,destino:l.valor<0?outra:conta,valor:Math.abs(l.valor),
-            data:l.data,descricao:l.descricao,origem:"IMPORTACAO",importacao:imp,silencioso:true},m);
-          lanc=[...m.pend.lancamentos.values()].find(x=>x.documento===d); ext.documento=d; contagem.criadas++;
-        } else {
-          const d=novoId("d");
-          criarDocumento(L,{id:d,tipo:l.valor>0?DOC.RECEBER:DOC.PAGAR,descricao:l.descricao,valor:Math.abs(l.valor),data:l.data,
-            categoria:l.categoria||null,parceiro:l.parceiro||null,forma:l.forma||null,conta,origem:"IMPORTACAO",importacao:imp,
-            silencioso:true,quitar:{data:l.data,conta,forma:l.forma}},m);
-          lanc=m.ultimoLancamento; ext.documento=d; ext.pagamento=m.ultimoPagamento.id; contagem.criadas++;
-        }
-        /* nasce conciliado: o movimento veio do próprio banco */
-        if(lanc){
-          const idx=linhaIdx!=null?linhaIdx:lanc.linhas.findIndex(x=>x.k===K.conta(conta));
-          if(idx>=0){
-            if(lanc.linhas[idx].v!==l.valor) throw new ErroFinanceiro("Valor do movimento difere da linha do banco.");
-            m.set("lancamentos",lanc.id,{...lanc,linhas:lanc.linhas.map((x,j)=>j===idx?{...x,conc:{em:hoje(),extrato:eid,conciliacao:null}}:x)});
-            ext.estado="CONCILIADA"; ext.conciliada={lancamento:lanc.id,linha:idx};
-          }
-        }
+        processarLinhaConta(L,m,l,ext,conta,imp,contagem);
       } else {
         const d=novoId("d");
         if(l.valor<0){
@@ -336,6 +304,100 @@ export function confirmar(L,{arquivo,formato,modo,conta,cartao,faturaRef,linhas,
   m.auditar("IMPORTAR","importacao",lote,null,"Importação de "+(arquivo||"arquivo")+": "+contagem.criadas+" criado(s), "+
     contagem.vinculadas+" já no app, "+contagem.quitadas+" quitado(s), "+contagem.faturas+" fatura(s) paga(s), "+
     (contagem.duplicadas+contagem.ignoradas)+" ignorado(s)");
+  return m.fechar();
+}
+
+
+/* Uma linha do extrato da CONTA vira movimento no livro — usada pela
+   importação e pelo "Lançar" da reconciliação, para as duas decidirem igual.
+   Termina sempre conciliando o movimento com a linha do banco. */
+export function processarLinhaConta(L,m,l,ext,conta,imp,contagem={}){
+  const acao=l.acao; let lanc=null, linhaIdx=null;
+  const conta1=(k)=>{ contagem[k]=(contagem[k]||0)+1; };
+  if(acao==="VINCULAR"){
+    lanc=m.obter("lancamentos",l.alvo.lancamento); linhaIdx=l.alvo.linha; conta1("vinculadas");
+  } else if(acao==="QUITAR"){
+    const info=m.infoParcela(l.alvo.parcela);
+    const abs=Math.abs(l.valor), valor=Math.min(abs,info.restante), juros=Math.max(0,abs-info.restante);
+    registrarPagamento(L,{direcao:l.valor>0?"ENTRADA":"SAIDA",data:l.data,conta,forma:l.forma,parceiro:info.doc.parceiro,
+      alocacoes:[{parcela:l.alvo.parcela,valor,juros}],origem:"IMPORTACAO",importacao:imp},m);
+    lanc=m.ultimoLancamento; ext.pagamento=m.ultimoPagamento.id; ext.documento=info.doc.id; conta1("quitadas");
+  } else if(acao==="PAGAR_FATURA"){
+    pagarFatura(L,{cartao:l.alvo.cartao,ref:l.alvo.ref,valor:-l.valor,data:l.data,conta,origem:"IMPORTACAO",importacao:imp},m);
+    lanc=m.ultimoLancamento; ext.pagamento=m.ultimoPagamento.id; conta1("faturas");
+  } else if(acao==="TRANSFERIR"){
+    const outra=l.contaDestino; if(!outra) throw new ErroFinanceiro("Escolha a outra conta da transferência.");
+    const d=novoId("d");
+    criarTransferencia(L,{id:d,de:l.valor<0?conta:outra,para:l.valor<0?outra:conta,valor:Math.abs(l.valor),
+      data:l.data,descricao:l.descricao,origem:"IMPORTACAO",importacao:imp,silencioso:true},m);
+    lanc=[...m.pend.lancamentos.values()].find(x=>x.documento===d); ext.documento=d; conta1("criadas");
+  } else {
+    const d=novoId("d");
+    criarDocumento(L,{id:d,tipo:l.valor>0?DOC.RECEBER:DOC.PAGAR,descricao:l.descricao,valor:Math.abs(l.valor),data:l.data,
+      categoria:l.categoria||null,parceiro:l.parceiro||null,forma:l.forma||null,conta,origem:"IMPORTACAO",importacao:imp,
+      silencioso:true,quitar:{data:l.data,conta,forma:l.forma}},m);
+    lanc=m.ultimoLancamento; ext.documento=d; ext.pagamento=m.ultimoPagamento.id; conta1("criadas");
+  }
+  /* nasce conciliado: o movimento veio do próprio banco */
+  if(lanc){
+    const idx=linhaIdx!=null?linhaIdx:lanc.linhas.findIndex(x=>x.k===K.conta(conta));
+    if(idx>=0){
+      if(lanc.linhas[idx].v!==l.valor) throw new ErroFinanceiro("Valor do movimento difere da linha do banco.");
+      m.set("lancamentos",lanc.id,{...lanc,linhas:lanc.linhas.map((x,j)=>j===idx?{...x,conc:{em:hoje(),extrato:ext.id,conciliacao:null}}:x)});
+      ext.estado="CONCILIADA"; ext.conciliada={lancamento:lanc.id,linha:idx};
+    }
+  }
+  return ext;
+}
+/* Desfazer uma importação: nada é apagado. O que ela criou é cancelado (com
+   estorno do pagamento), o que ela quitou é estornado, o que ela só
+   conciliou volta a ficar pendente — e as linhas do lote ficam DESFEITA,
+   para que o mesmo arquivo possa ser importado de novo. */
+export function desfazerImportacao(L,loteId){
+  const lote=L.importacoes.get(loteId); if(!lote) throw new ErroFinanceiro("Importação não encontrada.");
+  if(lote.desfeita) throw new ErroFinanceiro("Esta importação já foi desfeita.");
+  const m=new Mudanca(L); m.pendEstornado=new Set();
+  const linhas=[...L.extrato.values()].filter(e=>e.lote===loteId);
+  const docsCriados=[...L.documentos.values()].filter(d=>d.importacao?.lote===loteId&&d.status!=="CANCELADO");
+  const pagsCriados=[...L.pagamentos.values()].filter(p=>p.importacao?.lote===loteId&&!p.estornoDe&&!L.pagamentoEstornado(p));
+  const docIds=new Set(docsCriados.map(d=>d.id));
+  /* pagamentos que quitaram contas que já existiam antes da importação */
+  for(const pg of pagsCriados) if(!pg.alocacoes.every(a=>docIds.has(a.documento)))
+    estornarPagamento(L,pg.id,{motivo:"Importação desfeita",data:pg.data},m);
+  for(const d of docsCriados) cancelarDocumento(L,d.id,{motivo:"Importação desfeita",estornarPagamentos:true},m);
+  for(const e of linhas){
+    if(e.conciliada&&!docIds.has(e.documento)&&!pagsCriados.some(p=>p.id===e.pagamento)){
+      const l=m.obter("lancamentos",e.conciliada.lancamento);
+      if(l) m.set("lancamentos",l.id,{...l,linhas:l.linhas.map((x,i)=>i===e.conciliada.linha?{...x,conc:null}:x)});
+    }
+    m.set("extrato",e.id,{...e,estado:"DESFEITA",conciliada:null});
+  }
+  m.set("importacoes",loteId,{...lote,desfeita:true,desfeitaEm:hoje()});
+  m.auditar("DESFAZER","importacao",loteId,null,"Importação de "+(lote.arquivo||"arquivo")+" desfeita: "+docsCriados.length+" documento(s) cancelado(s)");
+  return m.fechar();
+}
+
+/* reconciliação: lançar uma linha que já está no extrato ("só no banco") */
+export function lancarLinhaExtrato(L,extId,decisao){
+  const e=L.extrato.get(extId); if(!e) throw new ErroFinanceiro("Linha do extrato não encontrada.");
+  const m=new Mudanca(L); const ext={...e};
+  processarLinhaConta(L,m,{...decisao,valor:e.valor,data:e.data,descricao:decisao.descricao||e.descricao},ext,e.conta,{lote:e.lote,linha:e.id});
+  if(ext.estado==="NOVA") ext.estado="LANCADA";
+  m.set("extrato",e.id,ext);
+  m.auditar("LANCAR","extrato",e.id,null,"Lançado da reconciliação: "+(decisao.descricao||e.descricao));
+  return m.fechar();
+}
+/* a mesma análise da importação, para uma linha já guardada */
+export function sugerirParaLinha(L,e){
+  const mov={data:e.data,amount:e.valor/100,desc:e.descricao,descBruta:e.descOriginal,fitid:e.refBanco};
+  const base={i:0,data:e.data,descricao:e.descricao,descOriginal:e.descOriginal,refBanco:e.refBanco,valor:e.valor,
+    estado:"NOVA",acao:"CRIAR",pontos:null,motivo:null,alvo:null};
+  return analisarConta(L,base,{conta:e.conta,mov,usados:new Set()});
+}
+export function ignorarLinhaExtrato(L,extId){
+  const e=L.extrato.get(extId); if(!e) throw new ErroFinanceiro("Linha do extrato não encontrada.");
+  const m=new Mudanca(L); m.set("extrato",e.id,{...e,estado:"IGNORADA"});
+  m.auditar("IGNORAR","extrato",e.id,null,"Linha do extrato ignorada: "+e.descricao);
   return m.fechar();
 }
 

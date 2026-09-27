@@ -54,6 +54,21 @@ g("Caso 9 — importar o mesmo extrato duas vezes não duplica");
   t("saldo igual", L.saldoConta(a), R(1000-45.9+3500-120-120-39.9));
   integro(L); }
 
+g("Importação — desfazer cancela o que criou, estorna o que quitou e libera o arquivo");
+{ const {L,a}=base();
+  const d=L.documentos.get(novoId(ex(L,C.criarDocumento(L,{tipo:"PAGAR",descricao:"Compra do mês",valor:R(120),data:"2026-09-01",primeiroVencimento:"2026-09-12"})),"documentos"));
+  const an=I.analisar(L,{modo:"CONTA",conta:a,movs:csv(EXTRATO)});
+  const m=ex(L,I.confirmar(L,{arquivo:"x.csv",modo:"CONTA",conta:a,linhas:an.linhas}));
+  const lote=novoId(m,"importacoes");
+  t("antes: conta quitada pelo extrato", L.estadoDocumento(d).status, "PAGA");
+  ex(L,I.desfazerImportacao(L,lote));
+  t("saldo volta ao de antes da importação", L.saldoConta(a), R(1000));
+  t("a conta que já existia volta a ficar em aberto (e vencida)", L.estadoDocumento(d).status, "VENCIDA");
+  t("documentos criados ficam cancelados, não apagados", [...L.documentos.values()].filter(x=>x.origem==="IMPORTACAO").every(x=>x.status==="CANCELADO"), true);
+  const an2=I.analisar(L,{modo:"CONTA",conta:a,movs:csv(EXTRATO)});
+  t("reimportar: as linhas voltam como novas", an2.resumo.duplicadas, 0);
+  integro(L); }
+
 g("Importação — sem identificador, duas linhas iguais são duas compras (ocorrência)");
 { const {L,a}=base();
   const txt="Data;Historico;Valor\n12/09/2026;CAFE;-15,00\n12/09/2026;CAFE;-15,00";
@@ -180,11 +195,12 @@ g("Relatórios — todos leem o mesmo livro");
   const sal=[...L.categorias.values()].find(c=>c.nome==="Salário").id, mer=[...L.categorias.values()].find(c=>c.nome==="Mercado").id;
   ex(L,C.criarDocumento(L,{tipo:"RECEBER",descricao:"Salário",valor:R(5000),data:"2026-09-05",categoria:sal,quitar:{data:"2026-09-05",conta:a}}));
   ex(L,C.criarDocumento(L,{tipo:"PAGAR",descricao:"Mercado",valor:R(800),data:"2026-09-06",categoria:mer,quitar:{data:"2026-09-06",conta:a}}));
-  ex(L,C.criarTransferencia(L,{origem:a,destino:res,valor:R(1000),data:"2026-09-07"}));
+  ex(L,C.criarTransferencia(L,{de:a,para:res,valor:R(1000),data:"2026-09-07"}));
   ex(L,C.criarDocumento(L,{tipo:"PAGAR",descricao:"Internet",valor:R(100),data:"2026-09-20",primeiroVencimento:"2026-09-30"}));
   ex(L,C.criarDocumento(L,{tipo:"RECEBER",descricao:"Freela",valor:R(300),data:"2026-09-20",primeiroVencimento:"2026-10-10"}));
   const fc=Rel.fluxoDeCaixa(L,{de:"2026-09-01",ate:"2026-09-30"})[0];
-  t("fluxo: entradas incluem abertura e salário", fc.entradas, R(6000));
+  t("fluxo: saldo inicial não é entrada — só o salário", fc.entradas, R(5000));
+  t("mas o saldo inicial do mês parte dele", fc.saldoInicial, 0);
   t("saídas 800, para reservas 1.000", [fc.saidas,fc.paraReservas], [R(800),R(1000)]);
   t("saldo final do fluxo = saldo disponível", fc.saldoFinal, L.saldoDisponivel("2026-09-30"));
   const prev=Rel.saldoPrevistoDoMes(L);
