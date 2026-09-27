@@ -337,6 +337,11 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
 
 ---
 
+## Com o usuário
+
+**Fale SEMPRE em português com o usuário** — respostas, perguntas, avisos e
+resumos. Pedido explícito dele.
+
 ## Convenções do código
 
 - **Tudo em português**: nomes, funções, comentários.
