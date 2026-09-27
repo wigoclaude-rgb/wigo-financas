@@ -38,8 +38,12 @@ tela("ajustes",{titulo:"Ajustes",render(app){
       <div class="btns"><button class="btn sec" data-a="ver-migracao">Relatório da migração</button><button class="btn sec" data-a="novidades">O que mudou</button></div></div>
   </div>
   <div class="card pad" style="margin-top:14px"><h2 class="t2" style="margin-bottom:6px">Conta</h2>
-    <div class="fraco" style="margin-bottom:14px">${app.usuario?.email||""}</div>
-    <button class="btn sec" data-a="sair">Sair</button></div>`;
+    <div class="fraco" style="margin-bottom:6px">${app.usuario?.email||""}</div>
+    ${(()=>{ const pv=(app.usuario?.providerData||[]).map(p=>p.providerId), google=pv.includes("google.com");
+      const nomes=[pv.includes("password")?"e-mail e senha":null,google?"Google":null].filter(Boolean);
+      return h`<div class="fraco peq" style="margin-bottom:14px">${nomes.length?"Entra com: "+nomes.join(" e "):""}</div>
+        <div class="btns">${google?"":h`<button class="btn sec" data-a="conta-google">${I("link","p")} Conectar conta Google</button>`}
+        <button class="btn sec" data-a="sair">Sair</button></div>`; })()}</div>`;
 }});
 acao("tema",el=>{ const v=el.dataset.v; try{ localStorage.setItem("wigo3.tema",v); }catch{}
   if(v==="sistema") delete document.documentElement.dataset.tema; else document.documentElement.dataset.tema=v; render(); });

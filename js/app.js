@@ -2,7 +2,7 @@
    Login → carregar (e migrar o 2.2, se for a primeira vez) → desenhar.
    As telas se registram sozinhas ao serem importadas. */
 import { auth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  sendPasswordResetEmail, signOut } from "./dados/firebase.js";
+  sendPasswordResetEmail, signOut, GoogleAuthProvider, signInWithPopup, linkWithPopup, linkWithCredential } from "./dados/firebase.js";
 import { Livro } from "./financas/livro.js";
 import { Repositorio } from "./dados/repositorio.js";
 import { gerarPendentes } from "./financas/recorrencias.js";
@@ -136,16 +136,20 @@ acao("busca-ir",el=>{
 
 /* ── login ── */
 let modoLogin="entrar";
-function telaLogin(msg=""){
+/* O "G" do Google, nas cores da marca, como o Google pede no botão de login */
+const LOGO_G=raw('<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>');
+function telaLogin(msg="",{tipo="ruim",email=""}={}){
   document.getElementById("raiz").innerHTML=String(h`<div class="entrar"><form class="card" data-f="login">
     <div class="marca" style="margin-bottom:4px">WIG<b>O</b></div>
     <div class="fraco" style="margin-bottom:22px">Seu sistema financeiro pessoal.</div>
     <div class="seg larg" style="margin-bottom:18px">
       <button type="button" class="${modoLogin==="entrar"?"on":""}" data-a="login-modo" data-v="entrar">Entrar</button>
       <button type="button" class="${modoLogin==="criar"?"on":""}" data-a="login-modo" data-v="criar">Criar conta</button></div>
-    <div class="campo"><label for="lgEmail">E-mail</label><input id="lgEmail" name="email" type="email" autocomplete="email" required></div>
+    <button type="button" class="btn sec larg" data-a="login-google" style="gap:10px">${LOGO_G} ${modoLogin==="entrar"?"Entrar com Google":"Criar conta com Google"}</button>
+    <div class="fraco peq" style="text-align:center;margin:16px 0">ou com e-mail e senha</div>
+    <div class="campo"><label for="lgEmail">E-mail</label><input id="lgEmail" name="email" type="email" autocomplete="email" required value="${email}"></div>
     <div class="campo"><label for="lgSenha">Senha</label><input id="lgSenha" name="senha" type="password" autocomplete="${modoLogin==="entrar"?"current-password":"new-password"}" required minlength="6"></div>
-    ${msg?h`<div class="aviso ruim" style="margin-bottom:14px">${I("alert")}<div>${msg}</div></div>`:""}
+    ${msg?h`<div class="aviso ${tipo}" style="margin-bottom:14px">${I(tipo==="info"?"link":"alert")}<div>${msg}</div></div>`:""}
     <button class="btn larg" type="submit">${modoLogin==="entrar"?"Entrar":"Criar conta"}</button>
     ${modoLogin==="entrar"?h`<div style="text-align:center;margin-top:14px"><button type="button" class="link" data-a="login-esqueci">Esqueci a senha</button></div>`:""}
   </form></div>`);
@@ -153,13 +157,55 @@ function telaLogin(msg=""){
 const ERROS={"auth/invalid-email":"E-mail inválido.","auth/user-not-found":"Nenhuma conta com esse e-mail.","auth/wrong-password":"Senha incorreta.",
   "auth/invalid-credential":"E-mail ou senha incorretos.","auth/email-already-in-use":"Já existe uma conta com esse e-mail.",
   "auth/weak-password":"Senha muito fraca (mínimo 6 caracteres).","auth/too-many-requests":"Muitas tentativas. Aguarde e tente de novo.",
-  "auth/network-request-failed":"Sem conexão. Verifique sua internet."};
+  "auth/network-request-failed":"Sem conexão. Verifique sua internet.",
+  "auth/popup-blocked":"O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente de novo.",
+  "auth/operation-not-allowed":"O login com Google ainda não foi ativado no Firebase (Authentication → Método de login).",
+  "auth/unauthorized-domain":"Este endereço ainda não está autorizado no Firebase (Authentication → Configurações → Domínios autorizados).",
+  "auth/credential-already-in-use":"Essa conta Google já é o login de outro usuário do WIGO. Use outra conta Google.",
+  "auth/provider-already-linked":"Sua conta já está ligada a uma conta Google.",
+  "auth/user-disabled":"Esta conta foi desativada."};
+
+/* Entrar com Google. Janela (popup), não redirecionamento: o redirecionamento
+   precisa que o site e o authDomain (app-fin-ebcfe.firebaseapp.com) sejam o
+   mesmo domínio, e com o site no Netlify o Safari e o Chrome novos perdem o
+   retorno do login.
+
+   Quem já tem conta com senha continua sendo o MESMO usuário — é isso que
+   mantém os dados, que ficam em users/{uid}. Num @gmail.com o próprio
+   Firebase junta as duas formas de entrar. Num e-mail que não é do Google
+   (Hotmail, por exemplo) ele recusa com account-exists-with-different-credential:
+   aí o app guarda a credencial do Google, pede a senha uma vez e liga as duas.
+   Criar um usuário novo nesse caso abriria o app vazio para a pessoa. */
+let googlePendente=null;
+const provedorGoogle=()=>{ const p=new GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"}); return p; };
+const cancelouJanela=e=>e.code==="auth/popup-closed-by-user"||e.code==="auth/cancelled-popup-request";
+acao("login-google",async()=>{
+  try{ await signInWithPopup(auth,provedorGoogle()); }
+  catch(e){
+    if(cancelouJanela(e)) return;
+    if(e.code==="auth/account-exists-with-different-credential"){
+      googlePendente=GoogleAuthProvider.credentialFromError(e); modoLogin="entrar";
+      telaLogin("Esse e-mail já tem conta no WIGO, com senha. Entre com a senha só desta vez: a conta Google fica ligada a ela e, das próximas vezes, basta tocar em Entrar com Google.",
+        {tipo:"info",email:e.customData?.email||""});
+      return; }
+    telaLogin(ERROS[e.code]||("Erro: "+(e.code||e.message)));
+  }
+});
+/* Em Ajustes: ligar o Google a uma conta que hoje entra com senha */
+acao("conta-google",async()=>{
+  try{ const r=await linkWithPopup(auth.currentUser,provedorGoogle()); app.usuario=r.user; render(); toast("Conta Google ligada. Você pode entrar com ela a partir de agora."); }
+  catch(e){ if(!cancelouJanela(e)) toast(ERROS[e.code]||("Erro: "+(e.code||e.message)),{erro:true}); }
+});
 acao("login-modo",el=>{ modoLogin=el.dataset.v; telaLogin(); });
 form("login",async(f,d)=>{
   const email=d.get("email"), senha=d.get("senha");
   f.querySelector("button[type=submit]").disabled=true;
-  try{ if(modoLogin==="entrar") await signInWithEmailAndPassword(auth,email,senha); else await createUserWithEmailAndPassword(auth,email,senha); }
-  catch(e){ telaLogin(ERROS[e.code]||("Erro: "+(e.code||e.message))); }
+  let r;
+  try{ r=modoLogin==="entrar"?await signInWithEmailAndPassword(auth,email,senha):await createUserWithEmailAndPassword(auth,email,senha); }
+  catch(e){ telaLogin(ERROS[e.code]||("Erro: "+(e.code||e.message)),{email}); return; }
+  if(googlePendente){ const cred=googlePendente; googlePendente=null;
+    try{ await linkWithCredential(r.user,cred); toast("Conta Google ligada. Das próximas vezes, entre com o Google."); }
+    catch(e){ toast("Não deu para ligar a conta Google: "+(ERROS[e.code]||e.code||e.message),{erro:true}); } }
 });
 acao("login-esqueci",async()=>{ const email=document.getElementById("lgEmail").value;
   if(!email){ telaLogin("Digite seu e-mail e toque em \"Esqueci a senha\"."); return; }

@@ -29,17 +29,19 @@ e é público de propósito (ver "Netlify e repositório").
 ```bash
 node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno… (108)
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
-node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (72)
+node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (77)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (32)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (67)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (95)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
 Os de Node não precisam de nada instalado. Os de navegador usam o Playwright e o
 Chromium do ambiente (`tests/navegador.mjs`): sobem um `http.server` na porta
 8130 e trocam as URLs do Firebase no `gstatic.com` pelos simulados em
-`tests/stub-firebase/`. **O Firestore simulado não aplica as regras** — regra se
-confere no console (ou no emulador, que não está configurado).
+`tests/stub-firebase/`. **O Firestore simulado reproduz `firestore.rules`**
+(`recusa()` em `tests/stub-firebase/firebase-firestore.js`): gravação que o
+servidor recusaria falha no teste também. Mudou a regra? Mude lá junto. Não é
+o emulador oficial — é a mesma lógica, reescrita.
 
 Os 12 cenários obrigatórios da especificação estão cobertos: 1–8 e 11 em
 `motor.test.mjs`; 9 (reimportar não duplica) e 10 (diferença de R$ 200
@@ -256,6 +258,24 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
 - **Depois de migrar, o 2.2 não conversa mais com a 3.** Lançar em
   `legado/wigo-2.2.html` depois disso muda só o JSON antigo, que a 3 não relê.
 
+### Login
+
+- **E-mail e senha, ou Google.** O Google abre em janela (popup), nunca por
+  redirecionamento: o redirecionamento exige que o site e o `authDomain`
+  (`app-fin-ebcfe.firebaseapp.com`) sejam o mesmo domínio, e com o site no
+  Netlify o Safari e o Chrome novos perdem o retorno do login.
+- **Quem já tem conta continua sendo o MESMO usuário** — os dados ficam em
+  `users/{uid}`, e um uid novo abriria o app vazio.
+  - Num @gmail.com o Firebase junta sozinho as duas formas de entrar. Se o
+    e-mail nunca foi confirmado, o Firebase **desliga a senha antiga**
+    (proteção contra roubo de conta): a pessoa passa a entrar pelo Google, ou
+    usa "Esqueci a senha" para ter senha de novo. Os dados não mudam.
+  - Num e-mail que não é do Google (Hotmail, por exemplo), o Firebase recusa
+    com `account-exists-with-different-credential`. O app guarda a credencial
+    do Google, pede a senha uma vez e liga as duas (`linkWithCredential`).
+- Ajustes → Conta mostra por onde a pessoa entra e oferece "Conectar conta
+  Google" (`linkWithPopup`) para quem hoje entra só com senha.
+
 ### Interface
 
 - **Rotas por hash** (`#/pagar`, `#/faturas/<cartao>/<AAAA-MM>`); o botão voltar
@@ -360,4 +380,10 @@ ver localmente antes. `main` continua no 2.2.
    que o app grava:
    - nenhum delete fora da migração;
    - pagamentos e auditoria são só criados.
-3. Decidir o destino de `stalwart-capibara-312533` no Netlify.
+3. **Para o login com Google funcionar** (sem isso o botão mostra a
+   mensagem de onde ativar):
+   - Authentication → **Método de login** → Adicionar novo provedor →
+     **Google** → Ativar → e-mail de suporte → Salvar;
+   - Authentication → **Configurações → Domínios autorizados** → adicionar
+     `fastidious-hamster-2b9ffd.netlify.app`.
+4. Decidir o destino de `stalwart-capibara-312533` no Netlify.

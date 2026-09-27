@@ -268,5 +268,42 @@ g("regras: recusam o proibido, e uma migração que caiu no meio se refaz");
   t("sem erro de JS", erros.filter(e=>!/permission|Missing or insufficient/i.test(e)), []);
   await ctx.close(); }
 
+/* ─────────── 16. entrar com Google ─────────── */
+g("Google: entra, liga à conta que já tem senha e conecta em Ajustes");
+{ ({p,erros,ctx}=await abrir({usuario:null,hoje:HOJE}));
+  await p.waitForSelector('[data-a="login-google"]',{timeout:15000});
+  t("tela de login oferece o Google", /Entrar com Google/.test(await p.textContent("#raiz")), true);
+  await p.evaluate(()=>{ window.__googleErro="auth/operation-not-allowed"; });
+  await p.click('[data-a="login-google"]'); await p.waitForTimeout(300);
+  t("Google desligado no Firebase: diz onde ativar", /ainda não foi ativado/.test(await p.textContent("#raiz")), true);
+  await p.evaluate(()=>{ window.__googleErro=null; });
+  await p.click('[data-a="login-google"]'); await p.waitForSelector("#conteudo .hero",{timeout:15000});
+  t("conta nova pelo Google abre o app", await p.evaluate(()=>window.__app.usuario.uid), "u-google");
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+{ /* e-mail que não é do Google, com conta de senha e os dados do 2.2 */
+  ({p,erros,ctx}=await abrir({usuario:null,legado:null,fs:{"users/u1":{data:JSON.stringify(legadoDemo("2026-09-27"))}},hoje:HOJE}));
+  await p.waitForSelector('[data-a="login-google"]',{timeout:15000});
+  await p.evaluate(()=>{ window.__googleConflito="voce@hotmail.com"; });
+  await p.click('[data-a="login-google"]'); await p.waitForTimeout(300);
+  t("pede a senha uma vez e explica por quê", /Entre com a senha só desta vez/.test(await p.textContent("#raiz")), true);
+  t("o e-mail já vem preenchido", await p.inputValue("#lgEmail"), "voce@hotmail.com");
+  await p.fill("#lgSenha","123456"); await p.click('form[data-f="login"] button[type="submit"]');
+  await p.waitForSelector("#painel.on",{timeout:15000});
+  t("é o MESMO usuário: os dados do 2.2 vieram", /Tudo conferido/.test(await p.textContent("#painel")), true);
+  t("e a conta Google ficou ligada a ele", await p.evaluate(()=>window.__vinculado===true), true);
+  await p.click('#painel [data-a="painel-fechar"]'); await ir(p,"ajustes");
+  t("Ajustes mostra as duas formas de entrar", /Entra com: e-mail e senha e Google/.test(await p.textContent("#conteudo")), true);
+  t("e não oferece conectar de novo", await p.locator('[data-a="conta-google"]').count(), 0);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+{ ({p,erros,ctx}=await abrir({usuario:{uid:"u9",email:"voce@exemplo.com",providerData:[{providerId:"password"}]},hoje:HOJE}));
+  await p.waitForSelector("#conteudo .hero",{timeout:15000}); await ir(p,"ajustes");
+  t("Ajustes oferece conectar o Google", await p.locator('[data-a="conta-google"]').count(), 1);
+  t("conectado", await enviar(p,'[data-a="conta-google"]'), "Conta Google ligada. Você pode entrar com ela a partir de agora.");
+  t("o botão some depois de ligar", await p.locator('[data-a="conta-google"]').count(), 0);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
 await encerrar();
 fim();
