@@ -107,7 +107,11 @@ export function abrirPainel({titulo,sub="",corpo,rodape="",estreito=false,id=nul
   p.classList.add("on"); document.getElementById("veu").classList.add("on");
   app.painelAberto=id;
   const f=p.querySelector("input:not([type=hidden]):not([readonly]),select,textarea");
-  if(f&&window.matchMedia("(min-width:1024px)").matches) setTimeout(()=>f.focus(),60);
+  /* o cursor vai para o primeiro campo — a não ser que já esteja em outro
+     do painel: sem essa conferência, quem começava a digitar (ou o
+     preenchimento automático) nos primeiros 60 ms tinha o texto jogado no
+     campo errado. O e2e pegou: o "600" do Valor ia parar na Descrição. */
+  if(f&&window.matchMedia("(min-width:1024px)").matches) setTimeout(()=>{ if(!p.contains(document.activeElement)) f.focus(); },60);
 }
 export function fecharPainel(){
   document.getElementById("painel").classList.remove("on"); document.getElementById("veu").classList.remove("on");

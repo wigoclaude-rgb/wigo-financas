@@ -588,5 +588,17 @@ g("Visão geral mês a mês (‹ mês › do 2.2) e Poupança e investimentos");
   t("sem erro de JS", erros, []);
   await ctx.close(); }
 
+/* ─────────── 24. abrir rápido com internet de celular ─────────── */
+g("abrir o app com internet lenta: as coleções vêm juntas, não em fila");
+{ ({p,erros,ctx}=await abrir({legado:legadoDemo("2026-09-27"),hoje:HOJE,globais:{__latenciaLeitura:400}}));
+  await p.waitForSelector("#painel.on",{timeout:30000}); await p.click('#painel [data-a="painel-fechar"]');
+  /* em fila eram 13 idas e voltas (5,5 s com 0,4 s cada); juntas, uma */
+  const medir=async()=>{ const t0=Date.now(); await p.reload(); await p.waitForSelector("#conteudo .hero",{timeout:30000}); return Date.now()-t0; };
+  const ms1=await medir(), ms2=await medir();
+  t(`abre em menos de 2,5 s com 0,4 s por ida ao servidor (${ms1} ms e ${ms2} ms)`, ms1<2500&&ms2<2500, true);
+  t("e continua lendo só o que mudou (nada, na segunda vez)", await p.evaluate(()=>window.__leituras), 0);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
 await encerrar();
 fim();

@@ -6,7 +6,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
   sendPasswordResetEmail, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider,
   GoogleAuthProvider, signInWithPopup, linkWithPopup, linkWithCredential, useDeviceLanguage }
   from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, collection,
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocFromCache, collection,
   getDocs, getDocsFromCache, query, where, writeBatch, serverTimestamp, Timestamp }
   from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
@@ -32,4 +32,4 @@ export const db=_db;
 export { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,
   signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider,
   GoogleAuthProvider, signInWithPopup, linkWithPopup, linkWithCredential,
-  doc, getDoc, collection, getDocs, getDocsFromCache, query, where, writeBatch, serverTimestamp, Timestamp };
+  doc, getDoc, getDocFromCache, collection, getDocs, getDocsFromCache, query, where, writeBatch, serverTimestamp, Timestamp };

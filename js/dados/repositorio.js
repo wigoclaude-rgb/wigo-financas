@@ -20,7 +20,7 @@
    50 mil leituras por dia). Nada financeiro é apagado, então "o que mudou"
    sempre aparece nessa consulta. */
 
-import { db, doc, getDoc, collection, getDocs, getDocsFromCache, query, where, writeBatch, serverTimestamp, Timestamp } from "./firebase.js";
+import { db, doc, getDoc, getDocFromCache, collection, getDocs, getDocsFromCache, query, where, writeBatch, serverTimestamp, Timestamp } from "./firebase.js";
 import { COLECOES } from "../financas/livro.js";
 import { migrarLegado, temLegado, VERSAO_DADOS } from "./migracao.js";
 import { novoId } from "../nucleo/ids.js";
@@ -53,7 +53,14 @@ export class Repositorio{
 
   async carregar(uid,{aoMigrar}={}){
     this.uid=uid; let nova=false;
-    const marca=await getDoc(ref(uid,"meta","migracao")).catch(e=>{ throw traduzir(e); });
+    /* Migração concluída não volta atrás: se o aparelho já sincronizou e o
+       cache diz CONCLUIDA, não precisa perguntar ao servidor — era uma ida
+       e volta a mais em toda abertura. */
+    let marca=null, ultima=0;
+    try{ ultima=+localStorage.getItem(chaveSync(uid))||0; }catch{}
+    if(ultima){ try{ marca=await getDocFromCache(ref(uid,"meta","migracao")); }catch{ marca=null; } }
+    if(!(marca&&marca.exists()&&marca.data().status==="CONCLUIDA"))
+      marca=await getDoc(ref(uid,"meta","migracao")).catch(e=>{ throw traduzir(e); });
     const status=marca.exists()?marca.data().status:null;
     if(status!=="CONCLUIDA"){
       const legado=await getDoc(doc(db,"users",uid)).catch(e=>{ throw traduzir(e); });
@@ -78,7 +85,10 @@ export class Repositorio{
     return {migrou:false};
   }
 
-  /* cache do aparelho + o que mudou no servidor desde a última vez */
+  /* cache do aparelho + o que mudou no servidor desde a última vez.
+     As coleções vão TODAS AO MESMO TEMPO: uma depois da outra eram 12 idas
+     e voltas ao servidor em fila — no celular, 4 a 6 segundos para abrir
+     mesmo sem nada novo. Juntas, custam o tempo de uma. */
   async sincronizar(){
     const uid=this.uid, dados={};
     let ultima=0; try{ ultima=+localStorage.getItem(chaveSync(uid))||0; }catch{}
@@ -86,7 +96,7 @@ export class Repositorio{
     /* cache frio (aparelho novo, dados do navegador limpos): lê tudo */
     let quente=false;
     if(ultima){ try{ quente=(await getDocsFromCache(colRef(uid,"meta"))).size>0; }catch{ quente=false; } }
-    for(const col of CARREGAR){
+    await Promise.all(CARREGAR.map(async col=>{
       const mapa=new Map();
       let doCache=false;
       if(quente){
@@ -97,7 +107,7 @@ export class Repositorio{
       const s=await getDocs(q).catch(e=>{ throw traduzir(e); });
       s.forEach(d=>{ const v=d.data(); mapa.set(d.id,v); const ms=v._ts?.toMillis?.()||0; if(ms>maior) maior=ms; });
       dados[col]=[...mapa.values()].map(limpar);
-    }
+    }));
     this.L.carregar(dados);
     try{ if(maior) localStorage.setItem(chaveSync(uid),String(maior)); }catch{}
   }

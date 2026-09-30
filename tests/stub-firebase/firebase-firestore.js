@@ -19,10 +19,15 @@ export function where(field,op,value){ return {field,op,value}; }
 export function query(col,...ws){ return {path:col.path,ws}; }
 const clone=v=>v==null?v:JSON.parse(JSON.stringify(v),(k,x)=>x&&x.__tsms!=null?new Timestamp(x.__tsms):x);
 function snapDoc(path,dados){ return {id:path.split("/").pop(),ref:{path},exists:()=>dados!==undefined,data:()=>clone(dados)}; }
-export async function getDoc(ref){ const d=fs().get(ref.path); return snapDoc(ref.path,d); }
+/* __latenciaLeitura: cada ida ao servidor demora isso (ms), como num
+   celular. O cache do aparelho responde na hora. */
+const rede=()=>window.__latenciaLeitura?new Promise(r=>setTimeout(r,window.__latenciaLeitura)):null;
+export async function getDoc(ref){ await rede(); const d=fs().get(ref.path); return snapDoc(ref.path,d); }
+export async function getDocFromCache(ref){ const d=fs().get(ref.path); if(d===undefined){ const e=new Error("Failed to get document from cache."); e.code="unavailable"; throw e; } return snapDoc(ref.path,d); }
 function cmp(a,op,b){ const va=a instanceof Timestamp?a.ms:(a&&a.__tsms!=null?a.__tsms:a), vb=b instanceof Timestamp?b.ms:b;
   if(op===">") return va>vb; if(op==="==") return va===vb; if(op==="in") return b.includes(a); if(op==="<") return va<vb; return false; }
-export async function getDocs(q){
+export async function getDocs(q){ await rede(); return ler(q); }
+function ler(q){
   const pref=q.path+"/", out=[];
   for(const [p,d] of fs()){ if(!p.startsWith(pref)||p.slice(pref.length).includes("/")) continue;
     if((q.ws||[]).every(w=>cmp(d[w.field],w.op,w.value))) out.push(snapDoc(p,d)); }
@@ -30,7 +35,7 @@ export async function getDocs(q){
   return {size:out.length,docs:out,forEach:f=>out.forEach(f),empty:!out.length};
 }
 /* o cache não conta como leitura cobrada */
-export async function getDocsFromCache(q){ const antes=window.__leituras; const r=await getDocs(q); window.__leituras=antes; return r; }
+export async function getDocsFromCache(q){ const antes=window.__leituras; const r=ler(q); window.__leituras=antes; return r; }
 /* As regras de firestore.rules, reproduzidas aqui: uma gravação que o
    servidor de verdade recusaria falha também no teste (permission-denied).
    Como no Firestore, cada escrita do lote é julgada contra o estado de

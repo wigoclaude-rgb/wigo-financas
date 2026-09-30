@@ -31,7 +31,7 @@ node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, e
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
 node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (78)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (40)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (191)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (194)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -97,6 +97,13 @@ depois da última visita (`localStorage wigo3.sync.<uid>`). Recarregar sem mudan
 custa zero leituras — testado no e2e. A cota grátis é de 50 mil leituras/dia.
 A migração grava essa marca ao terminar; sem isso, a primeira abertura depois
 dela relia tudo do servidor.
+
+**As coleções são pedidas ao servidor todas ao mesmo tempo** (`Promise.all`
+em `sincronizar`), e a marca de migração CONCLUIDA vem do cache quando o
+aparelho já sincronizou. Antes eram 13 idas e voltas em fila: no celular o
+app levava 4 a 6 s para abrir mesmo sem nada novo (reclamação do usuário em
+30/09). O e2e mede com `__latenciaLeitura` (atraso por leitura no Firestore
+simulado): 5,5 s → 1 s.
 
 ### Chaves do razão
 
@@ -462,6 +469,10 @@ Roda sozinha no primeiro login da versão 3, se `meta/migracao` não diz CONCLUI
   mesma classe, e todo botão secundário ganhava 22 px de margem.
 - **Filho de grade com coluna definida mede `position:absolute` pela coluna**, não
   pela linha. Por isso a caixa de seleção do cartão-linha tem `grid-column:auto`.
+- **O painel só põe o cursor no primeiro campo se ele ainda não estiver em
+  outro campo do painel** (60 ms depois de abrir). Sem isso, quem digitava
+  ou usava o preenchimento automático logo de cara tinha o texto jogado no
+  campo errado — o e2e falhava de vez em quando com o Valor vazio.
 - **Painel fechado tem `visibility:hidden`.** Só deslizar para fora deixava o
   conteúdo alcançável pelo Tab.
 - **Gráficos:**
