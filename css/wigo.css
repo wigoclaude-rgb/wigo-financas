@@ -443,3 +443,13 @@ table.tab{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
    quebra, senão o "de João" era o primeiro a sumir nas reticências */
 .tab .sub:has(.terc){white-space:normal}
 .vinculo{background:var(--s2)}
+
+/* ── seletor de mês da Visão geral (o do 2.2) ── */
+.mpick{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 14px}
+.mpick .seta{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--s1);display:grid;place-items:center;color:var(--ink2);flex:none}
+.mpick .seta .esq{transform:rotate(180deg)}
+.mpick .cur{display:flex;flex-direction:column;align-items:center;min-width:190px;padding:4px 12px;border-radius:12px;line-height:1.25}
+.mpick .cur b{font-size:17px;font-weight:700}
+.mpick .cur b::first-letter{text-transform:uppercase}
+.mpick .cur small{font-size:11.5px;color:var(--ink3)}
+

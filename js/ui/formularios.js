@@ -13,6 +13,7 @@ import { faturaDaCompra, datasFatura, fatura as faturaDe } from "../financas/car
 import { centavos, numero, dividir, soma } from "../nucleo/dinheiro.js";
 import { hoje, mesDe, addMesesMes } from "../nucleo/datas.js";
 import { normalizar } from "../nucleo/texto.js";
+import { PRODUTOS, INDEXADORES, perfil as perfilInvest } from "../financas/investimentos.js";
 import { iniciarTerceiro, blocoTerceiro, atualizarTerceiro, terceiroAtivo, terceiroMudou, nomePessoa, specTerceiro, problemaTerceiro } from "./terceiro.js";
 
 const campo=(rot,conteudo,ajuda="")=>h`<div class="campo"><label>${rot}</label>${conteudo}${ajuda?h`<span class="ajuda">${ajuda}</span>`:""}</div>`;
@@ -311,21 +312,46 @@ const seletorCor=v=>h`<div class="chips">${juntar(cores,c=>h`<label style="curso
   <span class="ponto" style="width:26px;height:26px;border-radius:8px;display:inline-block;background:${c};outline:${c===v?"2px solid var(--ink)":"none"};outline-offset:2px"></span></label>`)}</div>`;
 acao("conta-nova",()=>formConta(null));
 acao("conta-editar",el=>formConta(app.L.contas.get(el.dataset.id)));
-function formConta(c){
-  abrirPainel({titulo:c?"Editar conta":"Nova conta",estreito:true,id:"conta",corpo:h`<form data-f="conta" data-id="${c?.id||""}">
-    ${campo("Nome",h`<input name="nome" required value="${c?.nome||""}" placeholder="Ex.: Nubank">`)}
-    <div class="linha2">${campo("Tipo",h`<select name="tipo" data-c="conta-tipo">${juntar(Object.entries(TIPO_CONTA),([k,v])=>h`<option value="${k}"${k===(c?.tipo||"BANCO")?raw(" selected"):""}>${v}</option>`)}</select>`)}
-      ${campo("Instituição",h`<input name="instituicao" value="${c?.instituicao||""}" placeholder="Opcional">`)}</div>
-    ${!c?h`<div class="linha2">${campo("Saldo inicial",valorInput("saldo",0),"O que tinha na conta na data de abertura.")}${campo("Data de abertura",h`<input type="date" name="abertura" value="${hoje().slice(0,8)+"01"}">`)}</div>`:""}
-    <div id="contaReserva" ${(c?.tipo||"BANCO")==="RESERVA"?"":"hidden"}>
-      <div class="linha3">${campo("Meta",valorInput("alvo",c?.reserva?.alvo))}${campo("Aporte mensal",valorInput("aporte",c?.reserva?.aporte))}${campo("% do CDI",h`<input name="cdi" inputmode="decimal" value="${c?.reserva?.cdi||""}">`)}</div></div>
+function formConta(c,preset={}){
+  const tipo=c?.tipo||preset.tipo||"BANCO", reserva=tipo==="RESERVA";
+  abrirPainel({titulo:c?"Editar conta":reserva?"Nova poupança ou investimento":"Nova conta",estreito:true,id:"conta",corpo:h`<form data-f="conta" data-id="${c?.id||""}" id="fConta">
+    ${campo("Nome",h`<input name="nome" required value="${c?.nome||""}" placeholder="${reserva?"Ex.: Reserva de emergência, Viagem, Tesouro":"Ex.: Nubank"}">`)}
+    <div class="linha2">${campo("Tipo",h`<select name="tipo" data-c="conta-tipo">${juntar(Object.entries(TIPO_CONTA),([k,v])=>h`<option value="${k}"${k===tipo?raw(" selected"):""}>${v}</option>`)}</select>`)}
+      ${campo("Instituição",h`<input name="instituicao" value="${c?.instituicao||""}" placeholder="${reserva?"Ex.: Nubank Caixinha, Inter…":"Opcional"}">`)}</div>
+    ${!c?h`<div class="linha2">${campo(reserva?"Quanto já tem guardado":"Saldo inicial",valorInput("saldo",0),"O que tinha na conta no início dessa data, antes de tudo que você vai lançar ou importar a partir dela.")}${campo("Data de abertura",h`<input type="date" name="abertura" value="${hoje().slice(0,8)+"01"}">`)}</div>`:""}
+    <div id="contaReserva" ${reserva?"":"hidden"}>
+      <div class="linha2">${campo("Meta (opcional)",valorInput("alvo",c?.reserva?.alvo),"Quanto quer juntar.")}${campo("Guardar por mês",valorInput("aporte",c?.reserva?.aporte))}</div>
+      <div id="contaInvest">${camposInvest(perfilInvest(c||{reserva:{produto:"POUPANCA"}}))}</div></div>
     ${campo("Cor",seletorCor(c?.cor||cores[0]))}
     ${campo("Observação",h`<textarea name="obs" rows="2">${c?.obs||""}</textarea>`)}
     <button class="btn larg" type="submit">${c?"Salvar":"Criar conta"}</button></form>`});
 }
+app.formConta=formConta;
+/* Como o investimento rende: o tipo (poupança, CDB, Tesouro…) diz quais
+   indexadores cabem; a taxa muda de rótulo conforme o indexador. As contas
+   do 2.2 sem tipo aparecem como "Outro · % do CDI". */
+function camposInvest(pf){
+  const grupos=[...new Set(Object.values(PRODUTOS).map(x=>x.grupo))];
+  const aceitos=PRODUTOS[pf.produto].idx;
+  const rotTaxa={CDI:["Quanto do CDI (%)","100","Ex.: CDB que rende 110% do CDI → 110."],SELIC:["Quanto da Selic (%)","100",""],
+    PRE:["Taxa ao ano (%)","12,5","A taxa prefixada contratada."],IPCA:["IPCA + (% ao ano)","6","Ex.: Tesouro IPCA+ 2035 a IPCA + 6,5% → 6,5."]}[pf.indexador];
+  return h`${campo("Tipo de investimento",h`<select name="produto" data-c="conta-invest">${juntar(grupos,g=>h`<optgroup label="${g}">${juntar(Object.entries(PRODUTOS).filter(([,x])=>x.grupo===g),([k,x])=>h`<option value="${k}"${k===pf.produto?raw(" selected"):""}>${x.rot}</option>`)}</optgroup>`)}</select>`)}
+    ${aceitos.length>1?campo("Rende por",h`<select name="indexador" data-c="conta-invest">${juntar(aceitos,k=>h`<option value="${k}"${k===pf.indexador?raw(" selected"):""}>${INDEXADORES[k]}</option>`)}</select>`):h`<input type="hidden" name="indexador" value="${aceitos[0]}">`}
+    ${rotTaxa?campo(rotTaxa[0],h`<input name="taxa" inputmode="decimal" placeholder="${rotTaxa[1]}" value="${pf.taxa?String(pf.taxa).replace(".",","):""}">`,rotTaxa[2])
+      :pf.indexador==="POUPANCA"?h`<div class="fraco peq" style="margin-bottom:12px">Rende pela regra da poupança: 0,5% ao mês + TR com a Selic acima de 8,5% (senão, 70% da Selic + TR). Isenta de IR.</div>`
+      :h`<div class="fraco peq" style="margin-bottom:12px">Sem cálculo automático: o valor muda com os depósitos, retiradas e rendimentos que você registrar.</div>`}
+    ${rotTaxa?h`<div class="fraco peq" style="margin:-4px 0 12px">${pf.isento?"Isento de imposto de renda.":"O rendimento estimado já desconta o IR (22,5% até 6 meses, caindo até 15% depois de 2 anos)."}</div>`:""}`;
+}
+aoMudar("conta-invest",()=>{ const f=document.getElementById("fConta"); if(!f) return;
+  const produto=f.produto.value, aceitos=PRODUTOS[produto].idx, indexador=aceitos.includes(f.indexador?.value)?f.indexador.value:aceitos[0];
+  const taxa=String(f.taxa?.value||"").replace(",",".");
+  document.getElementById("contaInvest").innerHTML=String(camposInvest({produto,indexador,taxa:taxa===""?0:+taxa||0,isento:!!PRODUTOS[produto].isento})); });
 aoMudar("conta-tipo",el=>{ document.getElementById("contaReserva").hidden=el.value!=="RESERVA"; });
 form("conta",(f,d)=>{
-  const id=f.dataset.id, reserva=d.get("tipo")==="RESERVA"?{alvo:centavos(d.get("alvo")),aporte:centavos(d.get("aporte")),cdi:+String(d.get("cdi")||0).replace(",",".")||0}:null;
+  /* "110", "12,5" ou "12.5": com vírgula, o ponto é de milhar */
+  const t0=String(d.get("taxa")||"").trim(), taxa=t0.includes(",")?t0.replace(/\./g,"").replace(",","."):t0;
+  const id=f.dataset.id, reserva=d.get("tipo")==="RESERVA"?{alvo:centavos(d.get("alvo")),aporte:centavos(d.get("aporte")),
+    produto:d.get("produto")||null,indexador:d.get("indexador")||null,taxa:taxa===""?null:Number(taxa)}:null;
   const dados={nome:d.get("nome"),tipo:d.get("tipo"),instituicao:d.get("instituicao"),cor:d.get("cor")||cores[0],obs:d.get("obs")||"",reserva};
   if(id) return executar(()=>C.editarConta(app.L,id,dados),{ok:"Conta salva"});
   return executar(()=>C.criarConta(app.L,dados,{saldoInicial:centavos(d.get("saldo")),dataAbertura:d.get("abertura")||hoje()}),{ok:"Conta criada"});

@@ -527,5 +527,66 @@ g("compra antiga no cartão: informando as já pagas, só entram as que faltam, 
   t("sem erro de JS", erros, []);
   await ctx.close(); }
 
+/* ─────────── 23. seletor de mês e poupança ─────────── */
+g("Visão geral mês a mês (‹ mês › do 2.2) e Poupança e investimentos");
+{ ({p,erros,ctx}=await abrir({legado:legadoDemo("2026-09-27"),hoje:HOJE}));
+  await p.waitForSelector("#painel.on",{timeout:15000}); await p.click('#painel [data-a="painel-fechar"]');
+  await ir(p,"visao");
+  t("abre no mês atual", (await p.textContent(".mpick")).replace(/\s+/g," ").trim(), "setembro de 2026mês atual");
+  await p.click('[data-a="vg-mes"][data-v="-1"]'); await p.waitForTimeout(250);
+  const ago=await p.textContent("#conteudo");
+  t("seta para trás: agosto, com o saldo real do fim do mês", [/Saldo no fim de agosto de 2026/.test(ago), /toque para voltar a hoje/.test(ago)], [true,true]);
+  t("e os lançamentos de agosto", [/Lançamentos de agosto de 2026/.test(ago), /Aluguel/.test(await p.textContent(".lista"))], [true,true]);
+  t("gastos de agosto", /Gastos de agosto de 2026/.test(ago), true);
+  await p.click('[data-a="vg-mes"][data-v="0"]'); await p.waitForTimeout(250);
+  t("tocar no mês volta para hoje", /mês atual/.test(await p.textContent(".mpick")), true);
+  await p.click('[data-a="vg-mes"][data-v="1"]'); await p.waitForTimeout(250);
+  t("seta para frente: outubro, previsto", /Saldo previsto no fim de outubro de 2026/.test(await p.textContent(".hero")), true);
+
+  await ir(p,"investimentos");
+  const tv=await p.textContent("#conteudo");
+  t("a antiga Metas: guardado, meta e rendimento", [/Guardado/.test(tv), /Viagem/.test(tv), /100% do CDI/.test(tv), /rende ~R\$/.test(tv)], [true,true,true,true]);
+  const vid=await p.evaluate(()=>[...window.__app.L.contas.values()].find(c=>c.nome==="Viagem").id);
+  const antes=await p.evaluate(id=>[window.__app.L.saldoConta(id),[...window.__app.L.contas.values()].find(c=>c.nome==="Nubank").id],vid);
+  const nubAntes=await saldoConta(p,"Nubank");
+  await p.click(`[data-a="inv-abrir"][data-id="${vid}"]`); await p.waitForTimeout(300);
+  await p.click('#painel [data-a="inv-dep"]'); await p.waitForSelector('#painel form[data-f="inv-mov"]');
+  await p.fill('#painel [name="valor"]',"100");
+  if(await p.locator('#painel select[name="outra"]').count()) await p.selectOption('#painel select[name="outra"]',antes[1]);
+  t("depósito", await enviar(p,'#painel button[type="submit"]'), "Depósito registrado");
+  t("é transferência: entra no investimento, sai do Nubank", [await p.evaluate(id=>window.__app.L.saldoConta(id),vid)-antes[0], await saldoConta(p,"Nubank")-nubAntes], [10000,-10000]);
+  await p.click('#painel [data-a="inv-rend"]'); await p.waitForSelector('#painel form[data-f="inv-rend"]');
+  t("rendimento vem com a estimativa do mês", Number((await p.inputValue('#painel [name="valor"]')).replace(/\./g,"").replace(",","."))>0, true);
+  await p.fill('#painel [name="valor"]',"25,10");
+  t("rendimento registrado", await enviar(p,'#painel button[type="submit"]'), "Rendimento registrado");
+  t("soma no saldo do investimento", await p.evaluate(id=>window.__app.L.saldoConta(id),vid)-antes[0], 12510);
+  await p.click('#painel [data-a="painel-fechar"]');
+  await p.click('.conteudo [data-a="inv-nova"]'); await p.waitForSelector("#fConta");
+  t("nova poupança já vem como reserva", await p.inputValue('#fConta [name="tipo"]'), "RESERVA");
+  await p.fill('#fConta [name="nome"]',"CDB Banco X");
+  await p.selectOption('#fConta [name="produto"]',"CDB"); await p.waitForTimeout(150);
+  t("o CDB pergunta por qual índice rende", await p.locator('#fConta select[name="indexador"] option').count(), 3);
+  await p.selectOption('#fConta [name="indexador"]',"PRE"); await p.waitForTimeout(150);
+  t("prefixado pede a taxa ao ano", /Taxa ao ano/.test(await p.textContent("#contaInvest")), true);
+  await p.fill('#fConta [name="taxa"]',"12,5"); await p.fill('#fConta [name="saldo"]',"1000");
+  t("criada", await enviar(p,'#fConta button[type="submit"]'), "Conta criada");
+  t("com tipo e taxa", await p.evaluate(()=>{ const c=[...window.__app.L.contas.values()].find(x=>x.nome==="CDB Banco X"); return [c.reserva.produto,c.reserva.indexador,c.reserva.taxa]; }), ["CDB","PRE",12.5]);
+  t("aparece na tela com a taxa", /12,5% ao ano/.test(await p.textContent("#conteudo")), true);
+  await ir(p,"ajustes");
+  await p.fill('form[data-f="indices"] [name="cdi"]',"13,25");
+  t("índices salvos", await enviar(p,'form[data-f="indices"] button[type="submit"]'), "Índices atualizados");
+  t("valem para a estimativa", await p.evaluate(()=>window.__app.L.preferencias().indices.cdi), 13.25);
+  await p.setViewportSize({width:390,height:844});
+  const telas={};
+  for(const r of ["investimentos","visao"]){ await ir(p,r); const x=await vazamentos(p); if(x.length) telas[r]=x; }
+  await p.click('[data-a="vg-mes"][data-v="-1"]'); await p.waitForTimeout(250);
+  const x2=await vazamentos(p); if(x2.length) telas["visao-agosto"]=x2;
+  await ir(p,"investimentos"); await p.click(`[data-a="inv-abrir"][data-id="${vid}"]`); await p.waitForTimeout(300);
+  const x3=await vazamentos(p); if(x3.length) telas.painel=x3;
+  t("celular: nada passa da tela", telas, {});
+  t("as regras aceitam", await p.evaluate(()=>window.__recusas), []);
+  t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
 await encerrar();
 fim();

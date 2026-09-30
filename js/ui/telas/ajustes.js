@@ -1,7 +1,7 @@
 /* ══════════ AJUSTES ══════════
    Aparência, dados (backup, restaurar, planilha), saúde dos dados,
    relatório da migração e a conta de acesso. */
-import { app, tela, acao, aoMudar, render, toast, abrirPainel, executar } from "../base.js";
+import { app, tela, acao, aoMudar, form, render, toast, abrirPainel, executar } from "../base.js";
 import { h, raw, juntar } from "../html.js";
 import { I, R, aviso, kpi } from "../componentes.js";
 import { verificar } from "../../financas/integridade.js";
@@ -10,7 +10,8 @@ import { razao } from "../../financas/relatorios.js";
 import { baixar } from "./obrigacoes.js";
 import { hoje } from "../../nucleo/datas.js";
 import { numero } from "../../nucleo/dinheiro.js";
-import { Mudanca } from "../../financas/comandos.js";
+import { Mudanca, salvarIndices } from "../../financas/comandos.js";
+import { indices } from "../../financas/investimentos.js";
 import { TEMAS, temaEscolhido, escolherTema } from "../tema.js";
 
 export const VERSAO="3.0";
@@ -38,6 +39,11 @@ tela("ajustes",{titulo:"Ajustes",render(app){
       <div class="fraco peq" style="margin-bottom:12px">Motor financeiro por documento, parcela, pagamento e razão em partidas dobradas. Seus dados do 2.2 continuam guardados, sem alteração.</div>
       <div class="btns"><button class="btn sec" data-a="ver-migracao">Relatório da migração</button><button class="btn sec" data-a="novidades">O que mudou</button></div></div>
   </div>
+  ${(()=>{ const ix=indices(L), v=x=>String(x).replace(".",","), inp=(k,rot)=>h`<div class="campo" style="margin:0"><label>${rot}</label><input name="${k}" inputmode="decimal" value="${v(ix[k])}" required></div>`;
+    return h`<div class="card pad" style="margin-top:14px"><h2 class="t2" style="margin-bottom:6px">Rendimento dos investimentos</h2>
+      <div class="fraco peq" style="margin-bottom:14px">Usados para estimar quanto sua poupança e seus investimentos rendem. Confira os valores atuais no site do Banco Central e atualize aqui de vez em quando.</div>
+      <form data-f="indices"><div class="grade g4" style="align-items:end">${inp("cdi","CDI (% ao ano)")}${inp("selic","Selic (% ao ano)")}${inp("ipca","IPCA 12 meses (%)")}${inp("tr","TR (% ao mês)")}</div>
+      <button class="btn sec" type="submit" style="margin-top:12px">Salvar índices</button></form></div>`; })()}
   <div class="card pad" style="margin-top:14px"><h2 class="t2" style="margin-bottom:6px">Conta</h2>
     <div class="fraco" style="margin-bottom:6px">${app.usuario?.email||""}</div>
     ${(()=>{ const pv=(app.usuario?.providerData||[]).map(p=>p.providerId), google=pv.includes("google.com");
@@ -82,3 +88,7 @@ acao("novidades",()=>abrirPainel({titulo:"WIGO 3",sub:"O que mudou",estreito:tru
     ["Importação que concilia","O extrato reconhece o que já está no app, quita contas em aberto e paga faturas — e tudo nasce conciliado."],
     ["Nada se apaga","Corrigir é estornar. Cancelado continua no histórico, com o motivo."]
   ],([t,d])=>h`<div class="card pad"><b>${t}</b><div class="fraco peq" style="margin-top:4px">${d}</div></div>`)}</div>`}));
+form("indices",(f,d)=>{
+  const n=k=>{ const t=String(d.get(k)||"").trim(); return Number(t.includes(",")?t.replace(/\./g,"").replace(",","."):t); };
+  return executar(()=>salvarIndices(app.L,{cdi:n("cdi"),selic:n("selic"),ipca:n("ipca"),tr:n("tr")}),{ok:"Índices atualizados",fechar:false});
+});

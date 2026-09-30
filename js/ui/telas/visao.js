@@ -3,23 +3,31 @@
    saldo previsto no fim do mês (pedido do usuário no 2.2); o resto são
    respostas curtas às perguntas de todo dia — quanto tenho, quanto devo,
    o que vence, o que falta conferir. */
-import { app, tela, ir } from "../base.js";
+import { app, tela, ir, acao, render } from "../base.js";
 import { h, raw, juntar } from "../html.js";
-import { I, R, Rs, kpi, chipSt, fmtData, fmtDataCurta, rotuloMes, rotuloMesCurto, graficoColunas, barrasRanking, vazio, aviso } from "../componentes.js";
+import { I, R, Rs, kpi, chipSt, chipStLado, chip, fmtData, fmtDataCurta, rotuloMes, rotuloMesCurto, graficoColunas, barrasRanking, vazio, aviso } from "../componentes.js";
 import { clic } from "../util.js";
-import { saldoPrevistoDoMes, compromissos, faixas, patrimonio, fluxoDeCaixa, resultado } from "../../financas/relatorios.js";
+import { saldoPrevistoDoMes, compromissos, faixas, patrimonio, fluxoDeCaixa, resultado, resumoDoMes } from "../../financas/relatorios.js";
 import { faturasDoCartao, faturaCorrente, fatura, limiteCartao } from "../../financas/cartoes.js";
 import { verificar } from "../../financas/integridade.js";
 import { hoje, mesDe, addMesesMes, inicioDoMes, fimDoMes, addDias, diasEntre } from "../../nucleo/datas.js";
-import { DISPONIVEL, TIPO_CONTA } from "../../financas/modelo.js";
+import { DISPONIVEL, TIPO_CONTA, DOC, COM_PARCELAS } from "../../financas/modelo.js";
+
+/* ‹ mês › no topo, como no 2.2: as setas trocam o mês que a tela mostra, e
+   tocar no nome volta para hoje. Não é gravado — abrir o app é sempre no
+   mês atual. O que é "de hoje" (saldo das contas, avisos, o que vence nos
+   próximos dias, cartões, patrimônio) não muda com o mês. */
+acao("vg-mes",el=>{ const atual=mesDe(hoje()), v=+el.dataset.v;
+  app.mesVisto=v?addMesesMes(app.mesVisto||atual,v):atual; app.vgTodos=false; render(); });
+acao("vg-todos",()=>{ app.vgTodos=true; render(); });
 
 tela("visao",{titulo:"Visão geral",render(app){
-  const L=app.L, h0=hoje(), mes=mesDe(h0);
+  const L=app.L, h0=hoje(), mesHoje=mesDe(h0), mes=app.mesVisto||mesHoje, rm=resumoDoMes(L,mes);
   if(!L.contas.size&&!L.documentos.size) return primeiroUso();
   const prev=saldoPrevistoDoMes(L);
   /* o que vence até o fim do mês (vencidos incluídos): 24 meses de aluguel
      lançados pela recorrência são compromisso futuro, não conta de agora */
-  const fimMes=fimDoMes(mes);
+  const fimMes=fimDoMes(mesHoje);
   const pagar=faixas(L,"PAGAR",{ate:fimMes}), receber=faixas(L,"RECEBER",{ate:fimMes});
   const pat=patrimonio(L);
   const cartoes=L.cartoesAtivos();
@@ -38,10 +46,21 @@ tela("visao",{titulo:"Visão geral",render(app){
   const saude=verificar(L);
   if(!saude.ok) alertas.push({tom:"ruim",icone:"shield",t:h`<b>${saude.problemas.length} inconsistência(s) nos dados</b> · ver detalhes`,a:"ir",v:"ajustes"});
 
-  const hero=h`<div class="card hero">
+  const seletor=h`<div class="mpick"><button class="seta" data-a="vg-mes" data-v="-1" aria-label="Mês anterior">${I("chevron","p esq")}</button>
+    <button class="cur" data-a="vg-mes" data-v="0"><b>${rotuloMes(mes)}</b><small>${mes===mesHoje?"mês atual":"toque para voltar a hoje"}</small></button>
+    <button class="seta" data-a="vg-mes" data-v="1" aria-label="Próximo mês">${I("chevron","p")}</button></div>`;
+  const hero=rm.tipo==="ATUAL"?h`<div class="card hero">
     <span class="cap">Saldo previsto no fim de ${rotuloMes(mes)}</span>
     <div class="grande ${prev.final<0?"down":""}">${R(prev.final)}</div>
     <div class="fraco">Hoje em contas: <b style="color:var(--ink)">${R(prev.hoje)}</b> · ${prev.receber||prev.pagar||prev.faturas?"considera o que ainda vence neste mês":"nada mais vence neste mês"}</div>
+  </div>`:rm.tipo==="PASSADO"?h`<div class="card hero">
+    <span class="cap">Saldo no fim de ${rotuloMes(mes)}</span>
+    <div class="grande ${rm.saldoFim<0?"down":""}">${R(rm.saldoFim)}</div>
+    <div class="fraco">No mês entrou <b class="up">${R(rm.fluxo.entradas)}</b> e saiu <b style="color:var(--ink)">${R(rm.fluxo.saidas)}</b> nas contas do dia a dia</div>
+  </div>`:h`<div class="card hero">
+    <span class="cap">Saldo previsto no fim de ${rotuloMes(mes)}</span>
+    <div class="grande ${rm.saldoFim<0?"down":""}">${R(rm.saldoFim)}</div>
+    <div class="fraco">Hoje em contas: <b style="color:var(--ink)">${R(prev.hoje)}</b> · considera tudo que vence até lá</div>
   </div>`;
 
   const acoesRapidas=h`<div class="btns rapidas">
@@ -56,8 +75,9 @@ tela("visao",{titulo:"Visão geral",render(app){
 
   const kpis=h`<div class="kpis secao">
     ${kpi({rotulo:"Em contas",icone:"bank",valor:R(L.saldoDisponivel(h0)),sub:pat.reservas?"+ "+R(pat.reservas)+" em reservas":"disponível hoje",acao:"ir",v:"contas"})}
-    ${kpi({rotulo:"A pagar no mês",icone:"outflow",valor:R(pagar.total),sub:pagar.vencido?h`<span class="down">${R(pagar.vencido)} vencido</span>`:pagar.sete?R(pagar.sete)+" em 7 dias":"nada vencido",acao:"ir",v:"pagar"})}
-    ${kpi({rotulo:"A receber no mês",icone:"inflow",valor:R(receber.total),sub:receber.vencido?h`<span class="down">${R(receber.vencido)} atrasado</span>`:receber.sete?R(receber.sete)+" em 7 dias":"em dia",acao:"ir",v:"receber"})}
+    ${rm.tipo==="ATUAL"?h`${kpi({rotulo:"A pagar no mês",icone:"outflow",valor:R(pagar.total),sub:pagar.vencido?h`<span class="down">${R(pagar.vencido)} vencido</span>`:pagar.sete?R(pagar.sete)+" em 7 dias":"nada vencido",acao:"ir",v:"pagar"})}
+    ${kpi({rotulo:"A receber no mês",icone:"inflow",valor:R(receber.total),sub:receber.vencido?h`<span class="down">${R(receber.vencido)} atrasado</span>`:receber.sete?R(receber.sete)+" em 7 dias":"em dia",acao:"ir",v:"receber"})}`
+    :h`${kpiMes("A pagar em "+rotuloMesCurto(mes),"outflow",rm.pagar,rm.tipo,"pagar","pago")}${kpiMes("A receber em "+rotuloMesCurto(mes),"inflow",rm.receber,rm.tipo,"receber","recebido")}`}
     ${cartoes.length?kpi({rotulo:"Cartões",icone:"card",valor:R(dividaCartoes),sub:"inclui parcelas futuras",acao:"ir",v:"faturas"}):""}
     ${kpi({rotulo:"Patrimônio",icone:"gem",valor:R(pat.liquido),sub:"contas + a receber − dívidas",acao:"ir",v:"relatorios",p:"avancados"})}
   </div>`;
@@ -89,11 +109,13 @@ tela("visao",{titulo:"Visão geral",render(app){
 
   const rs=resultado(L,{de:inicioDoMes(mes),ate:fimDoMes(mes)});
   const cats=rs.grupos.filter(c=>c.natureza==="DESPESA").slice(0,6);
-  const fl=fluxoDeCaixa(L,{de:inicioDoMes(addMesesMes(mes,-5)),ate:fimDoMes(mes)});
+  /* entradas × saídas: os seis meses até o escolhido (o futuro ainda não tem caixa) */
+  const fimFl=mes<mesHoje?mes:mesHoje;
+  const fl=fluxoDeCaixa(L,{de:inicioDoMes(addMesesMes(fimFl,-5)),ate:fimDoMes(fimFl)});
 
-  return h`${hero}
+  return h`${seletor}${hero}
     ${alertas.length?h`<div class="grade secao" style="margin-top:14px">${juntar(alertas,a=>h`<div class="aviso ${a.tom} clic" style="cursor:pointer" data-a="${a.a}" data-v="${a.v}" data-p="${a.p||""}">${I(a.icone)}<div style="flex:1">${a.t}</div>${I("chevron","p")}</div>`)}</div>`:""}
-    ${acoesRapidas}${kpis}
+    ${acoesRapidas}${kpis}${lancamentosDoMes(L,rm)}
     <div class="grade g-dash secao">
       <div class="card"><div class="card-cab"><div><h2 class="t2">${I("trendUp")} Próximos 6 meses</h2><div class="fraco peq">Saldo disponível ao fim de cada mês, se tudo que vence acontecer</div></div><a class="link" data-a="ir" data-v="relatorios" data-p="fluxo">Detalhes</a></div>
         <div class="card-corpo">${graf}</div>
@@ -119,6 +141,30 @@ tela("visao",{titulo:"Visão geral",render(app){
           ${rs.terceiros.total?h`<div class="fraco peq" style="margin-top:10px">${I("handshake","p")} Fora disso, ${R(rs.terceiros.total)} em compras de terceiros (${rs.terceiros.pessoas.map(x=>L.nomeParceiro(x.pessoa)).join(", ")}), que vão te devolver.</div>`:""}</div></div>
     </div>`;
 }});
+
+/* a pagar / a receber de um mês que não é o atual: o que venceu (ou vai
+   vencer) nele, e quanto ficou em aberto */
+function kpiMes(rotulo,icone,x,tipo,rota,feito){
+  const sub=!x.n?"nada vence":!x.restante?"tudo "+feito:x.restante===x.total?(tipo==="PASSADO"?h`<span class="down">nada ${feito}</span>`:x.n+" parcela"+(x.n>1?"s":""))
+    :h`<span class="${tipo==="PASSADO"?"down":""}">${R(x.restante)} em aberto</span>`;
+  return kpi({rotulo,icone,valor:R(x.total),sub,acao:"ir",v:rota});
+}
+/* a lista de lançamentos do mês, como a do 2.2 */
+function lancamentosDoMes(L,rm){
+  const xs=rm.lancamentos, max=12, mostrar=app.vgTodos?xs:xs.slice(0,max);
+  const linha=d=>{
+    const trf=d.tipo===DOC.TRANSF, entra=d.tipo===DOC.RECEBER||d.tipo===DOC.ESTORNO_CARTAO, cartao=d.tipo===DOC.COMPRA||d.tipo===DOC.ESTORNO_CARTAO;
+    const e=COM_PARCELAS.has(d.tipo)?L.estadoDocumento(d):null;
+    const sub=[fmtDataCurta(d.data), trf?L.nomeConta(d.conta)+" → "+L.nomeConta(d.contaDestino):cartao?L.nomeCartao(d.cartao):L.nomeCurtoCategoria(d.categoria), d.parcelas?.length>1?d.parcelas.length+"x":""].filter(Boolean).join(" · ");
+    return h`<div class="clic"${clic("doc-abrir",d.id)}><span class="bola ${entra?"up":trf?"":"down"}">${I(trf?"swap":cartao?"card":entra?"inflow":"outflow","p")}</span>
+      <div class="meio"><div class="t">${d.descricao}</div><div class="s">${sub}${d.terceiro?h` · <span class="terc">${I("handshake","p")} de ${L.nomeParceiro(d.terceiro.pessoa)}</span>`:""}</div></div>
+      <div class="dir"><div class="num ${entra?"up":""}" style="font-weight:600">${trf?"":entra?"+":"−"}${R(d.valor)}</div>
+        ${e&&!cartao?chipStLado(e.status,d.tipo===DOC.RECEBER):trf&&d.status==="PLANEJADA"?chipSt("PLANEJADA"):""}</div></div>`; };
+  return h`<div class="card secao"><div class="card-cab"><div><h2 class="t2">${I("calendar")} Lançamentos de ${rotuloMes(rm.mes)}</h2>
+      <div class="fraco peq">${xs.length?xs.length+" lançamento"+(xs.length>1?"s":"")+" com competência no mês":"O que pertence a este mês aparece aqui"}</div></div></div>
+    <div class="lista" style="margin-top:8px">${xs.length?juntar(mostrar,linha):h`<div class="vazio peq" style="display:block">Nenhum lançamento em ${rotuloMes(rm.mes)}.</div>`}</div>
+    ${xs.length>mostrar.length?h`<button class="btn sec peq larg" style="margin-top:10px" data-a="vg-todos">Mostrar todos (${xs.length})</button>`:""}</div>`;
+}
 
 function primeiroUso(){
   return h`<div class="card hero"><span class="cap">Bem-vindo ao WIGO</span><div class="grande" style="font-size:30px">Vamos montar seu financeiro</div>

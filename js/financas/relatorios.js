@@ -145,6 +145,31 @@ export function compromissos(L,{meses=6}={}){
 export function saldoPrevistoDoMes(L){ const c=compromissos(L,{meses:1})[0];
   return { hoje:L.saldoDisponivel(hoje()), receber:c.receber, pagar:c.pagar, faturas:c.faturas, reservas:c.reservas, final:c.saldoFinal }; }
 
+/* ── UM MÊS NA VISÃO GERAL ──
+   O "‹ setembro de 2026 ›" do 2.2, de volta a pedido do usuário. Mês que já
+   passou mostra o que foi (saldo real no fim); o atual, o previsto; o
+   futuro, a projeção pelos compromissos. Os lançamentos do mês são os
+   documentos da competência dele — os mesmos que somam em "Gastos do mês" —
+   mais as transferências feitas nele. A conta a receber de um reembolso fica
+   de fora: ela aparece pela compra, marcada como de terceiro. */
+export function resumoDoMes(L,mes){
+  const atual=mesDe(hoje());
+  const tipo=mes<atual?"PASSADO":mes===atual?"ATUAL":"FUTURO";
+  let saldoFim;
+  if(tipo==="PASSADO") saldoFim=L.saldoDisponivel(fimDoMes(mes));
+  else if(tipo==="ATUAL") saldoFim=saldoPrevistoDoMes(L).final;
+  else { let n=1; for(let m=atual;m<mes;m=addMesesMes(m,1)) n++; saldoFim=compromissos(L,{meses:n})[n-1].saldoFinal; }
+  const lado=l=>{ let total=0,restante=0,n=0;
+    for(const {doc,p,e} of L.obrigacoes(l)){ if(doc.status==="CANCELADO"||mesDe(p.vencimento)!==mes) continue;
+      total+=p.valor; restante+=e.restante; n++; }
+    return {total,restante,pago:total-restante,n}; };
+  const TIPOS=new Set([DOC.PAGAR,DOC.RECEBER,DOC.COMPRA,DOC.ESTORNO_CARTAO,DOC.TRANSF]);
+  const lancamentos=[...L.documentos.values()].filter(d=>TIPOS.has(d.tipo)&&d.status!=="CANCELADO"&&!d.reembolsoDe&&
+    (d.competencia||mesDe(d.data))===mes).sort((a,b)=>a.data<b.data?1:a.data>b.data?-1:(a.numero<b.numero?1:-1));
+  return { mes, tipo, saldoFim, pagar:lado("PAGAR"), receber:lado("RECEBER"),
+    fluxo:fluxoDeCaixa(L,{de:inicioDoMes(mes),ate:fimDoMes(mes)})[0], lancamentos };
+}
+
 /* Soma as subcategorias na categoria mãe. O que foi lançado direto na mãe
    aparece como "Geral" dentro dela, para a soma das linhas bater. */
 export function agruparCategorias(L,cats){

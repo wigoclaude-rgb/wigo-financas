@@ -27,11 +27,11 @@ e é público de propósito (ver "Netlify e repositório").
 ### Testes
 
 ```bash
-node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno, terceiros… (220)
+node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno, terceiros, investimentos… (254)
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
 node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (78)
-node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (39)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (168)
+node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (40)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (191)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -244,6 +244,48 @@ controla a dívida do terceiro comigo.**
   separa.
 - Despesa de terceiro **não se repete sozinha** ("Repetir todo mês" fica
   desligado): recorrência não carrega a pessoa.
+
+### Poupança e investimentos
+
+A aba "Metas" do 2.2 de volta (pedido do usuário, 30/09), como **Poupança**
+no menu (`telas/investimentos.js`; regra em `financas/investimentos.js`).
+
+- Cada investimento é uma **conta Reserva** com `reserva:{alvo, aporte,
+  produto, indexador, taxa}`. Depósito e retirada são **transferências** com
+  uma conta do dia a dia — não é despesa nem receita.
+- **O rendimento é estimativa, como no 2.2**: a tela mostra quanto o saldo de
+  hoje rende por mês e por ano (fórmula do 2.2: ao ano = saldo × taxa; ao
+  mês = saldo × ((1+taxa)^(1/12) − 1)) e **não entra no saldo sozinho** —
+  senão o WIGO deixaria de bater com o banco. O real entra pelo botão
+  "Registrar rendimento" (receita na própria conta, categoria Rendimentos se
+  existir), com a estimativa já preenchida para o usuário corrigir.
+- Tipos: poupança (regra oficial: Selic acima de 8,5% → 0,5% ao mês + TR;
+  senão 70% da Selic + TR), CDB/RDB, LCI/LCA, Tesouro Selic/Prefixado/IPCA+,
+  fundo DI, CRI/CRA, debênture, conta que rende; renda variável (ações, FII,
+  ETF, cripto) sem cálculo automático. Indexadores: % do CDI, % da Selic,
+  prefixado, IPCA +.
+- IR regressivo (22,5% → 15%) pelo tempo desde o primeiro movimento da conta
+  — aproximação: cada aporte tem o seu prazo. Poupança, LCI/LCA e CRI/CRA
+  isentos.
+- **Os índices (CDI, Selic, IPCA, TR) são referências em Ajustes**, como o
+  "CDI de referência" do 2.2 (o usuário preferiu assim). O padrão é o CDI de
+  14,65% do 2.2; o `cdiRef` migrado vale até ser editado. Buscar no Banco
+  Central foi considerado: o usuário escolheu o jeito do 2.2, e este
+  ambiente de desenvolvimento nem alcança `api.bcb.gov.br`.
+- Meta do 2.2 migrada só tem `reserva.cdi`: vale como "Outro · % do CDI".
+  `validarReserva` mantém esse `cdi` quando não há produto — antes da
+  correção ele era zerado na migração.
+
+### Visão geral mês a mês
+
+O "‹ setembro de 2026 ›" do 2.2 no topo da Visão geral (`resumoDoMes` em
+`relatorios.js`). Mês passado: saldo real no fim; atual: previsto; futuro:
+projeção pelos compromissos. Mudam com o mês: o saldo do topo, a pagar e a
+receber do mês, gastos por categoria, entradas × saídas e a lista
+"Lançamentos de <mês>" (documentos da competência do mês e transferências;
+a conta a receber de reembolso fica de fora). Continuam "de hoje": avisos,
+em contas, cartões, patrimônio, próximos 15 dias, próximos 6 meses. O mês
+não é gravado: abrir o app é sempre no mês atual.
 
 ### Integridade
 
@@ -487,7 +529,7 @@ Arquivos que sobraram:
 Versão 3 publicada no `main` em 27/09/2026, direto, sem PR, a pedido do
 usuário. No mesmo dia: subcategorias e, depois, compra de outra pessoa
 (terceiro) com conta a receber vinculada — sem mudança nas regras do
-Firestore. As regras de `firestore.rules` foram coladas no console no mesmo dia.
+Firestore. 30/09: Poupança e investimentos e o seletor de mês na Visão geral. As regras de `firestore.rules` foram coladas no console no mesmo dia.
 Cada usuário (eram 8, todos com e-mail e senha) migra os dados do 2.2 no
 primeiro login na versão 3.
 

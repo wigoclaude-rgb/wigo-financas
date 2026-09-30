@@ -1,6 +1,7 @@
 /* Migração do JSON do 2.2 para o modelo novo, conferindo saldo a saldo.
    Rodar: node tests/migracao.test.mjs */
 import { g, t, fim } from "./util.mjs";
+import { perfil, rotuloTaxa } from "../js/financas/investimentos.js";
 import { migrarLegado, temLegado, normData } from "../js/dados/migracao.js";
 import { saldoLegado } from "../js/dados/legado.js";
 import { verificar } from "../js/financas/integridade.js";
@@ -72,6 +73,7 @@ const trf=docs.filter(d=>d.tipo==="TRANSFERENCIA");
 t("transferência + aporte na meta viraram transferências (1 planejada)", trf.map(d=>d.status).sort(), ["EFETIVADO","EFETIVADO","PLANEJADA"]);
 const viagem=[...L.contas.values()].find(c=>c.nome==="Viagem");
 t("meta vira reserva com alvo e aporte", [viagem.tipo, viagem.reserva.alvo, viagem.reserva.aporte], ["RESERVA",1000000,50000]);
+t("e o % do CDI chega intacto (rende 100% do CDI)", [viagem.reserva.cdi, rotuloTaxa(perfil(viagem))], [100,"100% do CDI"]);
 t("saldo da meta = aporte direto + transferência", L.saldoConta(viagem.id), 250000);
 const vr=[...L.contas.values()].find(c=>c.tipo==="BENEFICIO");
 t("vale: recargas de set (650) − almoço 35", L.saldoConta(vr.id), 61500);

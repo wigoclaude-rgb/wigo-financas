@@ -16,6 +16,7 @@ import { dividir, formatar, soma } from "../nucleo/dinheiro.js";
 import { hoje, mesDe, addMeses, addMesesMes, valida, fmtData } from "../nucleo/datas.js";
 import { novoId } from "../nucleo/ids.js";
 import { faturaDaCompra, datasFatura, alocarPagamentoFatura } from "./cartoes.js";
+import { PRODUTOS, INDEXADORES, validarIndices } from "./investimentos.js";
 
 /* ── o lote de gravação ── */
 let SEQ=0;   // global: dois comandos no mesmo milissegundo continuam em ordem
@@ -99,9 +100,26 @@ function lancamentosAtivos(L,m,lista){
 }
 
 /* ═════════ CONTAS ═════════ */
+/* poupança / investimento: meta, aporte e como rende (ver investimentos.js) */
+function validarReserva(r){
+  if(!r) return null;
+  const alvo=int(r.alvo), aporte=int(r.aporte);
+  if(alvo<0||aporte<0) erro("Meta e aporte não podem ser negativos.");
+  const produto=r.produto||null;
+  if(produto&&!PRODUTOS[produto]) erro("Tipo de investimento inválido.");
+  const aceitos=produto?PRODUTOS[produto].idx:null;
+  const indexador=r.indexador||(aceitos?aceitos[0]:null);
+  if(aceitos&&!aceitos.includes(indexador)) erro(PRODUTOS[produto].rot+" não rende por "+(INDEXADORES[indexador]||indexador)+".");
+  const taxa=r.taxa==null||r.taxa===""?null:Number(r.taxa);
+  if(taxa!=null&&(!isFinite(taxa)||taxa<0||taxa>1000)) erro("Taxa de rendimento inválida.");
+  /* `cdi` é o campo das metas do 2.2: sem produto escolhido (a meta migrada)
+     ele é a taxa e fica como veio; com produto, acompanha a taxa */
+  return {...r,alvo,aporte,produto,indexador,taxa,cdi:produto?(indexador==="CDI"?(taxa||0):0):(+r.cdi||0)};
+}
 export function criarConta(L,dados,{saldoInicial=0,dataAbertura}={}){
   const nome=(dados.nome||"").trim(); if(!nome) erro("Dê um nome para a conta.");
   if(!TIPO_CONTA[dados.tipo]) erro("Tipo de conta inválido.");
+  if(dados.reserva) dados={...dados,reserva:validarReserva(dados.reserva)};
   const m=new Mudanca(L), id=dados.id||novoId("c");
   const abertura=dataAbertura||hoje(); exigirData(abertura,"data de abertura");
   const conta={id,nome,tipo:dados.tipo,instituicao:dados.instituicao||"",cor:dados.cor||"#7c5cff",
@@ -123,6 +141,7 @@ function postarAbertura(m,conta,valor,data,origem="MANUAL",obs=""){
 export function editarConta(L,id,patch){
   const c=L.contas.get(id); if(!c) erro("Conta não encontrada.");
   const m=new Mudanca(L); const novo={...c}; const mud=[];
+  if(patch.reserva) patch={...patch,reserva:validarReserva(patch.reserva)};
   for(const f of ["nome","instituicao","cor","obs","tipo","reserva"]) if(f in patch&&JSON.stringify(patch[f])!==JSON.stringify(c[f])){
     if(f==="nome"&&!String(patch.nome).trim()) erro("Dê um nome para a conta.");
     if(f==="tipo"&&!TIPO_CONTA[patch.tipo]) erro("Tipo de conta inválido.");
@@ -163,6 +182,15 @@ export function ajustarSaldo(L,{conta,valor,data,motivo,obs=""}){
   postar(m,{data,natureza:"AJUSTE",documento:did,descricao:"Ajuste · "+motivo,
     linhas:[{k:K.conta(conta),v:valor},{k:K.AJUSTE,v:-valor}]});
   m.auditar("AJUSTAR","documento",did,numero,"Ajuste de "+formatar(valor,{sinal:true})+" em "+c.nome+": "+motivo);
+  return m.fechar();
+}
+
+/* índices de referência do rendimento estimado (CDI, Selic, IPCA, TR) */
+export function salvarIndices(L,ix){
+  const e=validarIndices(ix); if(e) erro(e);
+  const m=new Mudanca(L), p=L.preferencias();
+  m.set("meta","preferencias",{...p,id:"preferencias",indices:{cdi:ix.cdi,selic:ix.selic,ipca:ix.ipca,tr:ix.tr}});
+  m.auditar("ALTERAR","preferencias","preferencias",null,"Índices de referência: CDI "+ix.cdi+"%, Selic "+ix.selic+"%, IPCA "+ix.ipca+"%, TR "+ix.tr+"% a.m.");
   return m.fechar();
 }
 

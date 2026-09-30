@@ -22,12 +22,13 @@ import "./ui/telas/cadastros.js";
 import "./ui/telas/relatorios.js";
 import "./ui/telas/importacao.js";
 import "./ui/telas/ajustes.js";
+import "./ui/telas/investimentos.js";
 import "./ui/documento.js";
 import "./ui/formularios.js";
 import { aplicarTema } from "./ui/tema.js";
 
 const NAV=[
-  {itens:[["visao","Visão geral","home"],["movimentos","Movimentações","flow"]]},
+  {itens:[["visao","Visão geral","home"],["movimentos","Movimentações","flow"],["investimentos","Poupança","piggy"]]},
   {g:"Documentos",itens:[["pagar","Contas a pagar","outflow"],["receber","Contas a receber","inflow"],["faturas","Faturas","card"]]},
   {g:"Financeiro",itens:[["pagamentos","Pagamentos","check"],["recebimentos","Recebimentos","coin"],["transferencias","Transferências","swap"],["reconciliacao","Reconciliação","scale"]]},
   {g:"Cadastros",itens:[["parceiros","Parceiros de negócio","handshake"],["contas","Contas","bank"],["cartoes","Cartões","card","cartoes"],["categorias","Categorias","layers"]]},

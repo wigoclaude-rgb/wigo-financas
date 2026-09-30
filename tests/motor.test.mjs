@@ -6,7 +6,8 @@ import * as C from "../js/financas/comandos.js";
 import { verificar } from "../js/financas/integridade.js";
 import { fatura, faturaDaCompra, datasFatura, limiteCartao, divisaoDaFatura } from "../js/financas/cartoes.js";
 import { definirRelogio } from "../js/nucleo/datas.js";
-import { resultado, resultadoCaixa, fluxoDeCaixa } from "../js/financas/relatorios.js";
+import { resultado, resultadoCaixa, fluxoDeCaixa, resumoDoMes, saldoPrevistoDoMes, compromissos } from "../js/financas/relatorios.js";
+import * as Inv from "../js/financas/investimentos.js";
 import { centavos, dividir } from "../js/nucleo/dinheiro.js";
 
 definirRelogio(()=>new Date(2026,8,27,12));   // hoje = 27/09/2026
@@ -507,6 +508,75 @@ g("Importação de fatura \"Parcela 6/10\" guarda o total da compra");
     parcelas:Array.from({length:5},()=>({valor:R(100)})),parcelaInicial:{n:6,de:10},fatura:"2026-10",valorOriginal:R(1000)});
   ex(L,C.editarDocumento(L,d.id,{valor:R(550)}));
   t("editar não volta para a fatura de maio", L.documentos.get(d.id).parcelas[0].fatura, "2026-10");
+  integro(L); }
+
+g("Poupança e investimentos: rendimento estimado como no 2.2, para cada tipo");
+{ const L=novoLivro();
+  const inv=(nome,saldo,reserva,data="2026-01-02")=>ex(L,C.criarConta(L,{nome,tipo:"RESERVA",reserva},{saldoInicial:R(saldo),dataAbertura:data})).gravar.find(x=>x.colecao==="contas").id;
+  t("índices de referência padrão (o CDI do 2.2)", Inv.indices(L), {cdi:14.65,selic:14.75,ipca:4.5,tr:0.15});
+  const cdb=inv("CDB Nubank",10000,{produto:"CDB",indexador:"CDI",taxa:100});
+  const e=Inv.rendimentoEstimado(L,L.contas.get(cdb));
+  t("100% do CDI: ao ano = saldo × CDI (fórmula do 2.2)", e.ano, R(1465));
+  t("ao mês = saldo × ((1+taxa)^(1/12) − 1)", e.mes, Math.round(1000000*(Math.pow(1.1465,1/12)-1)));
+  t("aplicado há mais de 180 dias: IR de 20%", [e.dias>180,e.ir,e.mesLiquido], [true,0.2,Math.round(e.mes*0.8)]);
+  const pou=inv("Poupança Caixa",10000,{produto:"POUPANCA"});
+  const ep=Inv.rendimentoEstimado(L,L.contas.get(pou));
+  t("poupança com Selic acima de 8,5%: 0,5% + TR ao mês, sem IR", [ep.mes,ep.ir,ep.mesLiquido], [R(65),0,R(65)]);
+  t("com Selic de 7%: 70% da Selic + TR", Math.round(Inv.poupancaMensal({selic:7,tr:0})*1e6), Math.round((Math.pow(1.049,1/12)-1)*1e6));
+  const lci=inv("LCI",10000,{produto:"LCI_LCA",indexador:"CDI",taxa:90});
+  t("LCI é isenta de IR", Inv.rendimentoEstimado(L,L.contas.get(lci)).ir, 0);
+  const ipca=inv("Tesouro IPCA",10000,{produto:"TESOURO_IPCA",taxa:6});
+  t("IPCA + 6%: (1+IPCA)(1+6%) − 1", Inv.rendimentoEstimado(L,L.contas.get(ipca)).ano, Math.round(1000000*(1.045*1.06-1)));
+  const pre=inv("CDB pré",10000,{produto:"CDB",indexador:"PRE",taxa:12.5});
+  t("prefixado 12,5% ao ano", Inv.rendimentoEstimado(L,L.contas.get(pre)).ano, R(1250));
+  const acoes=inv("Ações",5000,{produto:"ACOES"});
+  t("renda variável não tem cálculo automático", [Inv.rendimentoEstimado(L,L.contas.get(acoes)).calcula,Inv.rendimentoEstimado(L,L.contas.get(acoes)).mes], [false,0]);
+  const novo=inv("CDB novo",1000,{produto:"CDB",taxa:100},"2026-09-10");
+  t("aplicado há menos de 180 dias: IR de 22,5%", Inv.rendimentoEstimado(L,L.contas.get(novo)).ir, 0.225);
+  t("rótulos", [cdb,pou,ipca,pre,acoes].map(id=>Inv.rotuloTaxa(Inv.perfil(L.contas.get(id)))), ["100% do CDI","regra da poupança","IPCA + 6%","12,5% ao ano","sem rendimento fixo"]);
+  /* meta do 2.2: só tem `cdi` */
+  const velha=inv("Viagem (2.2)",2000,{alvo:R(10000),aporte:R(500),cdi:110});
+  t("meta migrada do 2.2 vale como % do CDI", Inv.rotuloTaxa(Inv.perfil(L.contas.get(velha))), "110% do CDI");
+  const mt=Inv.progressoMeta(L,L.contas.get(velha));
+  t("meta: 20%, faltam 8.000, 16 meses no ritmo do aporte", [Math.round(mt.pct),mt.falta,mt.meses], [20,R(8000),16]);
+  const cart=Inv.carteira(L);
+  t("carteira soma o guardado e o rendimento líquido", [cart.itens.length,cart.guardado,cart.rendeMes], [8,R(58000),cart.itens.reduce((s,x)=>s+x.est.mesLiquido,0)]);
+  /* índices editados em Ajustes */
+  ex(L,C.salvarIndices(L,{cdi:13,selic:13.1,ipca:5,tr:0.1}));
+  t("índices salvos valem para a estimativa", Inv.rendimentoEstimado(L,L.contas.get(cdb)).ano, R(1300));
+  t("índice inválido é recusado", tenta(()=>C.salvarIndices(L,{cdi:-1,selic:13,ipca:5,tr:0})), "Índice inválido: CDI.");
+  t("tipo que não aceita o indexador é recusado", tenta(()=>C.criarConta(L,{nome:"X",tipo:"RESERVA",reserva:{produto:"LCI_LCA",indexador:"SELIC",taxa:100}})), "LCI / LCA não rende por % da Selic.");
+  t("meta negativa é recusada", tenta(()=>C.criarConta(L,{nome:"X",tipo:"RESERVA",reserva:{alvo:-100}})), "Meta e aporte não podem ser negativos.");
+  ex(L,C.editarConta(L,cdb,{reserva:{produto:"CDB",indexador:"CDI",taxa:110,alvo:0,aporte:0}}));
+  t("editar a taxa", [Inv.rotuloTaxa(Inv.perfil(L.contas.get(cdb))),L.contas.get(cdb).reserva.cdi], ["110% do CDI",110]);
+  const L2=novoLivro(); ex(L2,(()=>{ const m=new C.Mudanca(L2); m.set("meta","preferencias",{id:"preferencias",cdiRef:0.1390}); return m; })());
+  t("o CDI de referência que veio do 2.2 vale", Inv.indices(L2).cdi, 13.9);
+  integro(L); }
+
+g("Visão geral mês a mês: passado é o que foi, atual é previsto, futuro é projeção");
+{ const L=novoLivro(); const a=conta(L,"Nubank",1000,"2026-07-01"), b=conta(L,"Reserva",0,"2026-07-01","RESERVA");
+  const nu=cartao(L,"Roxinho"), joao=pn(L,"João");
+  doc(L,{tipo:"PAGAR",descricao:"Luz de agosto",valor:R(200),data:"2026-08-10",conta:a,quitar:{data:"2026-08-10",conta:a}});
+  doc(L,{tipo:"RECEBER",descricao:"Salário",valor:R(500),data:"2026-09-05",conta:a,quitar:{data:"2026-09-05",conta:a}});
+  doc(L,{tipo:"PAGAR",descricao:"Dentista",valor:R(300),data:"2026-09-20",conta:a,primeiroVencimento:"2026-10-05"});
+  doc(L,{tipo:"COMPRA_CARTAO",descricao:"Tênis",valor:R(600),data:"2026-09-12",cartao:nu,parcelas:3});
+  const dt=doc(L,{tipo:"COMPRA_CARTAO",descricao:"Pneu do João",valor:R(400),data:"2026-09-13",cartao:nu,terceiro:{pessoa:joao,modo:"UNICO",vencimento:"2026-10-10"}});
+  ex(L,C.criarTransferencia(L,{de:a,para:b,valor:R(100),data:"2026-09-15"}));
+  const ago=resumoDoMes(L,"2026-08");
+  t("agosto já passou: saldo real no fim", [ago.tipo,ago.saldoFim], ["PASSADO",R(800)]);
+  t("agosto: o que venceu e foi pago", [ago.pagar.total,ago.pagar.restante], [R(200),0]);
+  t("agosto: seus lançamentos", ago.lancamentos.map(d=>d.descricao), ["Luz de agosto"]);
+  t("agosto: entrou e saiu", [ago.fluxo.entradas,ago.fluxo.saidas], [0,R(200)]);
+  const set=resumoDoMes(L,"2026-09");
+  t("setembro é o mês atual: o saldo previsto", [set.tipo,set.saldoFim], ["ATUAL",saldoPrevistoDoMes(L).final]);
+  t("setembro: lançamentos da competência, do mais novo ao mais velho, sem o reembolso", set.lancamentos.map(d=>d.descricao),
+    ["Dentista","Transferência Nubank → Reserva","Pneu do João","Tênis","Salário"]);
+  t("o reembolso do João não entra como lançamento do mês", set.lancamentos.some(d=>d.id===dt.terceiro.receber), false);
+  const out=resumoDoMes(L,"2026-10");
+  t("outubro é futuro: projeção pelos compromissos", [out.tipo,out.saldoFim], ["FUTURO",compromissos(L,{meses:2})[1].saldoFinal]);
+  t("outubro: o que vai vencer", [out.pagar.total,out.pagar.restante,out.receber.total], [R(300),R(300),R(400)]);
+  t("outubro: nenhum lançamento com competência nele", out.lancamentos.length, 0);
+  t("seis meses à frente também projeta", resumoDoMes(L,"2027-03").tipo, "FUTURO");
   integro(L); }
 
 fim();
