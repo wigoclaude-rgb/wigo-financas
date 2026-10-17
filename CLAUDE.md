@@ -13,6 +13,12 @@ navegador; quem protege os dados é a regra do Firestore.
   A auditoria dela — o que foi mantido e o que foi trocado — está em
   `docs/AUDITORIA.md`.
 
+> **Duas sessões mexem neste repositório** (o Claude Code e uma conversa no
+> claude.ai que também envia para o GitHub). Antes de qualquer tarefa, rode
+> `git pull`. O gatilho em `.claude/settings.json` faz isso sozinho ao abrir
+> a sessão; se ele avisar que o pull não rodou, resolva antes de alterar
+> qualquer arquivo.
+
 ---
 
 ## Como rodar
@@ -29,9 +35,9 @@ e é público de propósito (ver "Netlify e repositório").
 ```bash
 node tests/motor.test.mjs       # motor: partidas dobradas, parcelas, cartão, estorno, terceiros, investimentos… (254)
 node tests/leitura.test.mjs     # leitura de CSV/OFX/XLSX (151)
-node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (78)
+node tests/analise.test.mjs     # importação, reconciliação, recorrências, relatórios (84)
 node tests/migracao.test.mjs    # 2.2 → 3 confere saldo a saldo (40)
-node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (194)
+node tests/e2e.test.mjs         # Chromium clicando no app, com Firebase simulado (204)
 node tests/prints.mjs <pasta> [desktop|celular|ambos] [rota,rota]   # prints de todas as telas
 ```
 
@@ -97,6 +103,22 @@ depois da última visita (`localStorage wigo3.sync.<uid>`). Recarregar sem mudan
 custa zero leituras — testado no e2e. A cota grátis é de 50 mil leituras/dia.
 A migração grava essa marca ao terminar; sem isso, a primeira abertura depois
 dela relia tudo do servidor.
+
+**Revisão (`_rev`) — dois aparelhos não se sobrescrevem.** Todo registro
+gravado por `Repositorio.gravar()` leva `_rev`, que sobe de 1 em 1 (registro
+antigo sem `_rev` conta como 0). A regra do Firestore só aceita alterar se o
+`_rev` novo for o do servidor + 1 (`revisaoSeguinte`; `meta/migracao` fica de
+fora, porque a migração a grava por fora do `gravar`). Antes, o celular aberto
+desde ontem sobrescrevia com dado velho o que o computador tinha gravado — e o
+contador de números (`meta/contadores`) repetia AP- entre aparelhos. Recusa por
+permissão com nada gravado → o repositório desfaz, **recarrega do servidor** e
+diz que o registro provavelmente mudou em outro aparelho (testado no e2e,
+passo 25). Criar registro não confere `_rev`: id novo não tem conflito.
+
+**Voltar para o app busca o que mudou** (`atualizarAoVoltar` em `app.js`):
+ao voltar para a aba ou a internet voltar, no máximo a cada 30 s e nunca com
+gravação na fila. Sem novidade, não redesenha. Também estica a janela das
+recorrências se o mês virou com o app aberto.
 
 **As coleções são pedidas ao servidor todas ao mesmo tempo** (`Promise.all`
 em `sincronizar`), e a marca de migração CONCLUIDA vem do cache quando o
@@ -172,7 +194,12 @@ de saldo gravado em lugar nenhum.
   jogava as parcelas em maio a setembro, já vencidas.
 - **Recorrência gera documentos de verdade** numa janela de 24 meses
   (`JANELA_MESES`), esticada a cada abertura por `gerarPendentes`. Editar pode
-  valer só para os futuros; encerrar pode cancelar os futuros.
+  valer só para os futuros; encerrar pode cancelar os futuros. **O id do
+  documento gerado é previsível** (`d<recorrência>-<sequência>`): dois
+  aparelhos na virada do mês caem no mesmo registro em vez de gerar o aluguel
+  duas vezes (o que já existe no livro é pulado; o aparelho desatualizado é
+  recusado pela revisão). Documentos gerados antes disso têm id aleatório e
+  continuam valendo.
 - **"Saldo previsto no fim do mês" é o número principal da Visão geral**, a
   pedido do usuário (27/09): hoje em contas + o que ainda vence no mês. Os outros
   números ficam em cartões separados.
@@ -544,7 +571,19 @@ Firestore. 30/09: Poupança e investimentos e o seletor de mês na Visão geral.
 Cada usuário (eram 8, todos com e-mail e senha) migra os dados do 2.2 no
 primeiro login na versão 3.
 
+17/10: revisão (`_rev`) contra sobrescrita entre aparelhos, atualização ao
+voltar para o app, id previsível nas recorrências e gatilho de `git pull`
+no Claude Code (branch `melhoria/concorrencia-aparelhos`). A regra nova do
+Firestore depende do item 0 de "Pendente de ação manual".
+
 ## Pendente de ação manual
+
+0. **Regra de revisão (`_rev`) no Firestore.** Depois que o código com a
+   revisão estiver no ar, colar `firestore.rules` no console
+   (https://console.firebase.google.com/project/app-fin-ebcfe/firestore/rules)
+   e publicar. **Nessa ordem**: a regra antes do código recusaria as
+   gravações do app antigo. Até colar, o app funciona como antes, só sem a
+   proteção no servidor.
 
 1. **Para o login com Google funcionar** (sem isso o botão mostra a
    mensagem de onde ativar):

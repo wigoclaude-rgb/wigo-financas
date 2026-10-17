@@ -43,10 +43,17 @@ function gerarDe(L,rec0,m,ate,quitarPrimeiras=0,contaQuitacao){
     const data=addMeses(rec.inicio,seq-1);
     if(data>ate) break;
     const md=rec.modelo;
+    /* Id previsível (recorrência + mês da sequência), não aleatório. Dois
+       aparelhos abrindo na virada do mês geravam o aluguel duas vezes, com
+       ids diferentes. Com o mesmo id, o segundo cai no registro que já
+       existe: aqui, se o livro já o tem, só avança; se não tem (aparelho
+       desatualizado), a regra de revisão do servidor recusa a gravação. */
+    const idDoc=rec.legadoIds?.[seq-1]||("d"+rec.id+"-"+seq);
+    if(m.obter("documentos",idDoc)){ rec={...rec,geradas:seq,ultima:data}; n++; continue; }
     criarDocumento(L,{tipo:rec.tipo,descricao:md.descricao,valor:md.valor,data,primeiroVencimento:data,
       competencia:mesDe(data),parceiro:md.parceiro,categoria:md.categoria,conta:md.conta,cartao:md.cartao,
       forma:md.forma,obs:md.obs,origem:"RECORRENCIA",recorrencia:rec.id,sequencia:seq,silencioso:true,
-      id:rec.legadoIds?.[seq-1],quitar:seq<=quitarPrimeiras&&rec.tipo!==DOC.COMPRA?{data,conta:contaQuitacao||md.conta,forma:md.forma}:null},m);
+      id:idDoc,quitar:seq<=quitarPrimeiras&&rec.tipo!==DOC.COMPRA?{data,conta:contaQuitacao||md.conta,forma:md.forma}:null},m);
     rec={...rec,geradas:seq,ultima:data}; n++;
   }
   if(n) m.set("recorrencias",rec.id,{...rec,atualizadoEm:agora()});

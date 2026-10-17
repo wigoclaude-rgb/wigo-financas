@@ -58,6 +58,7 @@ function recusa(o){
     return null; }
   if(col==="auditoria"||col==="pagamentos") return "alterar "+col+" é proibido";
   if(o.dados.id!==atual.id) return "id mudou";
+  if(!(col==="meta"&&id==="migracao")&&(o.dados._rev??0)!==(atual._rev??0)+1) return "revisão desatualizada (alterado em outro aparelho)";
   return null;
 }
 window.__recusas=[];

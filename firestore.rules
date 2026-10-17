@@ -13,7 +13,13 @@
 //  - nada financeiro é apagado — com UMA exceção: os registros de uma
 //    tentativa de migração que caiu no meio (marcados com _mig), e só
 //    enquanto a migração estiver EM_ANDAMENTO;
-//  - todo registro gravado carrega o próprio id e o carimbo do servidor.
+//  - todo registro gravado carrega o próprio id e o carimbo do servidor;
+//  - alterar um registro exige a revisão seguinte (_rev + 1): dois aparelhos
+//    não sobrescrevem um ao outro.
+//
+// ORDEM AO PUBLICAR UMA MUDANÇA NESTA REGRA: primeiro o código no ar
+// (Netlify), depois a regra no console. A regra antes do código recusaria
+// as gravações do app antigo.
 
 rules_version = '2';
 service cloud.firestore {
@@ -26,6 +32,15 @@ service cloud.firestore {
     }
     function sobraDeMigracao(uid) {
       return resource.data.get('_mig', null) != null && migracaoEmAndamento(uid);
+    }
+    // Revisão: alterar um registro exige _rev = o do servidor + 1. Um
+    // aparelho com dados velhos manda um _rev já usado e é recusado, em vez
+    // de sobrescrever o que outro aparelho gravou. Registro sem _rev conta
+    // como 0. A marca da migração fica de fora: é gravada pela própria
+    // migração, fora do fluxo normal de gravação.
+    function revisaoSeguinte(colecao, id) {
+      return (colecao == 'meta' && id == 'migracao')
+        || request.resource.data.get('_rev', 0) == resource.data.get('_rev', 0) + 1;
     }
 
     // O documento do 2.2 (JSON único). Continua legível para a migração.
@@ -45,6 +60,7 @@ service cloud.firestore {
       allow update: if dono(uid)
         && !(colecao in ['auditoria','pagamentos'])
         && request.resource.data.id == resource.data.id
+        && revisaoSeguinte(colecao, id)
         && carimbado();
       allow delete: if dono(uid) && sobraDeMigracao(uid);
     }

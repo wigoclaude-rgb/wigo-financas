@@ -200,13 +200,17 @@ await p.click('#painel [data-a="painel-fechar"]');
 g("recarregar: dados voltam do cache e o servidor só manda o que mudou");
 await ir(p,"visao");
 const antesRec=await p.evaluate(()=>({s:window.__app.L.saldoTodasContas(),d:window.__app.L.documentos.size}));
+/* a marca da última sincronização: a da migração, ou mais nova se o app
+   já buscou de novo (a recusa do passo 8 recarrega o que mudou) */
+const marcaSync=await p.evaluate(()=>+localStorage.getItem("wigo3.sync.u1"));
 await p.reload(); await p.waitForSelector("#conteudo .hero",{timeout:15000}); await p.waitForTimeout(500);
 t("mesmos dados depois de recarregar", await p.evaluate(()=>({s:window.__app.L.saldoTodasContas(),d:window.__app.L.documentos.size})), antesRec);
 t("não migrou de novo", await p.locator("#painel.on").count(), 0);
-const {nDocs,novos,lidas}=await p.evaluate(()=>{ const docs=[...window.__fs.entries()].filter(([k])=>k.split("/").length===4&&!k.includes("/auditoria/"));
+const {nDocs,novos,lidas,mig}=await p.evaluate(marca=>{ const docs=[...window.__fs.entries()].filter(([k])=>k.split("/").length===4&&!k.includes("/auditoria/"));
   const mig=window.__fs.get("users/u1/meta/migracao")._ts.__tsms;
-  return {nDocs:docs.length,novos:docs.filter(([,v])=>v._ts&&v._ts.__tsms>mig).length,lidas:window.__leituras}; });
-t(`1ª recarga lê só o que foi gravado depois da migração (${lidas} de ${nDocs})`, lidas, novos);
+  return {nDocs:docs.length,novos:docs.filter(([,v])=>v._ts&&v._ts.__tsms>marca).length,lidas:window.__leituras,mig}; },marcaSync);
+t("a marca nunca fica antes da migração", marcaSync>=mig, true);
+t(`1ª recarga lê só o que foi gravado depois da última sincronização (${lidas} de ${nDocs})`, lidas, novos);
 await p.reload(); await p.waitForSelector("#conteudo .hero",{timeout:15000}); await p.waitForTimeout(400);
 t("2ª recarga, sem mudanças: zero leituras cobradas", await p.evaluate(()=>window.__leituras), 0);
 t("integridade", await integridade(p), []);
@@ -598,6 +602,38 @@ g("abrir o app com internet lenta: as coleções vêm juntas, não em fila");
   t(`abre em menos de 2,5 s com 0,4 s por ida ao servidor (${ms1} ms e ${ms2} ms)`, ms1<2500&&ms2<2500, true);
   t("e continua lendo só o que mudou (nada, na segunda vez)", await p.evaluate(()=>window.__leituras), 0);
   t("sem erro de JS", erros, []);
+  await ctx.close(); }
+
+/* ─────────── 25. dois aparelhos ─────────── */
+g("dois aparelhos: dado velho não sobrescreve, e voltar ao app busca o que mudou");
+{ ({p,erros,ctx}=await abrir({legado:legadoDemo("2026-09-27"),hoje:HOJE,globais:{__intervaloAtualizar:0}}));
+  await p.waitForSelector("#painel.on",{timeout:15000}); await p.click('#painel [data-a="painel-fechar"]');
+  const alvos=await p.evaluate(()=>[...window.__app.L.documentos.values()].filter(d=>d.tipo==="PAGAR"&&d.status!=="CANCELADO").slice(0,2).map(d=>d.id));
+  /* o "outro aparelho" grava direto no servidor: revisão + 1, carimbo de agora */
+  const outroAparelho=(id,descricao)=>p.evaluate(([id,descricao])=>{ const k="users/u1/documentos/"+id, d=window.__fs.get(k);
+    window.__fs.set(k,{...d,descricao,_rev:(d._rev||0)+1,_ts:{__tsms:Date.now()}}); },[id,descricao]);
+  const editarDescricao=async(id,txt)=>{ await p.evaluate(id=>window.__app.abrirDocumento(id),id); await p.waitForSelector('#painel.on');
+    await p.click('#painel [data-a="doc-editar"]'); await p.waitForSelector('#painel form[data-f="editar-doc"]');
+    await p.fill('#painel form[data-f="editar-doc"] [name="descricao"]',txt);
+    return enviar(p,'#painel form[data-f="editar-doc"] button[type="submit"]'); };
+
+  await outroAparelho(alvos[0],"Mudado no outro aparelho");
+  const msg=await editarDescricao(alvos[0],"Edição com dado velho");
+  t("aparelho desatualizado é recusado, com explicação", /outro aparelho/.test(msg)&&/Nenhuma alteração foi aplicada/.test(msg), true);
+  t("o servidor manteve o que o outro aparelho gravou", await p.evaluate(id=>window.__fs.get("users/u1/documentos/"+id).descricao,alvos[0]), "Mudado no outro aparelho");
+  t("e este aparelho já mostra a versão nova", await p.evaluate(id=>window.__app.L.documentos.get(id).descricao,alvos[0]), "Mudado no outro aparelho");
+  t("a recusa foi a da revisão", await p.evaluate(()=>window.__recusas.some(r=>/revisão desatualizada/.test(r))), true);
+  await p.click('#painel [data-a="painel-fechar"]').catch(()=>{});
+
+  const rev0=await p.evaluate(id=>window.__fs.get("users/u1/documentos/"+id)._rev,alvos[0]);
+  t("depois de atualizado, editar funciona", await editarDescricao(alvos[0],"Agora sim"), "Documento alterado");
+  t("revisão subiu de 1 em 1", await p.evaluate(id=>window.__fs.get("users/u1/documentos/"+id)._rev,alvos[0]), rev0+1);
+
+  await outroAparelho(alvos[1],"Pago no computador");
+  await p.evaluate(()=>document.dispatchEvent(new Event("visibilitychange"))); await p.waitForTimeout(400);
+  t("voltar ao app traz o que mudou no outro aparelho", await p.evaluate(id=>window.__app.L.documentos.get(id).descricao,alvos[1]), "Pago no computador");
+  t("integridade", await integridade(p), []);
+  t("sem erro de JS (fora a recusa provocada)", erros.filter(e=>!/outro aparelho/.test(e)), []);
   await ctx.close(); }
 
 await encerrar();

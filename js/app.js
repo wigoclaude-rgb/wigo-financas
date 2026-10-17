@@ -245,12 +245,38 @@ async function iniciar(usuario){
       <div class="aviso ruim" style="margin:16px 0">${I("alert")}<div><b>Não foi possível abrir seus dados.</b><br>${e.message}</div></div>
       <div class="btns"><button class="btn" data-a="recarregar">Tentar de novo</button><button class="btn sec" data-a="sair">Sair</button></div></div></div>`);
     return; }
+  ultimaAtualizacao=Date.now();     // acabou de carregar: não precisa buscar de novo ao voltar já
   /* recorrências: a janela de 24 meses anda com o calendário */
   const novas=gerarPendentes(app.L); if(novas) app.repo.gravar(novas).catch(e=>console.error(e));
   shell(); lerRota(); render();
   if(r.migrou) app.mostrarMigracao?.(r.relatorio);
 }
 acao("recarregar",()=>location.reload());
+
+/* VOLTAR PARA O APP = BUSCAR O QUE MUDOU. Antes, os dados só vinham do
+   servidor ao abrir: o celular aberto desde ontem não via o pagamento feito
+   hoje no computador. Ao voltar para a aba (ou a internet voltar), busca o
+   que mudou — a carga é incremental, então sem novidade custa só a consulta.
+   No máximo uma vez a cada 30 s, e nunca com gravação em andamento. A regra
+   de revisão (_rev) no servidor continua sendo a proteção de verdade; isto
+   só deixa o aparelho em dia para a pessoa não esbarrar nela. */
+const INTERVALO_ATUALIZAR=30000;
+let ultimaAtualizacao=0, atualizando=false;
+async function atualizarAoVoltar(){
+  if(!app.L||!app.repo?.uid||atualizando||app.repo.pendentes) return;
+  if(document.visibilityState!=="visible") return;
+  if(Date.now()-ultimaAtualizacao<(window.__intervaloAtualizar??INTERVALO_ATUALIZAR)) return;
+  atualizando=true; ultimaAtualizacao=Date.now();
+  try{
+    const recebidos=await app.repo.sincronizar();
+    /* virou o mês com o app aberto: a janela das recorrências anda */
+    const novas=gerarPendentes(app.L); if(novas) app.repo.gravar(novas).catch(e=>console.error(e));
+    if(recebidos||novas) render();
+  }catch(e){ console.warn("[WIGO] atualizar ao voltar:",e); }
+  finally{ atualizando=false; }
+}
+document.addEventListener("visibilitychange",atualizarAoVoltar);
+window.addEventListener("online",atualizarAoVoltar);
 
 /* ganchos para os testes de ponta a ponta (inofensivos em produção) */
 import { verificar } from "./financas/integridade.js";

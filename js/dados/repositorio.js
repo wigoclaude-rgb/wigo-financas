@@ -96,6 +96,7 @@ export class Repositorio{
     /* cache frio (aparelho novo, dados do navegador limpos): lê tudo */
     let quente=false;
     if(ultima){ try{ quente=(await getDocsFromCache(colRef(uid,"meta"))).size>0; }catch{ quente=false; } }
+    let recebidos=0;
     await Promise.all(CARREGAR.map(async col=>{
       const mapa=new Map();
       let doCache=false;
@@ -105,11 +106,14 @@ export class Repositorio{
       }
       const q=doCache?query(colRef(uid,col),where("_ts",">",Timestamp.fromMillis(ultima))):colRef(uid,col);
       const s=await getDocs(q).catch(e=>{ throw traduzir(e); });
-      s.forEach(d=>{ const v=d.data(); mapa.set(d.id,v); const ms=v._ts?.toMillis?.()||0; if(ms>maior) maior=ms; });
+      s.forEach(d=>{ const v=d.data(); mapa.set(d.id,v); recebidos++; const ms=v._ts?.toMillis?.()||0; if(ms>maior) maior=ms; });
       dados[col]=[...mapa.values()].map(limpar);
     }));
     this.L.carregar(dados);
     try{ if(maior) localStorage.setItem(chaveSync(uid),String(maior)); }catch{}
+    /* quantos registros vieram do servidor: zero = nada mudou desde a
+       última vez, e a tela não precisa ser redesenhada */
+    return recebidos;
   }
 
   /* Migração: grava em lotes, todos marcados com a tentativa. A marca
@@ -163,6 +167,19 @@ export class Repositorio{
   /* Grava uma Mudanca. Aplica na memória, grava, e desfaz se recusar. */
   async gravar(mudanca){
     if(!mudanca||mudanca.vazia) return;
+    /* REVISÃO: cada registro leva _rev, que sobe de 1 em 1 a cada gravação.
+       A regra do Firestore só aceita alterar um registro se o _rev novo for
+       exatamente o do servidor + 1. Um aparelho com dados velhos (o celular
+       aberto desde ontem) manda um _rev que já foi usado e é recusado —
+       antes, ele sobrescrevia o que o outro aparelho tinha gravado. Vale
+       também para o contador de números (meta/contadores), que deixa de
+       repetir AP-000123 entre aparelhos. Registro antigo, sem _rev, conta
+       como 0. Calculado aqui, antes de aplicar, a partir do que o livro tem. */
+    for(const g of mudanca.gravar){
+      if(g.colecao==="auditoria") continue;
+      const anterior=this.L[g.colecao]?.get(g.id);
+      g.dados={...g.dados,_rev:((anterior&&anterior._rev)||0)+1};
+    }
     const antes=this.L.aplicar(mudanca);
     this.pendentes++; this.aoMudarEstado(this.estado());
     const lotes=dividir(mudanca);
@@ -175,7 +192,18 @@ export class Repositorio{
         gravados++;
       }
     }catch(e){
-      if(gravados===0){ this.L.desfazer(antes); throw traduzir(e,"Nenhuma alteração foi aplicada."); }
+      if(gravados===0){
+        this.L.desfazer(antes);
+        /* Recusa por permissão, hoje, é quase sempre conflito de revisão:
+           o registro mudou em outro aparelho. Buscar o que mudou deixa este
+           aparelho certo para a pessoa conferir e refazer. Só quando não há
+           outra gravação na fila — senão o recarregamento atropelaria ela. */
+        if(e&&e.code==="permission-denied"&&this.pendentes===1){
+          const ok=await this.sincronizar().then(()=>true,()=>false);
+          if(ok) throw traduzir(e,"Nenhuma alteração foi aplicada. O mais provável é que este registro tenha sido alterado em outro aparelho: os dados desta tela foram atualizados — confira e faça de novo.");
+        }
+        throw traduzir(e,"Nenhuma alteração foi aplicada.");
+      }
       /* lote grande (importação) cortado no meio: cada linha foi gravada
          inteira ou não foi; recarrega do servidor para mostrar o que entrou */
       await this.sincronizar().catch(()=>{});
@@ -233,7 +261,7 @@ function dividir(m){
 export function traduzir(e,extra){
   const code=e&&e.code||"";
   let msg;
-  if(code==="permission-denied") msg="O servidor recusou a gravação (permissão). As regras do Firestore precisam ser atualizadas para a versão 3 — ver firestore.rules.";
+  if(code==="permission-denied") msg="O servidor recusou a operação (permissão).";
   else if(code==="unavailable") msg="Sem conexão com o servidor.";
   else if(code==="resource-exhausted") msg="Cota do Firestore esgotada por hoje.";
   else msg=e&&e.message||String(e);

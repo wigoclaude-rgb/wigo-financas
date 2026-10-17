@@ -202,6 +202,28 @@ g("Recorrência — gera documentos de verdade, na janela, e encerra sem apagar 
   definirRelogio(()=>new Date(2026,8,27,12));
   integro(L); }
 
+g("Recorrência — dois aparelhos na virada do mês não geram o mesmo mês duas vezes");
+{ const {L}=base();
+  const m=ex(L,Rec.criarRecorrencia(L,{tipo:"PAGAR",descricao:"Aluguel",valor:R(1500),inicio:"2026-09-05"}));
+  const rid=novoId(m,"recorrencias");
+  const docs=()=>[...L.documentos.values()].filter(d=>d.recorrencia===rid);
+  t("id previsível: recorrência + sequência", docs().map(d=>d.id).slice(0,2), ["d"+rid+"-1","d"+rid+"-2"]);
+  /* o aparelho A estica a janela; o B, com a recorrência ainda velha
+     (geradas atrasado), tenta gerar os mesmos meses */
+  const velha={...L.recorrencias.get(rid)};
+  definirRelogio(()=>new Date(2026,10,1,12));
+  const a=Rec.gerarPendentes(L); ex(L,a);
+  const idsA=a.gravar.filter(x=>x.colecao==="documentos").map(x=>x.id);
+  t("A gera 2 meses novos, com os ids previsíveis", idsA, ["d"+rid+"-26","d"+rid+"-27"]);
+  L.recorrencias.set(rid,velha);                 // B: recorrência desatualizada, documentos já no livro
+  const b=Rec.gerarPendentes(L);
+  t("B não cria documento repetido (os ids já existem)", b?b.gravar.filter(x=>x.colecao==="documentos").length:0, 0);
+  if(b) ex(L,b);
+  t("a recorrência avança mesmo assim", L.recorrencias.get(rid).geradas, 27);
+  t("27 documentos, nenhum duplicado", docs().length, 27);
+  definirRelogio(()=>new Date(2026,8,27,12));
+  integro(L); }
+
 g("Relatórios — todos leem o mesmo livro");
 { const {L,a}=base(); const res=novoId(ex(L,C.criarConta(L,{nome:"Reserva",tipo:"RESERVA"},{dataAbertura:"2026-09-01"})),"contas");
   const sal=[...L.categorias.values()].find(c=>c.nome==="Salário").id, mer=[...L.categorias.values()].find(c=>c.nome==="Mercado").id;
